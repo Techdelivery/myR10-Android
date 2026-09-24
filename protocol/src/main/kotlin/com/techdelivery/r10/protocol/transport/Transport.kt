@@ -1,6 +1,7 @@
 package com.techdelivery.r10.protocol.transport
 
 import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 enum class TransportState {
     DISCONNECTED,
@@ -24,7 +25,13 @@ interface Transport {
     /** One GATT write-with-response; [chunk] already carries its header byte. */
     suspend fun write(chunk: ByteArray)
 
-    /** Bring the link up (scan/connect/subscribe). */
+    /** Enable notifications/indications on a characteristic (write CCCD 0x0001). */
+    suspend fun subscribe(uuid: UUID)
+
+    /** Read a characteristic once and return its raw bytes. */
+    suspend fun read(uuid: UUID): ByteArray
+
+    /** Bring the link up (scan/connect/discover). */
     suspend fun start()
 
     /** Tear the link down. */
