@@ -73,8 +73,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - Verify: `./gradlew :app:assembleDebug` green ✅ (app-debug.apk, 12 MB). **Launch-without-crash needs a device/emulator — none attached; deferred to hardware session.**
 - [x] **F2. Foreground service shell** — DONE 2026-09-24. `R10ForegroundService` (registered `foregroundServiceType=connectedDevice`, `exported=false`), low-importance ongoing notification with tap-to-open PendingIntent, `ServiceCompat.startForeground` with CONNECTED_DEVICE type on API 34+. MainActivity Start/Stop toggle requests `POST_NOTIFICATIONS` (API 33+) then `startForegroundService`/`ACTION_STOP`. Engine graph attaches in Phase G.
   - Verify: `./gradlew :app:assembleDebug` green ✅. **`dumpsys ... foreground=true` + survives-backgrounding need a device — deferred to hardware session.**
-- [ ] **F3. Settings persistence** — DataStore `AppSettings` per DESIGN §8 defaults: autoWake true, calibrateTiltOnConnect false, temperature 60, humidity 1, altitude 0, airDensity 1, teeDistanceFt 7, debugLogging false, reconnectIntervalS 5, deviceName "Approach R10". `Flow<AppSettings>`.
-  - Verify: `./gradlew :app:testDebugUnitTest --tests '*SettingsRepositoryTest'` green; defaults round-trip
+- [x] **F3. Settings persistence** — DONE 2026-09-24. `settings/AppSettings.kt` (DESIGN §8 defaults), `SettingsRepository.kt` (takes `DataStore<Preferences>` → Context-free & testable; `Flow<AppSettings>` with defaults-on-read + per-key setters), `SettingsDataStore.kt` (production Context factory + `produceStore(file)` for tests). Added `datastore-preferences` 1.1.7 + junit/coroutines-test to `:app`.
+  - Verify: `:app:testDebugUnitTest --tests '*SettingsRepositoryTest'` green ✅ (defaults + edits round-trip). Dropped a third test that violated DataStore's single-instance-per-file rule.
 - [ ] **F4. M0 gate**
   - [ ] `./gradlew build` green on clean checkout
   - [ ] `:protocol:test` green
