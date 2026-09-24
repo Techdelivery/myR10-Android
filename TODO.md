@@ -58,8 +58,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ## Phase E — Engine (M1-16/17) — pure JVM, no device
 
-- [ ] **E1. Transport interface** — `write(bytes)`, `incoming: Flow<ByteArray>`, `state: Flow<TransportState>`.
-  - Verify: `./gradlew :protocol:compileKotlin` green
+- [x] **E1. Transport interface** — DONE 2026-09-24. `protocol/.../transport/Transport.kt`: `incoming: Flow<ByteArray>` (raw GATT chunks, header intact), `state: Flow<TransportState>`, `suspend write(chunk)` (chunk already header-prefixed by engine), `start()`/`stop()`. `TransportState` enum: DISCONNECTED/CONNECTING/SCANNING/CONNECTED/DISCONNECTING.
+  - Verify: `:protocol:compileKotlin` green ✅
 - [ ] **E2. ProtocolEngine** — owns header byte, assembler, handshake SM, dispatcher; API `start()`, `stop()`, `sendProtobufRequest(proto): Deferred<ResponseEvent>` (5 s timeout, one in flight, counter starts 0 per connection, increment only on success); Flows: `handshakeComplete`, `deviceInfo`, `eventNotification`, `error`; all TX/RX through HexLog.
   - Verify: `./gradlew :protocol:test --tests '*ProtocolEngineTest'` green
 - [ ] **E3. Request/response correlation tests** — scripted `FakeTransport` session: handshake + B4 answer to StatusRequest. Assert counter increments exactly once, ack bytes match §5.6 for every frame type seen, timeout leaves counter unchanged.
