@@ -53,8 +53,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 - [x] **D4. HandshakeStateMachine** — DONE 2026-09-24. `protocol/.../wire/HandshakeStateMachine.kt`: `IDLE → WAITING_REPLY → DONE`; `onBody(strippedBody)` matches the reply prefix, extracts dynamic header at index 12, returns the final `[H,0x00]` raw write (null otherwise). Pure function — engine owns the ~10s timeout and the writes.
   - Verify: `HandshakeStateMachineTest` green ✅ (5 tests) — happy path extracts header + emits final write, wrong prefix stays waiting, too-short ignored, no transition after done, onBody before begin is null
   - Note: matches each stripped body independently (reference behavior); split-reply accumulation deferred to H2 golden capture
-- [ ] **D5. FrameDispatcher** — ack for **every** received frame incl. unknown types: base `88 13 || origType(2B) || 0x00`; B3/B4 append `LE16(origCounter) + 14 zeros` (21 bytes total); route B4 → response channel by counter match, B3 → device-request event, A0/BA → ack-then-ignore.
-  - Verify: `./gradlew :protocol:test --tests '*FrameDispatcherTest'` green, ack bytes asserted byte-for-byte for all 5 cases
+- [x] **D5. FrameDispatcher** — DONE 2026-09-24. `protocol/.../wire/FrameDispatcher.kt`: `buildAck` — base `88 13‖origType(2B)‖0x00` for every type incl. unknown; B3/B4 append `LE16(origCounter)+14 zeros` (21 bytes). `dispatch(frame, expectedCounter)` — CRC/length mismatch → Dropped (no ack, deliberate hardening); A0/BA → InfoAck; B4 counter-match → Response(proto from msg[16..]), else ack-only; B3 → DeviceRequest(proto). Every non-drop Dispatch carries its `ackPayload` so the engine always acks.
+  - Verify: `FrameDispatcherTest` green ✅ (10 tests) — ack bytes asserted byte-for-byte for A0/BA/B4/B3, B4 match→Response, B4 stale→acked-not-completed, B3→DeviceRequest, unknown→UnknownAck, corrupt CRC→Dropped with null ack
 
 ## Phase E — Engine (M1-16/17) — pure JVM, no device
 
