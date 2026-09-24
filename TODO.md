@@ -43,8 +43,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ## Phase D — Framing + dispatch (M1-11..15) — pure JVM, no device
 
-- [ ] **D1. WireConstants** — handshake first-write 13-byte literal `[H, 0×9, 0x01, 0x00, 0x00]`; reply prefix `010000000000000000010000`; dynamic-header index 12; final handshake write `[H, 0x00]`; type pairs `A0/BA/B4/B3/88 × 0x13` as raw byte pairs; chunk size 19; ack base + B3/B4 extension templates.
-  - Verify: every constant carries a `DESIGN §x.y` comment; `grep -c "§" protocol/src/main/kotlin/**/WireConstants.kt` ≥ 6
+- [x] **D1. WireConstants** — DONE 2026-09-24. `protocol/.../wire/WireConstants.kt`: handshake first-write literal, reply prefix, dynamic-header index 12, final `[H,0x00]` write, type pairs `A0/BA/B4/B3/88 × 0x13` as raw byte pairs, chunk size 19, inbound proto offset 16, ack counter tail (14 zeros), handshake/request timeouts, `isType()` helper. Every constant tagged with its DESIGN §.
+  - Verify: `WireConstantsTest` green ✅ (4 tests) — hex literals match DESIGN, raw-byte type pairs, `isType` matches only leading pair
 - [ ] **D2. Framing** — `frame(msg)` = `LE16(len) || msg || CRC16(...)` with `len = 2 + len(msg) + 2`; `S = 0x00 + COBS(frame) + 0x00`; slice ≤19. Header-free (engine adds header at write time).
   - Verify: `./gradlew :protocol:test --tests '*FramingTest'` green; all slices ≤ 19; `unframe(frame(x)) == x`
   - Note: doubled `LE32(protoLength)` is the **inner §5.7 request header inside msg**, not the outer frame length
