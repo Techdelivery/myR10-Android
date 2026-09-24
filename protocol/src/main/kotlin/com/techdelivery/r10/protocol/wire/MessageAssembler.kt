@@ -14,15 +14,15 @@ import com.techdelivery.r10.protocol.util.Cobs
  * Empty COBS decode (malformed) is dropped, never thrown (§5.1).
  */
 class MessageAssembler(
-    val onHandshakeBody: (ByteArray) -> Unit,
-    val onFrame: (ByteArray) -> Unit,
+    val onHandshakeBody: suspend (ByteArray) -> Unit,
+    val onFrame: suspend (ByteArray) -> Unit,
 ) {
     @Volatile
     var handshakeComplete: Boolean = false
 
     private val acc = ArrayList<Byte>()
 
-    fun onChunk(chunk: ByteArray) {
+    suspend fun onChunk(chunk: ByteArray) {
         if (chunk.isEmpty()) return
         val body = chunk.copyOfRange(1, chunk.size) // strip header
         if (chunk[0] == 0.toByte() || !handshakeComplete) {

@@ -1,6 +1,7 @@
 package com.techdelivery.r10.protocol.wire
 
 import com.techdelivery.r10.protocol.util.ByteUtil
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,7 +14,7 @@ class MessageAssemblerTest {
         Framing.sliceToChunks(msg).map { byteArrayOf(devHeader) + it }
 
     @Test
-    fun singleMessage_reassemblesAndDecodes() {
+    fun singleMessage_reassemblesAndDecodes() = runBlocking {
         val frames = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = { frames.add(it) })
         asm.handshakeComplete = true
@@ -23,7 +24,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun multiChunkMessage_reassembles() {
+    fun multiChunkMessage_reassembles() = runBlocking {
         val msg = ByteArray(60) { ((it % 200) + 1).toByte() }
         val frames = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = { frames.add(it) })
@@ -36,7 +37,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun backToBackMessages_emitTwoFrames() {
+    fun backToBackMessages_emitTwoFrames() = runBlocking {
         val frames = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = { frames.add(it) })
         asm.handshakeComplete = true
@@ -48,7 +49,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun emptyDecode_isDropped() {
+    fun emptyDecode_isDropped() = runBlocking {
         val frames = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = { frames.add(it) })
         asm.handshakeComplete = true
@@ -58,7 +59,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun preHandshakeChunks_routeToHandshake() {
+    fun preHandshakeChunks_routeToHandshake() = runBlocking {
         val hs = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = { hs.add(it) }, onFrame = {})
         asm.handshakeComplete = false
@@ -68,7 +69,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun zeroHeaderPostHandshake_stillRoutesToHandshake() {
+    fun zeroHeaderPostHandshake_stillRoutesToHandshake() = runBlocking {
         // Mirrors reference: `header == 0 || !handshakeComplete`
         val hs = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = { hs.add(it) }, onFrame = {})
@@ -79,7 +80,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun emptyChunk_isIgnored() {
+    fun emptyChunk_isIgnored() = runBlocking {
         val frames = mutableListOf<ByteArray>()
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = { frames.add(it) })
         asm.handshakeComplete = true
@@ -88,7 +89,7 @@ class MessageAssemblerTest {
     }
 
     @Test
-    fun reset_clearsAccumulator() {
+    fun reset_clearsAccumulator() = runBlocking {
         val asm = MessageAssembler(onHandshakeBody = {}, onFrame = {})
         asm.handshakeComplete = true
         asm.onChunk(byteArrayOf(0x11, 0x01, 0x02)) // partial, no trailing 00

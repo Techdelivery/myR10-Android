@@ -60,8 +60,9 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 - [x] **E1. Transport interface** — DONE 2026-09-24. `protocol/.../transport/Transport.kt`: `incoming: Flow<ByteArray>` (raw GATT chunks, header intact), `state: Flow<TransportState>`, `suspend write(chunk)` (chunk already header-prefixed by engine), `start()`/`stop()`. `TransportState` enum: DISCONNECTED/CONNECTING/SCANNING/CONNECTED/DISCONNECTING.
   - Verify: `:protocol:compileKotlin` green ✅
-- [ ] **E2. ProtocolEngine** — owns header byte, assembler, handshake SM, dispatcher; API `start()`, `stop()`, `sendProtobufRequest(proto): Deferred<ResponseEvent>` (5 s timeout, one in flight, counter starts 0 per connection, increment only on success); Flows: `handshakeComplete`, `deviceInfo`, `eventNotification`, `error`; all TX/RX through HexLog.
-  - Verify: `./gradlew :protocol:test --tests '*ProtocolEngineTest'` green
+- [x] **E2. ProtocolEngine** — DONE 2026-09-24. `protocol/.../ProtocolEngine.kt`: owns header byte + assembler + handshake SM + dispatcher; `start()` (begins handshake, collects `transport.incoming`), `stop()`; `sendProtobufRequest(proto): ResponseEvent?` (§5.7 payload, 5 s timeout, one in flight via Mutex, counter starts 0, increments only on success); Flows `handshakeComplete`, `eventNotification` (B3), `error`; all TX/RX mirrored to HexLog. Made assembler callbacks `suspend` so acks/handshake writes serialize with reception.
+  - **Deviations from the sketch (both intentional):** `sendProtobufRequest` returns `ResponseEvent?` from a suspend fn (cleaner than `Deferred`); `deviceInfo` is NOT an engine flow — it comes from GATT characteristic reads, surfaced by `R10Device` in the app (§7.1 step 3), not the protocol layer.
+  - Verify: `ProtocolEngineTest` green ✅ (5 tests)
 - [ ] **E3. Request/response correlation tests** — scripted `FakeTransport` session: handshake + B4 answer to StatusRequest. Assert counter increments exactly once, ack bytes match §5.6 for every frame type seen, timeout leaves counter unchanged.
   - Verify: `./gradlew :protocol:test` fully green — this is the regression net for hardware day
 
