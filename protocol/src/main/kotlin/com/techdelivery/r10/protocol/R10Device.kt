@@ -129,21 +129,26 @@ class R10Device(
             .build()
     }
 
-    private fun shotConfigProto(): R10Protos.WrapperProto {
-        val teeRangeM = config.teeDistanceFt / 3.281f
-        val cfg = R10Protos.ShotConfigRequest.newBuilder()
-            .setTemperature(config.temperatureF)
-            .setHumidity(config.humidity)
-            .setAltitude(config.altitudeM)
-            .setAirDensity(config.airDensity)
-            .setTeeRange(teeRangeM)
+    private fun shotConfigProto(): R10Protos.WrapperProto =
+        R10Protos.WrapperProto.newBuilder()
+            .setService(
+                R10Protos.LaunchMonitorService.newBuilder().setShotConfigRequest(shotConfigRequest(config)),
+            )
             .build()
-        return R10Protos.WrapperProto.newBuilder()
-            .setService(R10Protos.LaunchMonitorService.newBuilder().setShotConfigRequest(cfg))
-            .build()
-    }
 
     companion object {
+        /** Build the §7.1 step-11 ShotConfigRequest from setup config. */
+        fun shotConfigRequest(config: DeviceSetupConfig): R10Protos.ShotConfigRequest {
+            val teeRangeM = config.teeDistanceFt / 3.281f
+            return R10Protos.ShotConfigRequest.newBuilder()
+                .setTemperature(config.temperatureF)
+                .setHumidity(config.humidity)
+                .setAltitude(config.altitudeM)
+                .setAirDensity(config.airDensity)
+                .setTeeRange(teeRangeM)
+                .build()
+        }
+
         /** Battery level = value byte 0, unsigned (DESIGN §7.1 step 3). */
         fun batteryPercent(bytes: ByteArray): Int =
             if (bytes.isEmpty()) -1 else bytes[0].toInt() and 0xFF
