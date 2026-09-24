@@ -137,6 +137,31 @@ The system can also hold the LE ACL link after our app is gone (`ACL LE:Y` obser
 80+ s past a force-stop), so "our app isn't monitoring" does not imply "the R10 is
 advertising."
 
+### Contention with Garmin's official apps (important)
+
+The R10 is a **Garmin Approach R10**, and Garmin's own apps contend for it:
+`com.garmin.android.apps.connectmobile` and `com.garmin.android.apps.golf` hold
+open GATT connections and **auto-restart within seconds of a force-stop**, re-
+grabbing the link immediately (observed: `gatt_if` 127/128 → 131 after both apps
+were force-stopped).
+
+**Coexistence works.** BLE multiplexes multiple GATT clients onto one ACL link. Our
+app completed the full §7.1 setup — handshake, all five requests, `READY` — while
+Garmin held the same device. We do not need Garmin out of the way to function.
+
+**Discovery does need the device silent.** The R10 stops advertising while *any*
+client holds the link. So with Garmin installed and running, a fresh scan-based
+pair can fail — not because the filter is wrong, but because the device is already
+connected and not broadcasting. If fresh discovery ever mysteriously finds nothing,
+check `dumpsys bluetooth_manager` for `GATT_CH_OPEN ... ACL holders` on the R10
+address before suspecting our code.
+
+**Why BT settings shows "connected" but only offers "Connect":** the settings
+toggle manages *profile* (BR/EDR) connections. A raw LE ACL link held by another
+app's GATT client is not a profile, so there is nothing for that toggle to
+disconnect. Use `dumpsys bluetooth_manager` to identify the holder, and
+`pm disable-user` (not `am force-stop`) to actually take it away.
+
 ### Device interface service (the data channel)
 | UUID | Role |
 |---|---|

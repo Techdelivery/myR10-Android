@@ -136,6 +136,26 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
     our app (`ACL LE:Y` persisted 80+ s past `am force-stop`, still showing
     "connected" in BT settings). So the R10 can appear connected with nothing
     monitoring it, and won't advertise while that persists.
+  - **Garmin contention (root cause of the above, found via `dumpsys` ACL holders).**
+    The R10 is a Garmin Approach R10; `com.garmin.android.apps.connectmobile` and
+    `com.garmin.android.apps.golf` hold open GATT connections and **auto-restart
+    within seconds of a force-stop** (observed `gatt_if` 127/128 → 131 after both
+    were killed). Full DESIGN §4 "Contention with Garmin's official apps".
+    - **Coexistence is proven good:** our app ran the complete §7.1 setup to `READY`
+      *while Garmin held the same device* — BLE multiplexes GATT clients on one link.
+    - **Discovery needs the device silent:** it will not advertise while any client
+      holds the link, so a fresh scan-based pair can fail with Garmin running.
+      First diagnostic when discovery finds nothing:
+      `adb shell dumpsys bluetooth_manager | grep <addr>` and read `ACL holders`.
+    - `am force-stop` does NOT release it; `pm disable-user --user 0 <pkg>` does.
+  - **Residual, deliberately not verified:** the `0xFE1F` branch has never been
+    exercised *through* `ScanFilter` — Garmin re-grabs the link too fast to get a
+    disconnected advertiser. Accepted because the **name branch is already proven**
+    (it delivered the verified fresh pair, and the R10 never advertised the old
+    `6A4E2800`), so the filter is a strict superset of known-good. To close it:
+    disable both Garmin apps, power-cycle the R10, then
+    `adb shell am start -n com.techdelivery.r10/.ScanDumpActivity` — it runs a
+    production-filter phase and prints an explicit VERDICT line.
 
 ---
 
