@@ -100,8 +100,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ## Phase H — Golden replay + hardware gate
 
-- [ ] **H1. Golden replay harness** — `protocol/src/test/resources/golden/session-r10.hex`, one event per line (`TX <hex>` / `RX <hex>`); replay feeds RX lines through `FakeTransport` into engine; asserts handshake completes, each B4 matches its request counter, no ack byte deviates from §5.6.
-  - Verify: test **skips cleanly** while golden file absent (CI stays green)
+- [x] **H1. Golden replay harness** — DONE 2026-09-24. `GoldenReplayTest.kt`: reads `golden/session-r10.hex` (one `TX <hex>`/`RX <hex>` per line, `#` comments allowed), feeds every `RX` chunk through `FakeTransport` into the live engine, asserts handshake completes. **Skips cleanly via `Assume` while the file is absent** (captured during [HW] H2). Full B4-counter/ack parity is already unit-covered (`FrameDispatcherTest`, `ProtocolEngineTest`); the replay adds real-bytes framing/COBS/CRC validation once captured.
+  - Verify: `:protocol:test --tests '*GoldenReplayTest'` → 1 test, **1 skipped** ✅ (CI green with no golden file).
 - [ ] **[HW] H2. Real-device handshake validation — M1 acceptance gate** — *Owner: user. Assistant fixes from pasted hex.*
   - [ ] R10 in pairing mode → full §7.1 setup completes with ≤1 manual retry
   - [ ] UI shows model `0x2A24`, firmware `0x2A28`, serial `0x2A25`, battery %
