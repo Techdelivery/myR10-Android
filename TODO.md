@@ -45,8 +45,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 - [x] **D1. WireConstants** — DONE 2026-09-24. `protocol/.../wire/WireConstants.kt`: handshake first-write literal, reply prefix, dynamic-header index 12, final `[H,0x00]` write, type pairs `A0/BA/B4/B3/88 × 0x13` as raw byte pairs, chunk size 19, inbound proto offset 16, ack counter tail (14 zeros), handshake/request timeouts, `isType()` helper. Every constant tagged with its DESIGN §.
   - Verify: `WireConstantsTest` green ✅ (4 tests) — hex literals match DESIGN, raw-byte type pairs, `isType` matches only leading pair
-- [ ] **D2. Framing** — `frame(msg)` = `LE16(len) || msg || CRC16(...)` with `len = 2 + len(msg) + 2`; `S = 0x00 + COBS(frame) + 0x00`; slice ≤19. Header-free (engine adds header at write time).
-  - Verify: `./gradlew :protocol:test --tests '*FramingTest'` green; all slices ≤ 19; `unframe(frame(x)) == x`
+- [x] **D2. Framing** — DONE 2026-09-24. `protocol/.../wire/Framing.kt`: `frame(msg)` = `LE16(len)‖msg‖CRC16(LE16(len)‖msg)`, `len = 2+len(msg)+2`; `sliceToChunks` = `0x00 + COBS(frame) + 0x00` sliced ≤19 (header-free — engine prepends at write time); `unframe` parses + CRC-verifies (reads the 2 CRC bytes as LE u16). Fixed a bug where unframe computed CRC *of* the CRC bytes instead of reading them.
+  - Verify: `FramingTest` green ✅ (6 tests) — length field == frame size, `unframe(frame(x))==x` (incl. empty/1/100-byte), corrupt CRC + bad length rejected, all slices ≤19, slice-reassembly == wire stream
   - Note: doubled `LE32(protoLength)` is the **inner §5.7 request header inside msg**, not the outer frame length
 - [ ] **D3. MessageAssembler (receive)** — strip first byte of every chunk; leading stripped `0x00` clears accumulator and starts new message; trailing `0x00` completes → COBS-decode → verify CRC → emit msg (proto region = `msg[16..]`); corrupt CRC / empty decode = **log + drop, never throw** (§5.5 deliberate).
   - Verify: `./gradlew :protocol:test --tests '*MessageAssemblerTest'` green incl. split-mid-message, back-to-back messages, CRC-corrupt drop
