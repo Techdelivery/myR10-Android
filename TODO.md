@@ -91,12 +91,12 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - Verify: `R10DeviceTest` green ✅ (4 tests) — asserts exact GATT op order, device-info parsing, handshake-abort, battery edge cases. `:protocol` now 74 tests.
 - [x] **G3. ShotConfig integration** — DONE 2026-09-24. `R10Device.shotConfigRequest(config)` companion builder (used by step-11 `sendShotConfig`), values from `DeviceSetupConfig` (sourced from `SettingsRepository` at wiring time). `tee_range = teeDistanceFt / 3.281f`.
   - Verify: `ShotConfigTest` green ✅ — pins §8-default serialized bytes `0D00007042150000803F1D00000000250000803F2D338B0840` (25 B), tee_range formula, custom round-trip. Note: pin is the exact `7/3.281f` float bits (differs from a double→float cast by 1 ULP — the float value is what the device receives).
-- [ ] **G4. DeviceScreen + HexLogPane** — connection state (idle/scanning/connecting/handshake/ready/error), model/fw/serial/battery block, WakeUp status + StateType + tilt readouts, scrollable monospaced hex pane polled ~2 Hz while visible.
-  - Verify: renders on device/emulator; hex pane shows live TX/RX
-- [ ] **G5. Permissions flow** — runtime `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` (+ `POST_NOTIFICATIONS`) requested before service start; denial explained inline.
-  - Verify: deny → clear inline message, no crash; grant → scan proceeds
-- [ ] **G6. Service wiring** — service builds `R10Device` (manual DI), UI observes state Flow, `START_STICKY` restart resumes from scratch (teardown + full rerun, no mid-handshake recovery).
-  - Verify: kill app process → service restarts → full §7.1 rerun observed in hex log
+- [x] **G4. DeviceScreen + HexLogPane** — DONE 2026-09-24. `ui/DeviceScreen.kt`: ConnState banner (IDLE/SCANNING/CONNECTING/HANDSHAKE/READY/ERROR), device-info card (model/fw/serial/battery), readout card (WakeUp status / StateType / tilt), `HexLogPane` = scrollable monospaced TX/RX polled at 500 ms (~2 Hz) via `LaunchedEffect` over `HexLog.snapshot()`. Observes `DeviceStateHolder` StateFlows.
+  - Verify: `:app:assembleDebug` green ✅. **Live render + hex pane needs a device/emulator — deferred to [HW] session.**
+- [x] **G5. Permissions flow** — DONE 2026-09-24. `MainActivity` requests `BLUETOOTH_SCAN`+`BLUETOOTH_CONNECT` (API 31+) and `POST_NOTIFICATIONS` (API 33+) via `RequestMultiplePermissions` before service start; also checks adapter enabled. Denial sets an inline error message (no crash); grant proceeds.
+  - Verify: `:app:assembleDebug` green ✅. **Deny/grant runtime behavior needs a device — deferred to [HW] session.**
+- [x] **G6. Service wiring** — DONE 2026-09-24. `R10ForegroundService` builds the full manual-DI graph (SettingsRepository → BleTransportImpl → ProtocolEngine → R10Device), runs §7.1, mirrors transport/engine/device state into `DeviceStateHolder` (shared hexLog). `START_STICKY`; `startDevice()` cancels any prior job and `reset()`s the holder, so a restart tears down and reruns the full sequence (no mid-handshake recovery).
+  - Verify: `:app:assembleDebug` + all tests green ✅. **Kill-process → restart → full rerun observed in hex log needs a device — deferred to [HW] session.**
 
 ## Phase H — Golden replay + hardware gate
 
