@@ -475,6 +475,12 @@ Implementation note: `AlertNotification` field 1001 is named after its parent
 message; codegen produces an accessor with a trailing underscore (e.g.
 JavaLite/Kotlin `alertNotification_`). Use generated names as-is.
 
+Codegen note: the app's copy adds `option java_outer_classname = "R10Protos";`
+because the proto package's first segment (`LaunchMonitor`) collides with the
+file-derived outer class name, which breaks Kotlin-lite fully-qualified
+references (the class shadows the package segment). This is codegen-only —
+serialized bytes are unaffected.
+
 ```
 syntax = "proto3";
 

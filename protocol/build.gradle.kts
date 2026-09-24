@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 // Pure Kotlin/JVM module: wire protocol, framing, COBS, CRC, proto codegen.
 // MUST have zero android.* imports (enforced by grep check in TODO B1).
 plugins {
@@ -5,9 +7,16 @@ plugins {
     alias(libs.plugins.protobuf)
 }
 
+// Target JVM 17 bytecode, compiled with the available JDK 21 (no JDK 17 on this
+// machine; toolchain auto-provisioning not configured).
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -27,7 +36,7 @@ protobuf {
     generateProtoTasks {
         all().configureEach {
             builtins {
-                create("java") { option("lite") }
+                named("java") { option("lite") }   // java builtin exists by default in 0.10.0
                 create("kotlin") { option("lite") }
             }
         }

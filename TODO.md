@@ -22,8 +22,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 - [x] **B1. Multi-module scaffold** — DONE 2026-09-24. `settings.gradle.kts` (root `R10Monitor`, includes `:protocol` + `:app`), root `build.gradle.kts`, `gradle/libs.versions.toml`, `gradlew` wrapper 8.14.5, `.gitignore` (pre-existing).
   - Verify: `./gradlew help` exits 0 ✅; `./gradlew projects` shows `:app` + `:protocol` ✅; `grep -rE "^import (android|com\.google\.android)" protocol/src` → CLEAN ✅
   - Resolved pins: AGP 8.13.2, Kotlin 2.4.20 (stable) + compose plugin, Compose BOM 2026.09.00, coroutines 1.11.0, protobuf-javalite + protobuf-kotlin-lite 4.36.2, protobuf-gradle-plugin 0.10.0, JVM target 17, minSdk 26, compile/target 36, applicationId `com.techdelivery.r10`
-- [ ] **B2. Proto codegen** — `protocol/src/main/proto/LaunchMonitor.proto` transcribed verbatim from DESIGN Appendix A (proto package `LaunchMonitor.Proto`).
-  - Verify: `./gradlew :protocol:compileKotlin` green; generated types exist for every appendix message; `AlertNotification` field 1001 accessor uses generated trailing-underscore name as-is
+- [x] **B2. Proto codegen** — DONE 2026-09-24. `protocol/src/main/proto/LaunchMonitor.proto` transcribed from DESIGN Appendix A (proto package `LaunchMonitor.Proto`), plus codegen-only `option java_outer_classname = "R10Protos"` — the package first segment collided with the file-derived outer class name and broke Kotlin-lite fully-qualified refs (wire-irrelevant; noted in DESIGN Appendix A).
+  - Verify: `./gradlew :protocol:compileKotlin` green ✅; all 30 appendix messages present as nested classes of `R10Protos` ✅; `AlertNotification` field 1001 generates `alertNotification_` accessor ✅
 - [ ] **B3. Proto smoke test** — construct + serialize + re-parse `WrapperProto`, `ShotConfigRequest`, `AlertDetails`.
   - Verify: `./gradlew :protocol:test --tests '*ProtoSmokeTest'` green
 
