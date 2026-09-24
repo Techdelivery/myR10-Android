@@ -223,20 +223,19 @@ class BleTransportImpl(
     private suspend fun scanForDevice(): BluetoothDevice? = withContext(Dispatchers.IO) {
         val scanner = adapter.bluetoothLeScanner ?: return@withContext null
         val deferred = CompletableDeferred<BluetoothDevice?>()
-        // Filter on R10-specific identifiers only. Hardware finding (2026-09-24):
-        // the R10 puts NO local name in its advertisement — the name lives only in
-        // cached GATT GAP — so a name-only filter can never match a fresh device.
-        // We OR the service UUID with the name: both are R10-specific, so the worst
-        // case is "not found", never "connected to some other nearby peripheral".
-        // (An unfiltered scan was used during diagnostics; left enabled it would let
-        // an unbonded Start grab the first random peripheral on air.)
+        // Filter on R10-specific identifiers only. Measured 2026-09-24 from a real
+        // UNPAIRED unit in pairing mode: it advertises name="Approach R10" and
+        // service UUID 0xFE1F, and NEVER the 6A4E2800 GATT data service. An earlier
+        // revision filtered on DEVICE_INTERFACE_SERVICE here, which matches nothing.
+        // Both branches below are R10-specific, so the worst case is "not found",
+        // never "connected to some other nearby peripheral".
         val filters: List<ScanFilter> = listOf(
             ScanFilter.Builder()
-                .setServiceUuid(ParcelUuid(GattUuids.DEVICE_INTERFACE_SERVICE))
+                .setServiceUuid(ParcelUuid(GattUuids.ADVERTISED_SERVICE))
                 .build(),
             ScanFilter.Builder().setDeviceName(deviceName).build(),
         )
-        Log.i(TAG, "startScan filters=[ServiceUuid=${GattUuids.DEVICE_INTERFACE_SERVICE} or Name=$deviceName]")
+        Log.i(TAG, "startScan filters=[ServiceUuid=${GattUuids.ADVERTISED_SERVICE} or Name=$deviceName]")
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()

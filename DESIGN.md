@@ -114,6 +114,29 @@ coroutines + `Channel`s:
 
 Services/characteristics on the R10 (write with response unless noted):
 
+### BLE advertisement (measured 2026-09-24 from a real unit)
+
+Captured with a debug-only unfiltered scan (`ScanDumpActivity`), 442 packets from
+an R10 that was **not connected**:
+
+```
+address   CE:33:1E:DF:1D:07        (static random — stable across sessions)
+name      "Approach R10"           (present in the advertisement)
+services  0000FE1F-0000-1000-8000-00805f9b34fb   (16-bit 0xFE1F)
+mfg data  0x0087 = 0E2601A5180CCF
+connectable true
+```
+
+**The R10 never advertises `6A4E2800-…`** (the GATT data service below). Discovery
+must filter on `0xFE1F` and/or the name — filtering on the data-service UUID
+matches nothing.
+
+**Advertising is a function of connection state, not bonding.** A bonded-but-
+disconnected R10 advertises normally; a *connected* one does not advertise at all.
+The system can also hold the LE ACL link after our app is gone (`ACL LE:Y` observed
+80+ s past a force-stop), so "our app isn't monitoring" does not imply "the R10 is
+advertising."
+
 ### Device interface service (the data channel)
 | UUID | Role |
 |---|---|

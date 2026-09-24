@@ -9,7 +9,9 @@ import android.bluetooth.le.ScanSettings
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelUuid
 import android.util.Log
+import com.techdelivery.r10.protocol.wire.GattUuids
 import androidx.activity.ComponentActivity
 import java.util.Locale
 
@@ -47,6 +49,7 @@ class ScanDumpActivity : ComponentActivity() {
         }
 
         handler = Handler(Looper.getMainLooper())
+        filtered = intent?.getStringExtra("filtered")?.toBoolean() ?: true
 
         val adapter = BluetoothAdapter.getDefaultAdapter()
         if (adapter == null || !adapter.isEnabled) {
@@ -79,9 +82,50 @@ class ScanDumpActivity : ComponentActivity() {
 
         handler.postDelayed({
             runCatching { scanner.stopScan(cb) }
-            Log.i(TAG, "=== SCAN DUMP END (unique=${seen.size}) ===")
-            finish()
+            Log.i(TAG, "=== UNFILTERED DUMP END (unique=${seen.size}) ===")
+            if (filtered) runFilteredScan(scanner) else finish()
         }, DUMP_MS)
+    }
+
+    /**
+     * Phase 2: scan with the EXACT filters the production transport uses, so we can
+     * verify they actually match a live R10 rather than assuming it.
+     */
+    @SuppressLint("MissingPermission")
+    private fun runFilteredScan(scanner: android.bluetooth.le.BluetoothLeScanner) {
+        val productionFilters = listOf(
+            ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(GattUuids.ADVERTISED_SERVICE))
+                .build(),
+            ScanFilter.Builder().setDeviceName("Approach R10").build(),
+        )
+        Log.i(TAG, "=== FILTERED SCAN (production filters) ===")
+        matched.clear()
+        val fcb = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val a = result.device?.address ?: return
+                if (matched.add(a)) {
+                    Log.i(
+                        TAG,
+                        "FILTER MATCH %s name=%s rssi=%d%s".format(
+                            a, result.device?.name, result.rssi,
+                            if (a.equals(TARGET, true)) " <<< R10 (production filter WORKS)" else "",
+                        ),
+                    )
+                }
+            }
+        }
+        scanner.startScan(
+            productionFilters,
+            ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
+            fcb,
+        )
+        handler.postDelayed({
+            runCatching { scanner.stopScan(fcb) }
+            Log.i(TAG, "=== FILTERED SCAN END (matched=${matched.size}) ===")
+            Log.i(TAG, if (matched.any { it.equals(TARGET, true) }) "VERDICT: production filter finds the R10" else "VERDICT: production filter did NOT find the R10")
+            finish()
+        }, FILTERED_MS)
     }
 
     private val seen = HashSet<String>()
@@ -117,6 +161,11 @@ class ScanDumpActivity : ComponentActivity() {
     companion object {
         private const val TAG = "R10SCAN"
         private const val DUMP_MS = 20_000L
+        private const val FILTERED_MS = 12_000L
         private const val TARGET = "CE:33:1E:DF:1D:07"
+
+        /** Set false via --es filtered false to skip the production-filter phase. */
+        private var filtered = true
+        private val matched = HashSet<String>()
     }
 }

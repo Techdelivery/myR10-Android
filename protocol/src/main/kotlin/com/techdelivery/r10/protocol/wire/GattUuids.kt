@@ -7,6 +7,16 @@ import java.util.UUID
  * device facade can drive the §7.1 setup order against a fake transport.
  */
 object GattUuids {
+    /**
+     * The service UUID the R10 puts in its BLE **advertisement** while in pairing
+     * mode. Measured 2026-09-24 from a real unpaired unit (442 adv packets):
+     * `name="Approach R10"`, `uuids=0000FE1F-…`, `mfg=0x0087`.
+     *
+     * This is NOT the GATT data service below. The R10 never advertises
+     * `6A4E2800-…`, so filtering discovery on that UUID matches nothing.
+     */
+    val ADVERTISED_SERVICE: UUID = UUID.fromString("0000FE1F-0000-1000-8000-00805f9b34fb")
+
     // Device interface service (the data channel)
     val DEVICE_INTERFACE_SERVICE: UUID = UUID.fromString("6A4E2800-667B-11E3-949A-0800200C9A66")
     val DATA_NOTIFIER: UUID = UUID.fromString("6A4E2812-667B-11E3-949A-0800200C9A66")

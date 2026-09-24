@@ -116,26 +116,26 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - [x] `:protocol:test` + `:app:testDebugUnitTest` + `:app:assembleDebug` green (81 protocol tests, 0 failures, 0 skipped)
   - [x] Golden replay passes against real bytes and now asserts the capture contains B413 (a capture with only acks would fail)
   - [x] `DESIGN.md` updated for every field observation that contradicted it (§5.5 symmetry, §5.7 counter width, §5.6/§5.5 `8813`)
-- [ ] **H4. Fresh-pair verification** — still open, but the ground has shifted.
-  **Measured 2026-09-24** with a debug-only unfiltered scan dump (`ScanDumpActivity`,
-  859 advertisement packets / 11 unique peripherals, R10 absent):
-  - The R10 holds a **persistent encrypted LE ACL link** to its bonded phone
-    (`ACL LE:Y`, `le_encrypted:T`) that survives force-stopping our app for 80+ s.
-  - While that link exists the R10 **does not advertise** — no address, no name, no
-    `6a4e2800` ever observed on air.
-  - Therefore bonded-direct is confirmed as the **correct** reconnect path (GATT rides
-    the already-live ACL link), not a workaround.
-  - **Correction:** an earlier note here claimed "bonded devices don't advertise".
-    Wrong — the rule is *connected* devices don't advertise; the dump was measuring a
-    connected device. Do not re-derive the exotic version.
-  - **Still unknown:** what a brand-new / pairing-mode R10 advertises. `6a4e2800` has
-    never been observed matching anything, so the production ScanFilter is unverified.
-  - **Product consequence — one-phone lock:** because the bond keeps the ACL link alive
-    and suppresses advertising, a second phone cannot discover or pair an R10 until it
-    is unpaired from the first. Moving an R10 between phones requires unpairing.
-  - To close: put the R10 in genuine pairing/reset mode, run
-    `adb shell am start -n com.techdelivery.r10/.ScanDumpActivity` and read what it
-    advertises; then confirm scan → bond → full §7.1 setup from a clean slate.
+- [x] **H4. Fresh-pair verification** — CLOSED 2026-09-24, verified end-to-end by
+  the user: R10 unpaired → tapped Start → app **discovered it by scan** and raised
+  the system pairing dialog → approved → bonded → connected → `§7.1 setup complete
+  -> READY` with real device info. A new customer's path works.
+  - **Measured advertisement** (442 packets, unfiltered scan, R10 not connected):
+    `name="Approach R10"`, `services=0000FE1F-…`, `mfg=0x0087=0E2601A5180CCF`,
+    `connectable=true`, static-random address.
+  - **THE R10 NEVER ADVERTISES `6A4E2800`.** The ScanFilter had been targeting the
+    GATT data-service UUID, which matches nothing. Corrected to
+    `GattUuids.ADVERTISED_SERVICE` (0xFE1F) OR device name. The name branch is the
+    one proven to have worked during the fresh pair; the change is a strict superset.
+  - **Retracted claims** (both wrong, recorded so nobody re-derives them):
+    - "The R10 puts no local name in its advertisement" — false. It does; earlier
+      observations were of a *connected* device.
+    - "One-phone lock: bonded devices don't advertise" — false. Advertising tracks
+      **connection state, not bonding**; a bonded-but-disconnected R10 advertises.
+  - **Real, still-true finding:** the system holds the LE ACL link independently of
+    our app (`ACL LE:Y` persisted 80+ s past `am force-stop`, still showing
+    "connected" in BT settings). So the R10 can appear connected with nothing
+    monitoring it, and won't advertise while that persists.
 
 ---
 
