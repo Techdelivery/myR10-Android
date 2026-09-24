@@ -4,9 +4,11 @@ A standalone Android application that connects to a Garmin Approach R10 launch
 monitor over Bluetooth LE, runs the device's setup sequence, receives shot
 metrics, and displays them live on the phone.
 
-This document is self-contained: it captures everything needed to build the app
-from a blank repository, including the full wire protocol reverse-engineered
-from the desktop adapter this design was derived from. No networking functionality is included.
+This document is the single source of truth: it captures everything needed to
+build the app from a blank repository, including the complete wire protocol
+(reverse-engineered from observed device traffic). All byte-level behavior in
+§5 is field-verified — implement it exactly and never "clean up" the magic
+bytes. No networking functionality is included.
 
 ---
 
@@ -50,7 +52,7 @@ from the desktop adapter this design was derived from. No networking functionali
 - `ACCESS_FINE_LOCATION` only for pre-API-31 scanning
 
 **Pairing strategy (API 31+):** the app offers both paths —
-1. Use an already-bonded device (pair via system Settings, like the desktop app), or
+1. Use an already-bonded device (paired via system Settings), or
 2. Request bonding in-app via `BluetoothDevice.createBond()` after discovery.
 
 Bonding is required: the R10 will not communicate over an unencrypted GATT link.
@@ -125,7 +127,7 @@ Services/characteristics on the R10 (write with response unless noted):
 | `6A4E3400-667B-11E3-949A-0800200C9A66` | Service |
 | `6A4E3401-667B-11E3-949A-0800200C9A66` | Measurement — subscribe (post-shot bytes; not parsed) |
 | `6A4E3402-667B-11E3-949A-0800200C9A66` | Control point — subscribe (unused) |
-| `6A4E3403-667B-11E3-949A-0800200C9A66` | Status — subscribe (awake/ready raw bytes) |
+| `6A4E3403-667B-11E3-949A-0800200C9A66` | Status — subscribe (byte 1 = awake flag, byte 2 = ready flag; debug-only) |
 
 ### Standard services
 | UUID | Role |
@@ -145,14 +147,24 @@ they are undocumented device behavior.
 
 ### 5.1 Encoding primitives
 
-**COBS** (Consistent Overhead Byte Stuffing) — standard algorithm, with these
-implementation details:
-- Encoder: insert distance byte at position `distanceIndex`; final block
-  appended only if `result.Count != 255 && result.Count > 0`.
-- Decoder: returns empty list on malformed input (distance out of range).
+**COBS** (Consistent Overhead Byte Stuffing) — this is a *non-standard variant*;
+port the exact behavior below, do not substitute textbook COBS:
+- Encoder keeps a running `distanceIndex` marking where the last distance byte
+  was placed; each new distance byte is inserted at that position (shifting the
+  accumulated payload bytes right). After the input is consumed, the pending
+  final block is appended **only if its length is non-zero and ≠ 255**.
+- Decoder walks blocks by their leading distance byte; malformed input
+  (distance pointing past end of buffer) returns empty. Callers treat an empty
+  decode as a dropped frame with a log line — never throw.
+- Regression-test boundaries: all-zero inputs, and runs of exactly 254 / 255 /
+  256 consecutive non-zero bytes.
 
-**CRC16** — polynomial `0xA001` (standard "Modbus"/CRC-16-IBM), init `0x0000`,
-bitwise table-driven, result little-endian (2 bytes).
+**CRC16** — polynomial `0xA001` reflected, init `0x0000`, table-driven lookup
+(standard CRC-16/ARC parameters), result emitted little-endian (low byte first).
+Frozen test vector: ASCII `"123456789"` → `0xBB3D`, written as bytes `3D BB`
+(CRC-16/ARC catalogue check value, cross-verified against independent
+implementations). Note: `binascii.crc_hqx` is CRC-16/XMODEM, **not** ARC —
+never use it as the reference.
 
 ### 5.2 Frame format (app → device)
 
@@ -161,11 +173,14 @@ bitwise table-driven, result little-endian (2 bytes).
    plus the length and CRC fields themselves
 3. **Framed** = `LE16(len) || P || CRC16(LE16(len) || P)`
 4. **COBS-encode** the framed bytes
-5. **Delimit**: prepend `0x00` and append `0x00`
-6. **Chunk**: write in ≤19-byte chunks (prefix nothing per chunk; the 0x00
-   header byte is part of the first chunk). Do not negotiate MTU — keep the
-   19-byte chunking.
-7. Write each chunk to the writer characteristic with response.
+5. **Delimit**: prepend `0x00` and append `0x00` → wire stream S =
+   `0x00 + COBS(frame) + 0x00`
+6. **Chunk**: split S into slices of ≤19 bytes; **prefix every slice with the
+   current header byte H** (initially `0x00`, the dynamic value after handshake).
+   Every GATT write is therefore ≤20 bytes — safe at default ATT MTU 23.
+7. Write the slices in order to the writer characteristic, each with response,
+   strictly serialized (one outstanding write). The receiver strips the first
+   byte of every received chunk, so reassembly reconstructs S exactly (§5.3).
 
 ### 5.3 Device → app notifications
 
@@ -180,18 +195,23 @@ Notification payloads arrive as *chunks* of one logical message:
 - Accumulate chunk bodies until complete, then COBS-decode the accumulated
   bytes → framed message.
 
-### 5.4 Handshake
+### 5.4 Handshake (performed after data-channel subscribe)
 
-1. App sends `SendBytes("000000000000000000010000")` — i.e. those 12 raw bytes,
-   each **prefixed with the current header byte** (header starts as `0x00`,
-   so effectively one 13-byte write). Note: these are *raw* chunk payloads,
-   not COBS-framed.
-2. Device replies with a chunk whose body (hex) starts with
-   `010000000000000000010000`.
-3. The **dynamic header byte** = the 13th byte of that body (index 12).
-   Save it; it prefixes every subsequent raw write.
-4. App sends `SendBytes("00")` (single byte, header-prefixed) and marks the
-   handshake complete.
+1. **First write — a single raw (unframed, un-COBS'd, no CRC) GATT write of
+   13 bytes**: current header byte (`0x00` pre-handshake) + the 12 literal
+   bytes from hex `000000000000000000010000`, i.e. `[H, 0×9, 0x01, 0x00, 0x00]`.
+2. **Device reply**: one or more notification chunks; strip each chunk's
+   leading header byte per the §5.3 rule. The handshake is recognized when a
+   stripped body starts with the 12-byte hex prefix `010000000000000000010000`
+   (observed in field traffic it arrives as one chunk — if a device ever splits
+   the reply across chunks, accumulate pre-handshake bodies before matching).
+3. **Dynamic header byte** = byte at index 12 of that stripped body — i.e.
+   immediately after the 12-byte prefix. Save it; from now on every outgoing
+   chunk (raw or framed) is prefixed with this value instead of `0x00`.
+4. App sends one more raw write: `[H, 0x00]` (2 bytes), then marks handshake
+   complete and switches the inbound pipeline to message reassembly (§5.3).
+5. If no matching reply arrives within ~10 s, treat the handshake as failed:
+   abort setup, tear down GATT, surface the error.
 
 ### 5.5 Framed message dispatch (post-handshake, decoded)
 
@@ -199,39 +219,53 @@ Decoded message = `LE16(len) || msg || CRC16(LE16(len) || msg)`.
 Verify CRC over everything except the last 2 bytes against the last 2 bytes;
 on mismatch, log and drop.
 
-`msg` structure (relative to the length field):
+`msg` structure:
 
-| Offset | Content |
+| Offset in msg | Content |
 |---|---|
-| 0–1 | Message type, ASCII hex chars: `A013`, `BA13`, `B413`, `B313`, `8813` |
+| 0–1 | Message type — **two raw bytes**: `A0 13`, `BA 13`, `B4 13`, `B3 13`. ("B413" is hex notation for that byte pair, not ASCII characters.) |
 | 2–3 | uint16 LE counter |
-| 4–15 | `00000000000000` (14 bytes; for B413/B313 the 16-byte protobuf header is `bytes[2..16]`) |
-| 16– | protobuf payload (B413/B313 only) |
+| 4–15 | reserved / unparsed — typically zero on device-originated frames; do **not** assume any content here |
+| 16– | protobuf `WrapperProto` payload (B413/B313 only) — proto always starts at offset 16 of msg |
 
 Dispatch on type:
 
-- **`A013`** — device info (not parsed).
-- **`BA13`** — config (not parsed).
-- **`B413`** — protobuf **response**. Ack it; if `counter == current request
+- **`A013`** — device info (not parsed; acked).
+- **`BA13`** — config (not parsed; acked).
+- **`B413`** — protobuf **response**. Ack it. If `counter == current request
   counter`, parse `WrapperProto` from `msg[16..]`, complete the pending
   request, increment the counter.
 - **`B313`** — protobuf **request** (device → app; e.g. event notifications).
-  Parse `WrapperProto` from `msg[16..]`, emit events, handle.
-- **`8813`** — this is the *app's ack format*, not received (see 5.6).
+  Ack it, parse `WrapperProto` from `msg[16..]`, emit events, handle.
+- **`8813`** — this is the *app's ack format*, never received (see 5.6).
+
+**Wire asymmetry to preserve exactly**: our B313 requests carry a 14-byte
+inner header before the proto (§5.7), while device-originated B4/B3 frames
+carry the proto at offset 16 of msg. The two directions are *not* symmetric —
+do not normalize either side.
 
 ### 5.6 Acknowledgements
 
-For every received `B413`/`B313`, the app must ack. Ack payload =
-`8813` || original msg bytes [2..4] (the counter) || counter copy ||
-`00000000000000` (14 zero bytes). This ack is sent via the normal framing path
-(`WriteMessage` → length/CRC/COBS/chunks, header-prefixed).
+Every received frame gets an app acknowledgement — `A013`, `BA13`, `B413`,
+`B313`, and even unrecognized types (base body only). The ack payload `P` is:
+
+- **Base (all types)**: `88 13 || origType(2 bytes) || 0x00`
+  — e.g. for a received B413 the base body is `88 13 B4 13 00`. (5 bytes.)
+- **B413 / B313 only**: append after the base body
+  `LE16(origCounter)` + 14 zero bytes → full payload 21 bytes, where
+  `origCounter` is the uint16 read from msg[2..4] of the frame being acked.
+
+The ack travels through the normal framing path (§5.2: length/CRC/COBS/chunks)
+with the current dynamic header byte prefixing each chunk.
 
 ### 5.7 App → device protobuf request format
+
+`requestCounter` starts at **0** on every connection.
 
 Payload `P` for a protobuf request:
 
 ```
-"B313" (2 bytes ASCII)
+B3 13                        // type — two raw bytes, not ASCII
 || LE16(requestCounter)     // 2 bytes
 || 0x00 0x00                // 2 bytes
 || LE32(protobufLength)     // 4 bytes (BitConverter LE32)
@@ -239,15 +273,21 @@ Payload `P` for a protobuf request:
 || protobufBytes
 ```
 
-Send through the framing path. Wait up to 5 s for the matching `B413`
-response (same counter); on success increment `requestCounter`. One request
-in flight at a time (the response event gates the next).
+Send through the framing path (§5.2). Wait up to 5 s for the matching `B413`
+response (same counter); only then increment `requestCounter` — a timeout
+leaves the counter unchanged for the next attempt. One request in flight at a
+time (the response event gates the next).
+
+**Offset note**: the proto payload above starts 14 bytes into P, whereas
+inbound device frames put the proto at offset 16 of msg (§5.5). Both are
+field-verified — preserve both as-is.
 
 ### 5.8 Raw (non-framed) writes
 
-The handshake bytes (5.4) bypass framing: each is `headerByte || rawBytes`
-written as a single chunk via the writer characteristic. Post-handshake,
-all `SendBytes` calls prefix the dynamic header byte.
+Only the two handshake writes (§5.4) bypass framing/CRC/COBS entirely.
+Post-handshake, every message goes through the §5.2 framing path. All GATT
+writes — raw or framed — carry the current header byte as their first octet;
+post-handshake that byte is always the dynamic value obtained in §5.4 step 3.
 
 ---
 
@@ -281,22 +321,32 @@ Speeds are **m/s**, angles in degrees, spin in rpm, `tee_range` in **meters**.
 
 ### 7.1 Setup sequence (on connect, in order)
 
-1. Connect GATT (with retry loop until connected; device must be in pairing
-   mode — blue blinking light — hold power button a few seconds).
-2. Discover services; read serial/firmware/model; subscribe to battery
-   notifications (read initial value).
-3. Subscribe to device-interface notifier (CCCD) — the data channel.
-4. **Handshake** (5.4). Failures here abort setup.
-5. Subscribe to measurement/control/status characteristics (CCCD each).
-6. `WakeDevice()` → `LaunchMonitorService.WakeUpRequest`.
-7. `StatusRequest()` → current `StateType` (sets "ready" = `WAITING`).
+Device must be powered on / in pairing mode (blue blinking light — hold the
+power button a few seconds). Any mid-setup failure or link drop tears down the
+GATT client and restarts from step 1 (no partial recovery); retries use
+`reconnectIntervalS`.
+
+1. Connect GATT, with a retry loop until connected.
+2. Subscribe to measurement, control-point, and status characteristics
+   (CCCD each) — these come **first**, before any reads or the handshake.
+3. Read device info as ASCII: serial (`0x2A25`), firmware (`0x2A28`), model
+   (`0x2A24`). Battery: one initial READ, then subscribe to notifications;
+   level = value byte 0 (%) — the initial read is an app-side convenience,
+   notify-only also works.
+4. Subscribe to the device-interface notifier (CCCD) — data channel open.
+5. **Handshake** (§5.4). Failure aborts setup.
+6. `WakeUpRequest` (`LaunchMonitorService.wake_up_request`) — safe when
+   already awake (response reports `ALREADY_AWAKE`).
+7. `StatusRequest()` → current `StateType` (UI "ready" = `WAITING`).
 8. `TiltRequest()` → device tilt (roll/pitch).
-9. `SubscribeToAlerts()` → `EventSharing.subscribe_request` with
-   `LAUNCH_MONITOR`.
-10. If configured: `StartTiltCalibrationRequest`.
-11. Send `ShotConfigRequest` with settings: temperature (°F default 60),
+9. Subscribe to alerts: `EventSharing.subscribe_request` with
+   `alerts = [{type: LAUNCH_MONITOR}]`; the device answers via a normal B413
+   response containing `subscribe_respose`, and from then on pushes
+   `EventSharing.notification` frames as B313 messages.
+10. If configured (`calibrateTiltOnConnect`): `StartTiltCalibrationRequest`.
+11. Send `ShotConfigRequest` with settings: temperature (°F, default 60),
     humidity (default 1), altitude (m, default 0), air density (default 1),
-    tee range = tee distance (ft, default 7) × 1/3.281.
+    tee_range = teeDistanceFt (default 7) ÷ 3.281 meters.
 
 ### 7.2 Runtime events
 
@@ -365,9 +415,8 @@ Single activity, three tabs:
    state chip (WAITING/RECORDING/…), tilt, error banners, reconnect button,
    pairing flow for unbonded devices.
 2. **Shots** — most recent shot detail card (big numbers: ball speed, carry-
-   relevant metrics, spin axis visual) + scrolling table of all shots
-   (ball/club/swing columns like the desktop console output). Filter
-   practice/normal.
+   relevant metrics, spin axis visual) + scrolling table of all shots with
+   ball/club/swing columns. Filter practice/normal.
 3. **Settings** — all settings keys above; debug logging toggle that reveals a
    hex log pane (raw chunk in, framed, decoded, proto message lines).
 
@@ -385,8 +434,8 @@ foreground service scaffold, permissions. App runs, does nothing BLE yet.
 **M1 — BLE transport bring-up (hardest)**
 - `BleTransport`: scan/bond/connect/retry, service discovery, CCCD subscribe,
   serialized writes with response, GATT callback → Channel plumbing.
-- Port `Cobs`, `Crc16`, byte helpers (unit-test against known vectors from
-  the desktop implementation's debug output).
+- Implement `Cobs`, `Crc16`, byte helpers exactly per §5.1; freeze test
+  vectors using an independent reference at implementation time.
 - `ProtocolEngine`: handshake, framing, chunking, dispatch, acks, request/
   response correlation. Unit-test framing round-trips.
 - Debug hex log pane from day one.
@@ -420,6 +469,11 @@ foreground service scaffold, permissions. App runs, does nothing BLE yet.
 ---
 
 ## Appendix A — LaunchMonitor.proto
+
+Complete schema, matching the firmware's proto exactly — transcribe verbatim.
+Implementation note: `AlertNotification` field 1001 is named after its parent
+message; codegen produces an accessor with a trailing underscore (e.g.
+JavaLite/Kotlin `alertNotification_`). Use generated names as-is.
 
 ```
 syntax = "proto3";
