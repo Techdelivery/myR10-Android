@@ -34,7 +34,8 @@ class HandshakeStateMachine {
         }
         dynamicHeader = body[WireConstants.HANDSHAKE_HEADER_INDEX].toInt() and 0xFF
         state = State.DONE
-        return byteArrayOf(dynamicHeader.toByte(), 0x00)
+        // Final handshake write BODY (0x00); the engine prepends the header -> [H, 0x00] on air.
+        return byteArrayOf(0x00)
     }
 
     val isComplete: Boolean get() = state == State.DONE

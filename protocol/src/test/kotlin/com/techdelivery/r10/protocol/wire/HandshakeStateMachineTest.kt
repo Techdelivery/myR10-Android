@@ -20,7 +20,8 @@ class HandshakeStateMachineTest {
         val sm = HandshakeStateMachine()
         sm.begin()
         val finalWrite = sm.onBody(replyBody(0xAB.toByte()))
-        assertArrayEquals(byteArrayOf(0xAB.toByte(), 0x00), finalWrite)
+        // Final write BODY is 0x00; the engine prepends the header -> [0xAB, 0x00] on air.
+        assertArrayEquals(byteArrayOf(0x00), finalWrite)
         assertEquals(0xAB, sm.dynamicHeader)
         assertTrue(sm.isComplete)
         assertEquals(HandshakeStateMachine.State.DONE, sm.state)
