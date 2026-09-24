@@ -28,12 +28,18 @@ class HexLog(private val capacity: Int = 4096) {
     private val ring = ArrayDeque<HexEntry>()
     private val lock = Any()
 
+    /** Optional live listener, invoked for each new entry (outside the lock). */
+    @Volatile
+    var listener: ((HexEntry) -> Unit)? = null
+
     fun log(direction: HexDirection, bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) {
         val copy = bytes.copyOf()
+        val entry = HexEntry(direction, timestampMs, copy)
         synchronized(lock) {
             if (ring.size >= capacity) ring.removeFirst()
-            ring.addLast(HexEntry(direction, timestampMs, copy))
+            ring.addLast(entry)
         }
+        listener?.invoke(entry)
     }
 
     fun tx(bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) =

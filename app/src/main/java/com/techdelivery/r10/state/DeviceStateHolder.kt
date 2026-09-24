@@ -1,7 +1,9 @@
 package com.techdelivery.r10.state
 
 import com.techdelivery.r10.protocol.DeviceInfo
+import com.techdelivery.r10.protocol.util.HexEntry
 import com.techdelivery.r10.protocol.util.HexLog
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 enum class ConnState { IDLE, SCANNING, CONNECTING, HANDSHAKE, READY, ERROR }
 
@@ -20,6 +22,13 @@ object DeviceStateHolder {
 
     /** Shared with the ProtocolEngine so the hex pane sees live TX/RX. */
     val hexLog = HexLog()
+
+    /** Live stream of every TX/RX entry (mirrors hexLog) for logcat capture. */
+    val hexFlow = MutableSharedFlow<HexEntry>(extraBufferCapacity = 512)
+
+    init {
+        hexLog.listener = { hexFlow.tryEmit(it) }
+    }
 
     fun reset() {
         connectionState.value = ConnState.IDLE

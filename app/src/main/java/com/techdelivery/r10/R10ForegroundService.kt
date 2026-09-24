@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.techdelivery.r10.ble.BleTransportImpl
@@ -46,6 +47,17 @@ class R10ForegroundService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var deviceJob: Job? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        // Mirror every TX/RX to logcat in golden format:
+        //   adb logcat -s R10HEX -v raw > session-r10.hex
+        scope.launch {
+            DeviceStateHolder.hexFlow.collect { e ->
+                Log.d("R10HEX", "${e.direction.name} ${e.bytes.joinToString(" ") { "%02X".format(it) }}")
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
