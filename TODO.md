@@ -35,8 +35,9 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - **Verified 2026-09-24: `"123456789"` → `0xBB3D`, LE bytes `3D BB`.** Three independent implementations agree (table-driven LSB-first `0xA001`; bitwise reflected; `crcmod.Crc(0x18005, initCrc=0, rev=True, xorOut=0)`).
   - **RESOLVED 2026-09-24: `0xBB3D` is correct.** The CRC-16/ARC catalogue check value is `0xBB3D` (reveng catalogue; cross-checked against arcrc/crcZero tables and three independent computations). The earlier `0xBEEF` in DESIGN §5.1 was unreachable from the stated parameters and has been corrected there to `0xBB3D` / `3D BB`. `binascii.crc_hqx` is CRC-16/XMODEM **not** ARC (gives `0x31C3`) — never use it as the reference.
   - Verify: `Crc16Test` green ✅ (5 tests) — vector `"123456789"` → `3D BB`, empty=0, offset/length subrange, guards against `0xBEEF`/XMODEM
-- [ ] **C3. Cobs (non-standard variant)** — running `distanceIndex` insertion; final pending block appended **only if length ≠ 0 and ≠ 255**; malformed decode returns empty, never throws.
-  - Verify: `./gradlew :protocol:test --tests '*CobsTest'` green, boundaries: all-zero, 254/255/256 non-zero runs, single byte, leading+trailing zero, round-trip property
+- [x] **C3. Cobs (non-standard variant)** — DONE 2026-09-24. `protocol/.../util/Cobs.kt`: running `distanceIndex` insertion; final pending block appended **only if result size ≠ 0 and ≠ 255**; malformed decode returns empty, never throws. Ported line-for-line from the reference encoder/decoder.
+  - **Quirk pinned (empirically verified, faithful to reference):** a run of ≥255 consecutive non-zero bytes drops the 255th byte — 255-run encodes to 255 bytes but decodes to 254; 256-run → 257/255. Real frames never contain such runs; documented in Cobs.kt.
+  - Verify: `CobsTest` green ✅ (7 tests) — round-trip typical + randomized (len<254), 254-run round-trips, 255/256-run quirk pinned, malformed decode → empty, never-throws on 500 random garbage inputs
 - [ ] **C4. HexLog** — thread-safe ring buffer (~4096 entries, newest last), entry = direction `TX`/`RX` + millis + bytes, non-destructive `snapshot()`, hex export helper for golden files.
   - Verify: `./gradlew :protocol:test --tests '*HexLogTest'` green incl. wrap-around + 2-thread concurrent append count
 
