@@ -20,6 +20,6 @@ captures/
 # hardware capture scratch (golden copy lives in protocol/src/test/resources/golden/)
 *.hex
 *.hex.bak
-r10diag.log
+*.log
 # ...but the committed golden capture MUST be tracked
 !protocol/src/test/resources/golden/*.hex
