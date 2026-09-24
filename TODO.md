@@ -63,8 +63,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 - [x] **E2. ProtocolEngine** — DONE 2026-09-24. `protocol/.../ProtocolEngine.kt`: owns header byte + assembler + handshake SM + dispatcher; `start()` (begins handshake, collects `transport.incoming`), `stop()`; `sendProtobufRequest(proto): ResponseEvent?` (§5.7 payload, 5 s timeout, one in flight via Mutex, counter starts 0, increments only on success); Flows `handshakeComplete`, `eventNotification` (B3), `error`; all TX/RX mirrored to HexLog. Made assembler callbacks `suspend` so acks/handshake writes serialize with reception.
   - **Deviations from the sketch (both intentional):** `sendProtobufRequest` returns `ResponseEvent?` from a suspend fn (cleaner than `Deferred`); `deviceInfo` is NOT an engine flow — it comes from GATT characteristic reads, surfaced by `R10Device` in the app (§7.1 step 3), not the protocol layer.
   - Verify: `ProtocolEngineTest` green ✅ (5 tests)
-- [ ] **E3. Request/response correlation tests** — scripted `FakeTransport` session: handshake + B4 answer to StatusRequest. Assert counter increments exactly once, ack bytes match §5.6 for every frame type seen, timeout leaves counter unchanged.
-  - Verify: `./gradlew :protocol:test` fully green — this is the regression net for hardware day
+- [x] **E3. Request/response correlation tests** — DONE 2026-09-24. `ProtocolEngineTest` + `FakeTransport` (test source set): scripted sessions over `runTest` — handshake completes + final `[H,0x00]` write asserted; B4 answer to a request → counter increments exactly once; timeout (no B4) → counter unchanged; B3 → `eventNotification` emitted; A0 frame → ack written. `FakeTransport` captures every on-air chunk.
+  - Verify: `:protocol:test` fully green ✅ — **70 tests, 0 failures, 0 skipped**. This is the regression net for hardware day.
 
 ## Phase F — Android shell (M0-4/5/6/7)
 
