@@ -33,6 +33,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Dev-only read-only BLE advertisement dump (H4). Not a launcher screen. -->
+        <activity
+            android:name=".ScanDumpActivity"
+            android:exported="true"
+            android:label="R10 Scan Dump" />
+
         <service
             android:name=".R10ForegroundService"
             android:exported="false"

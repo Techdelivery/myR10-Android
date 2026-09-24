@@ -116,13 +116,26 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - [x] `:protocol:test` + `:app:testDebugUnitTest` + `:app:assembleDebug` green (81 protocol tests, 0 failures, 0 skipped)
   - [x] Golden replay passes against real bytes and now asserts the capture contains B413 (a capture with only acks would fail)
   - [x] `DESIGN.md` updated for every field observation that contradicted it (§5.5 symmetry, §5.7 counter width, §5.6/§5.5 `8813`)
-- [ ] **H4. Fresh-pair verification** — every successful connect so far used the
-  **bonded-direct** path; fresh **unbonded** discovery is still unproven. We never
-  confirmed the R10 advertises `6A4E2800-…` while in pairing mode. The scan now ORs
-  service-UUID with device-name (both R10-specific) so the failure mode is "not
-  found", never "connected to a stranger's peripheral". To verify: unpair the R10
-  in system Bluetooth settings, then Start and confirm scan → bond → connect → full
-  §7.1 setup from a clean slate.
+- [ ] **H4. Fresh-pair verification** — still open, but the ground has shifted.
+  **Measured 2026-09-24** with a debug-only unfiltered scan dump (`ScanDumpActivity`,
+  859 advertisement packets / 11 unique peripherals, R10 absent):
+  - The R10 holds a **persistent encrypted LE ACL link** to its bonded phone
+    (`ACL LE:Y`, `le_encrypted:T`) that survives force-stopping our app for 80+ s.
+  - While that link exists the R10 **does not advertise** — no address, no name, no
+    `6a4e2800` ever observed on air.
+  - Therefore bonded-direct is confirmed as the **correct** reconnect path (GATT rides
+    the already-live ACL link), not a workaround.
+  - **Correction:** an earlier note here claimed "bonded devices don't advertise".
+    Wrong — the rule is *connected* devices don't advertise; the dump was measuring a
+    connected device. Do not re-derive the exotic version.
+  - **Still unknown:** what a brand-new / pairing-mode R10 advertises. `6a4e2800` has
+    never been observed matching anything, so the production ScanFilter is unverified.
+  - **Product consequence — one-phone lock:** because the bond keeps the ACL link alive
+    and suppresses advertising, a second phone cannot discover or pair an R10 until it
+    is unpaired from the first. Moving an R10 between phones requires unpairing.
+  - To close: put the R10 in genuine pairing/reset mode, run
+    `adb shell am start -n com.techdelivery.r10/.ScanDumpActivity` and read what it
+    advertises; then confirm scan → bond → full §7.1 setup from a clean slate.
 
 ---
 

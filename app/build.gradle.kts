@@ -31,6 +31,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true // needed for the debug-only ScanDumpActivity guard (AGP 8 opt-in)
     }
 }
 

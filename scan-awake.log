@@ -1,0 +1,862 @@
+--------- beginning of main
+=== SCAN DUMP START (unfiltered, read-only, 20s) ===
+6C:C4:C2:10:EE:1C name=null               rssi=-64   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-80   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+E7:6D:72:14:11:07 name=null               rssi=-78   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-60   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-60   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-71   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-60   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-63   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-98   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-60   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-63   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-55   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-55   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-55   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-98   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-72   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-80   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-60   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-65   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-71   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-80   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-80   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-98   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+FB:20:53:18:5F:4E name=null               rssi=-97   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-98   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-60   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-89   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-90   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-99   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-90   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-90   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-90   connectable=true  uuids=- mfg= txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-55   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+FB:20:53:18:5F:4E name=null               rssi=-92   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-55   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-71   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-59   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-65   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-81   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-57   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-59   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-72   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-61   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-62   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-61   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-61   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-59   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-65   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-65   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+E7:6D:72:14:11:07 name=null               rssi=-72   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-64   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-64   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-67   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-65   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-65   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-65   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-63   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-72   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-67   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-68   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-67   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+E7:6D:72:14:11:07 name=null               rssi=-62   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-72   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+FB:20:53:18:5F:4E name=null               rssi=-95   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-72   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+E7:6D:72:14:11:07 name=null               rssi=-61   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-64   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-67   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-94   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+EA:DC:AE:C3:41:81 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-98   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-66   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+FB:20:53:18:5F:4E name=null               rssi=-95   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-63   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-68   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-67   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-68   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-58   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-63   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+E7:6D:72:14:11:07 name=null               rssi=-72   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-66   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-63   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+EA:DC:AE:C3:41:81 name=null               rssi=-58   connectable=false uuids=- mfg=0x004C=12020002 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-62   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-68   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-61   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-67   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-96   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-64   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-60   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-60   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+73:F7:48:44:B0:CC name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-71   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-60   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+E7:6D:72:14:11:07 name=null               rssi=-78   connectable=false uuids=- mfg=0x004C=12020003 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+73:F7:48:44:B0:CC name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-95   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-70   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-67   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-86   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+DE:CD:2F:A9:25:1D name=ET-2850 Series     rssi=-97   connectable=true  uuids=802a0000-4ef4-4e59-b573-2bed4a4ac159 mfg=0x0040=008B02 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-69   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-66   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-68   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-88   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+70:77:81:7B:59:C0 name=null               rssi=-97   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:F7:CC:EE:66:A2 name=null               rssi=-56   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-67   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-85   connectable=true  uuids=- mfg= txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+6C:C4:C2:10:EE:1C name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-61   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+5B:69:D0:76:DB:52 name=JBL Bar            rssi=-70   connectable=true  uuids=0000fea0-0000-1000-8000-00805f9b34fb mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-84   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-66   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-82   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-68   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+6C:F7:CC:EE:66:A2 name=null               rssi=-66   connectable=false uuids=- mfg=0x004C=09081302C0A800EC1B58160800897BBE8FDAFBC4 txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-83   connectable=true  uuids=- mfg= txp=-2147483648
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+6C:C4:C2:10:EE:1C name=null               rssi=-56   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=-2147483648
+70:77:81:7B:59:C0 name=null               rssi=-96   connectable=false uuids=- mfg=0x012D=020001107FDEEC75AECD47259BB7085F29F55A61DAFBB60537A7 txp=-2147483648
+73:F7:48:44:B0:CC name=null               rssi=-57   connectable=true  uuids=- mfg=0x004C=1006401DE54C3258 txp=0
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=- mfg= txp=-2147483648
+69:FF:BD:26:39:57 name=JBL Bar 5.0-B8F    rssi=-62   connectable=true  uuids=0000fe00-0000-1000-8000-00805f9b34fb,0000fe00-0000-1000-8000-00805f9b34fb mfg= txp=4
+20:28:BC:B5:15:57 name=[LG] webOS TV OLED77C34LA rssi=-87   connectable=true  uuids=0000feb9-0000-1000-8000-00805f9b34fb mfg=0x00C4=01F4151317FD81 txp=-44
+=== SCAN DUMP END (unique=11) ===
