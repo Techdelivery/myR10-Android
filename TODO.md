@@ -38,8 +38,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 - [x] **C3. Cobs (non-standard variant)** — DONE 2026-09-24. `protocol/.../util/Cobs.kt`: running `distanceIndex` insertion; final pending block appended **only if result size ≠ 0 and ≠ 255**; malformed decode returns empty, never throws. Ported line-for-line from the reference encoder/decoder.
   - **Quirk pinned (empirically verified, faithful to reference):** a run of ≥255 consecutive non-zero bytes drops the 255th byte — 255-run encodes to 255 bytes but decodes to 254; 256-run → 257/255. Real frames never contain such runs; documented in Cobs.kt.
   - Verify: `CobsTest` green ✅ (7 tests) — round-trip typical + randomized (len<254), 254-run round-trips, 255/256-run quirk pinned, malformed decode → empty, never-throws on 500 random garbage inputs
-- [ ] **C4. HexLog** — thread-safe ring buffer (~4096 entries, newest last), entry = direction `TX`/`RX` + millis + bytes, non-destructive `snapshot()`, hex export helper for golden files.
-  - Verify: `./gradlew :protocol:test --tests '*HexLogTest'` green incl. wrap-around + 2-thread concurrent append count
+- [x] **C4. HexLog** — DONE 2026-09-24. `protocol/.../util/HexLog.kt`: thread-safe ring buffer (default 4096, newest last), entry = `HexDirection` TX/RX + millis + defensive byte copy, non-destructive `snapshot()`, `exportHex()` golden line format (`TX <hex>` / `RX <hex>`).
+  - Verify: `HexLogTest` green ✅ (7 tests) — wrap-around evicts oldest, snapshot non-destructive, 2-thread × 500 concurrent appends = 1000, export format, defensive copies
 
 ## Phase D — Framing + dispatch (M1-11..15) — pure JVM, no device
 
