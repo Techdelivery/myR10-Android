@@ -29,8 +29,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ## Phase C — Wire primitives (M1-8/9/10, M0-3) — pure JVM, no device
 
-- [ ] **C1. ByteUtil** — LE u16/u32 pack+unpack, hex ⇄ bytes (case-insensitive), concat.
-  - Verify: `./gradlew :protocol:test --tests '*ByteUtilTest'` green; endianness pinned
+- [x] **C1. ByteUtil** — DONE 2026-09-24. `protocol/.../util/ByteUtil.kt`: LE u16/u32 pack+unpack (range-checked), hex ⇄ bytes (case-insensitive, ignores space/colon/dash), concat.
+  - Verify: `ByteUtilTest` green ✅ (9 tests) — endianness pinned (`0x0102`→`[02 01]`, `0x01020304`→`[04 03 02 01]`), hex round-trip over all 256 byte values, range/odd-length rejections
 - [ ] **C2. Crc16** — table-driven, reflected poly `0xA001`, init `0x0000` (CRC-16/ARC), emit LE (low byte first).
   - **Verified 2026-09-24: `"123456789"` → `0xBB3D`, LE bytes `3D BB`.** Three independent implementations agree (table-driven LSB-first `0xA001`; bitwise reflected; `crcmod.Crc(0x18005, initCrc=0, rev=True, xorOut=0)`).
   - **RESOLVED 2026-09-24: `0xBB3D` is correct.** The CRC-16/ARC catalogue check value is `0xBB3D` (reveng catalogue; cross-checked against arcrc/crcZero tables and three independent computations). The earlier `0xBEEF` in DESIGN §5.1 was unreachable from the stated parameters and has been corrected there to `0xBB3D` / `3D BB`. `binascii.crc_hqx` is CRC-16/XMODEM **not** ARC (gives `0x31C3`) — never use it as the reference.
