@@ -1,9 +1,11 @@
 package com.techdelivery.r10.protocol
 
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
-import org.junit.Assert.assertNotNull
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
+import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Test
 
@@ -39,16 +41,36 @@ class GoldenReplayTest {
 
         Assume.assumeTrue("golden file has no RX events", rxChunks.isNotEmpty())
 
-        runBlocking {
+        // A golden captured while the device was failing to answer would be worthless:
+        // assert it actually contains B413 responses (the H2 fix's signature).
+        org.junit.Assert.assertTrue(
+            "golden must contain at least one B413 response — a capture with only " +
+                "8813 acks means the request layout regressed",
+            lines.any { it.startsWith("RX ") && it.contains("B4 13") },
+        )
+
+        runTest {
             val fake = FakeTransport()
             val engine = ProtocolEngine(fake, scope = this)
             engine.start()
 
-            // Feed every captured inbound chunk through the live engine.
-            rxChunks.forEach { fake.emit(it) }
+            // handshakeComplete is a replay-less SharedFlow: subscribe BEFORE feeding
+            // any chunks, otherwise a fast handshake is missed entirely.
+            val completed = async {
+                runCatching { withTimeout(5_000) { engine.handshakeComplete.first() } }
+            }
+            runCurrent()
 
-            val completed = withTimeoutOrNull(3_000) { engine.handshakeComplete.first() }
-            assertNotNull("handshake must complete when replaying golden RX", completed)
+            // Feed every captured inbound chunk through the live engine.
+            rxChunks.forEach {
+                fake.emit(it)
+                runCurrent()
+            }
+
+            assertTrue(
+                "handshake must complete when replaying golden RX",
+                completed.await().isSuccess,
+            )
 
             engine.stop()
         }

@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.os.ParcelUuid
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
@@ -17,6 +18,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.util.Log
 import com.techdelivery.r10.protocol.transport.Transport
 import com.techdelivery.r10.protocol.transport.TransportState
 import com.techdelivery.r10.protocol.util.SingleFlight
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.util.UUID
@@ -70,6 +73,7 @@ class BleTransportImpl(
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            Log.i(TAG, "gatt onConnectionStateChange status=$status newState=$newState")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     _state.value = TransportState.CONNECTED
@@ -83,40 +87,79 @@ class BleTransportImpl(
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
-            connectDeferred?.complete(Unit)
+            Log.i(TAG, "gatt onServicesDiscovered status=$status services=${g.services?.size ?: -1}")
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                connectDeferred?.completeExceptionally(IOException("service discovery status=$status"))
+            } else {
+                connectDeferred?.complete(Unit)
+            }
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic) {
-            c.value?.let { _incoming.tryEmit(it) }
+            c.value?.let {
+                Log.d(TAG, "notify ${c.uuid} ${it.size}B hex=${it.joinToString(" ") { b -> "%02X".format(b) }}")
+                _incoming.tryEmit(it)
+            }
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) opDeferred?.complete(Unit)
-            else opDeferred?.completeExceptionally(IOException("write status=$status"))
+            else {
+                Log.w(TAG, "char write FAILED ${c.uuid} status=$status")
+                opDeferred?.completeExceptionally(IOException("write status=$status"))
+            }
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) opDeferred?.complete(Unit)
-            else opDeferred?.completeExceptionally(IOException("desc write status=$status"))
+            else {
+                Log.w(TAG, "descriptor write FAILED ${d.uuid} status=$status")
+                opDeferred?.completeExceptionally(IOException("desc write status=$status"))
+            }
         }
 
         override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) readDeferred?.complete(c.value ?: ByteArray(0))
-            else readDeferred?.completeExceptionally(IOException("read status=$status"))
+            else {
+                Log.w(TAG, "char read FAILED ${c.uuid} status=$status")
+                readDeferred?.completeExceptionally(IOException("read status=$status"))
+            }
         }
     }
 
     override suspend fun start() {
         _state.value = TransportState.SCANNING
-        val device = scanForDevice() ?: throw IOException("device '$deviceName' not found")
+        // DESIGN §2 path 1: an already-bonded peripheral is connected directly by its
+        // identity address. A bonded R10 typically STOPS advertising, so scan-only
+        // discovery can never find it again (observed: 0 adv packets post-pairing).
+        val bonded = findBondedDevice()
+        val device = bonded ?: run {
+            Log.i(TAG, "no bonded '$deviceName', falling back to scan")
+            scanForDevice()
+                ?: throw IOException("device '$deviceName' not found (not bonded, not advertising)")
+        }
+        Log.i(TAG, "target ${device.address} bondState=${device.bondState} via=${if (bonded != null) "bonded-direct" else "scan"}")
 
         if (device.bondState != BluetoothDevice.BOND_BONDED) {
+            Log.i(TAG, "bonding with ${device.address}")
             bond(device)
+            Log.i(TAG, "bonded")
         }
 
         _state.value = TransportState.CONNECTING
         connectWithRetry(device)
+        Log.i(TAG, "connectWithRetry returned, gatt=${gatt != null}")
     }
+
+    /**
+     * DESIGN §2 path 1: reuse a device already paired via system Settings.
+     * Matches on the cached GATT name — the R10 puts no local name in its
+     * advertisement, so this cache is the only place the name exists.
+     */
+    @SuppressLint("MissingPermission")
+    private fun findBondedDevice(): BluetoothDevice? =
+        adapter.bondedDevices.orEmpty().firstOrNull { it.name == deviceName }
+            .also { Log.i(TAG, "bonded lookup '$deviceName' -> ${it?.address ?: "none"}") }
 
     override suspend fun stop() {
         withContext(Dispatchers.IO) {
@@ -180,26 +223,47 @@ class BleTransportImpl(
     private suspend fun scanForDevice(): BluetoothDevice? = withContext(Dispatchers.IO) {
         val scanner = adapter.bluetoothLeScanner ?: return@withContext null
         val deferred = CompletableDeferred<BluetoothDevice?>()
-        val filter = ScanFilter.Builder()
-            .setDeviceName(deviceName)
-            .build()
+        // Filter on R10-specific identifiers only. Hardware finding (2026-09-24):
+        // the R10 puts NO local name in its advertisement — the name lives only in
+        // cached GATT GAP — so a name-only filter can never match a fresh device.
+        // We OR the service UUID with the name: both are R10-specific, so the worst
+        // case is "not found", never "connected to some other nearby peripheral".
+        // (An unfiltered scan was used during diagnostics; left enabled it would let
+        // an unbonded Start grab the first random peripheral on air.)
+        val filters: List<ScanFilter> = listOf(
+            ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(GattUuids.DEVICE_INTERFACE_SERVICE))
+                .build(),
+            ScanFilter.Builder().setDeviceName(deviceName).build(),
+        )
+        Log.i(TAG, "startScan filters=[ServiceUuid=${GattUuids.DEVICE_INTERFACE_SERVICE} or Name=$deviceName]")
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val d = result.device ?: return
+                val rec = result.scanRecord
+                Log.i(
+                    TAG,
+                    "adv name='${d.name}' addr=${d.address} bond=${d.bondState} " +
+                        "svcUuids=${rec?.serviceUuids} raw=${rec?.bytes?.joinToString("") { "%02X".format(it) }}",
+                )
                 if (d.name == deviceName || d.address.equals(deviceName, ignoreCase = true)) {
                     if (!deferred.isCompleted) deferred.complete(d)
                 }
             }
             override fun onScanFailed(errorCode: Int) {
+                Log.w(TAG, "BLE scan FAILED errorCode=$errorCode")
                 if (!deferred.isCompleted) deferred.completeExceptionally(IOException("scan failed $errorCode"))
             }
         }
         try {
-            scanner.startScan(listOf(filter), settings, callback)
+            scanner.startScan(filters, settings, callback)
             withTimeout(SCAN_TIMEOUT_MS) { deferred.await() }
+        } catch (e: TimeoutCancellationException) {
+            Log.w(TAG, "scan timed out after ${SCAN_TIMEOUT_MS}ms")
+            null
         } finally {
             runCatching { scanner.stopScan(callback) }
         }
@@ -210,8 +274,9 @@ class BleTransportImpl(
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context, intent: Intent) {
                 if (intent.action != BluetoothDevice.ACTION_BOND_STATE_CHANGED) return
-                val d = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
-                when (d.bondState) {
+                val d = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                Log.i(TAG, "bond broadcast addr=${d?.address} state=${d?.bondState}")
+                when (d?.bondState) {
                     BluetoothDevice.BOND_BONDED -> if (!deferred.isCompleted) deferred.complete(Unit)
                     BluetoothDevice.BOND_NONE -> if (!deferred.isCompleted)
                         deferred.completeExceptionally(IOException("bonding failed"))
@@ -225,7 +290,8 @@ class BleTransportImpl(
             context.registerReceiver(receiver, filter)
         }
         try {
-            device.createBond()
+            val started = device.createBond()
+            Log.i(TAG, "createBond() returned $started")
             withTimeout(BOND_TIMEOUT_MS) { deferred.await() }
         } finally {
             runCatching { context.unregisterReceiver(receiver) }
@@ -263,6 +329,7 @@ class BleTransportImpl(
 
     companion object {
         private val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        const val TAG = "R10DIAG"
         private const val SCAN_TIMEOUT_MS = 15_000L
         private const val BOND_TIMEOUT_MS = 30_000L
         private const val CONNECT_TIMEOUT_MS = 15_000L

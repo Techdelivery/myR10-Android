@@ -102,16 +102,27 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 - [x] **H1. Golden replay harness** — DONE 2026-09-24. `GoldenReplayTest.kt`: reads `golden/session-r10.hex` (one `TX <hex>`/`RX <hex>` per line, `#` comments allowed), feeds every `RX` chunk through `FakeTransport` into the live engine, asserts handshake completes. **Skips cleanly via `Assume` while the file is absent** (captured during [HW] H2). Full B4-counter/ack parity is already unit-covered (`FrameDispatcherTest`, `ProtocolEngineTest`); the replay adds real-bytes framing/COBS/CRC validation once captured.
   - Verify: `:protocol:test --tests '*GoldenReplayTest'` → 1 test, **1 skipped** ✅ (CI green with no golden file).
-- [ ] **[HW] H2. Real-device handshake validation — M1 acceptance gate** — *Owner: user. Assistant fixes from pasted hex.*
-  - [ ] R10 in pairing mode → full §7.1 setup completes with ≤1 manual retry
-  - [ ] UI shows model `0x2A24`, firmware `0x2A28`, serial `0x2A25`, battery %
-  - [ ] `WakeUpResponse` + `StatusResponse(StateType)` + `TiltResponse(roll/pitch)` visible
-  - [ ] Hex log shows TX `[00 00 00 00 00 00 00 00 00 00 01 00 00]`, RX body prefix `010000000000000000010000`, dynamic header at index 12 then prefixed to every later TX chunk
-  - [ ] Golden file saved; `GoldenReplayTest` no longer skips and passes
-- [ ] **H3. M1 gate**
-  - [ ] `./gradlew build` + all `:protocol` tests green on clean checkout
-  - [ ] Second hardware run after any fix shows no regression vs previous golden
-  - [ ] `DESIGN.md` updated for any field observation that contradicted it; plan kept in sync only where DESIGN changed
+- [x] **[HW] H2. Real-device handshake validation — M1 acceptance gate** — DONE 2026-09-24 on Approach R10 (serial 3473676453, fw 4.50, 49%) + Pixel 7 (Android 17 / API 37).
+  - [x] Full §7.1 setup completes — ~7 s end-to-end, all five requests answered
+  - [x] UI shows model `Approach R10` (`0x2A24`), firmware `4.50` (`0x2A28`), serial `3473676453` (`0x2A25`), battery 49% — all populated
+  - [x] `WakeUpResponse` (ALREADY_AWAKE) + `StatusResponse(StateType)` + `TiltResponse(roll/pitch)` visible
+  - [x] Hex log: first TX `00 00 00 00 00 00 00 00 00 00 01 00 00`; RX prefix `01 00 00 00 00 00 00 00 00 01 00 00`; **dynamic header `0x07` at index 12**, prefixed to every later TX chunk
+  - [x] Golden saved to `protocol/src/test/resources/golden/session-r10.hex`; `GoldenReplayTest` no longer skips and **passes** (81 tests, 0 failures, 0 skipped)
+  - **THE BUG (cost a hardware session): DESIGN §5.7 was wrong.** It documented the request counter as `LE16` with the proto at offset 14 and warned the two directions were deliberately asymmetric. The reference (`gsp-r10-adapter` `BaseDevice.cs:64,280`) uses a C# `int` → `BitConverter.GetBytes(int)` = **4 bytes**, so the proto is at **offset 16 — symmetric with inbound §5.5**. With our 2-byte counter the device validated the frame (CRC good) and acked it, but could not parse the proto, so it **never sent B413** — every request silently burned its 5 s timeout. Fixed `buildRequestPayload` to LE32; corrected DESIGN §5.5/§5.7; pinned with `RequestLayoutTest` (the existing correlation tests passed under BOTH layouts, which is why this reached hardware).
+  - **DESIGN corrections proven by hardware:** (a) `8813` is NOT "never received" — the device acks every B313 with `88 13 b3 13 …`, echoing our protobuf length; (b) the two directions ARE symmetric at offset 16.
+  - **Red herrings ruled out (do not re-chase):** advertised name — the R10 puts **no local name in its advertisement** (name only via cached GATT GAP), so `ScanFilter.setDeviceName` can never match a fresh device; and "device asleep" — STATUS `value[1]` went `01`(asleep)→`00`(awake) and the device acked identically either way. Both were unrelated to the missing responses.
+  - **Also fixed this session:** `SettingsDataStore.create()` built a new DataStore per Start tap → `IllegalStateException: multiple DataStores active for the same file` (now a process-wide singleton on `R10App`); GATT leak — `onDestroy` never called `transport.stop()`, so each Stop→Start left another live connection (every notification delivered twice); added bonded-direct connect path (DESIGN §2 path 1) since a bonded R10 stops advertising; edge-to-edge insets (`safeDrawingPadding`) so the Start button no longer sits under the status bar.
+- [x] **H3. M1 gate** — 2026-09-24
+  - [x] `:protocol:test` + `:app:testDebugUnitTest` + `:app:assembleDebug` green (81 protocol tests, 0 failures, 0 skipped)
+  - [x] Golden replay passes against real bytes and now asserts the capture contains B413 (a capture with only acks would fail)
+  - [x] `DESIGN.md` updated for every field observation that contradicted it (§5.5 symmetry, §5.7 counter width, §5.6/§5.5 `8813`)
+- [ ] **H4. Fresh-pair verification** — every successful connect so far used the
+  **bonded-direct** path; fresh **unbonded** discovery is still unproven. We never
+  confirmed the R10 advertises `6A4E2800-…` while in pairing mode. The scan now ORs
+  service-UUID with device-name (both R10-specific) so the failure mode is "not
+  found", never "connected to a stranger's peripheral". To verify: unpair the R10
+  in system Bluetooth settings, then Start and confirm scan → bond → connect → full
+  §7.1 setup from a clean slate.
 
 ---
 

@@ -29,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Foreground service that owns the R10 connection graph (manual DI, DESIGN §2/§3):
@@ -43,10 +44,12 @@ class R10ForegroundService : Service() {
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "com.techdelivery.r10.action.START"
         const val ACTION_STOP = "com.techdelivery.r10.action.STOP"
+        private const val TAG = "R10DIAG"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var deviceJob: Job? = null
+    private var transport: BleTransportImpl? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -78,9 +81,11 @@ class R10ForegroundService : Service() {
         DeviceStateHolder.reset()
         deviceJob = scope.launch {
             try {
-                val settings = SettingsDataStore.create(this@R10ForegroundService).settings.first()
+                val settings = (application as R10App).settingsRepository.settings.first()
+                Log.i(TAG, "settings loaded: name='${settings.deviceName}' tee=${settings.teeDistanceFt}ft calib=${settings.calibrateTiltOnConnect}")
                 val adapter = getSystemService(BluetoothManager::class.java)?.adapter
                     ?: error("Bluetooth unavailable")
+                Log.i(TAG, "adapter=${adapter.name} enabled=${adapter.isEnabled} leScanner=${adapter.bluetoothLeScanner != null}")
 
                 val transport = BleTransportImpl(
                     context = this@R10ForegroundService,
@@ -88,6 +93,7 @@ class R10ForegroundService : Service() {
                     deviceName = settings.deviceName,
                     reconnectIntervalMs = settings.reconnectIntervalS * 1000L,
                 )
+                this@R10ForegroundService.transport = transport
                 val engine = ProtocolEngine(transport, hexLog = DeviceStateHolder.hexLog, scope = this)
                 val config = DeviceSetupConfig(
                     temperatureF = settings.temperature.toFloat(),
@@ -123,26 +129,36 @@ class R10ForegroundService : Service() {
                 }
 
                 DeviceStateHolder.connectionState.value = ConnState.SCANNING
+                Log.i(TAG, "starting §7.1 setup (device.connect)")
                 if (!device.connect()) {
+                    Log.w(TAG, "handshake did not complete")
                     DeviceStateHolder.errorMessage.value = "Handshake timed out"
                     DeviceStateHolder.connectionState.value = ConnState.ERROR
                     return@launch
                 }
+                Log.i(TAG, "handshake complete, deviceInfo=${device.deviceInfo.value}")
                 DeviceStateHolder.deviceInfo.value = device.deviceInfo.value
 
                 // Steps 6-11 with readouts captured for the UI.
+                Log.i(TAG, "step: wakeUp")
                 device.wakeUp()?.let { DeviceStateHolder.wakeUpStatus.value = it.proto.service?.wakeUpResponse?.status?.name }
+                Log.i(TAG, "step: statusRequest")
                 device.statusRequest()?.let { DeviceStateHolder.stateType.value = it.proto.service?.statusResponse?.state?.state?.name }
+                Log.i(TAG, "step: tiltRequest")
                 device.tiltRequest()?.let {
                     val t = it.proto.service?.tiltResponse?.tilt
                     if (t != null) DeviceStateHolder.tilt.value = "roll=${t.roll} pitch=${t.pitch}"
                 }
+                Log.i(TAG, "step: subscribeAlerts")
                 device.subscribeAlerts()
-                if (config.calibrateTiltOnConnect) device.startTiltCalibration()
+                if (config.calibrateTiltOnConnect) { Log.i(TAG, "step: startTiltCalibration"); device.startTiltCalibration() }
+                Log.i(TAG, "step: sendShotConfig")
                 device.sendShotConfig()
 
+                Log.i(TAG, "§7.1 setup complete -> READY")
                 DeviceStateHolder.connectionState.value = ConnState.READY
             } catch (e: Exception) {
+                Log.e(TAG, "setup failed: ${e.message}", e)
                 DeviceStateHolder.errorMessage.value = e.message ?: "connection error"
                 DeviceStateHolder.connectionState.value = ConnState.ERROR
             }
@@ -181,6 +197,12 @@ class R10ForegroundService : Service() {
 
     override fun onDestroy() {
         deviceJob?.cancel()
+        // Close the GATT link before tearing down the scope. Without this the
+        // BluetoothGatt is never closed, so every Stop->Start cycle leaked another
+        // live connection — observed on hardware as every notification being
+        // delivered twice from two different threads.
+        runBlocking { runCatching { transport?.stop() } }
+        transport = null
         scope.cancel()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()

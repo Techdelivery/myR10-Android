@@ -13,8 +13,24 @@ import java.io.File
 object SettingsDataStore {
     private const val FILE_NAME = "r10_settings"
 
-    fun create(context: Context): SettingsRepository =
-        SettingsRepository(produceStore(context.preferencesDataStoreFile(FILE_NAME)))
+    @Volatile
+    private var repository: SettingsRepository? = null
+
+    /**
+     * Process-wide singleton. DataStore enforces **one live instance per file**:
+     * constructing a second one over the same path throws
+     * `IllegalStateException: There are multiple DataStores active for the same file`.
+     * The service runs `startDevice()` on every Start tap, so the store MUST be
+     * shared rather than built per invocation.
+     */
+    fun get(context: Context): SettingsRepository {
+        repository?.let { return it }
+        synchronized(this) {
+            repository?.let { return it }
+            val store = produceStore(context.applicationContext.preferencesDataStoreFile(FILE_NAME))
+            return SettingsRepository(store).also { repository = it }
+        }
+    }
 
     // Visible for tests: a real DataStore over an arbitrary file.
     fun produceStore(file: File): DataStore<Preferences> =

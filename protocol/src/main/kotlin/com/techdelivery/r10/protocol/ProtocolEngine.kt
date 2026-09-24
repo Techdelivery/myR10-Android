@@ -131,7 +131,13 @@ class ProtocolEngine(
         val l = protoBytes.size
         return ByteUtil.concat(
             WireConstants.TYPE_B3,
-            ByteUtil.u16le(counter),
+            // Counter is a C# `int` in the reference, so BitConverter.GetBytes(int) emits
+            // FOUR bytes little-endian (BaseDevice.cs:280). DESIGN §5.7 claimed LE16 and
+            // "proto starts 14 bytes into P"; that is wrong — the device needs the proto at
+            // offset 16, the same as inbound frames (§5.5). With a 2-byte counter the proto
+            // lands at 14 and the device parses garbage: it acks the frame but never sends
+            // a B413 response. Hardware-verified 2026-09-24.
+            ByteUtil.u32le(counter.toLong()),
             byteArrayOf(0x00, 0x00),
             ByteUtil.u32le(l.toLong()),
             ByteUtil.u32le(l.toLong()),

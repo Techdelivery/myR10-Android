@@ -12,7 +12,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,10 +48,15 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        // targetSdk 36 forces edge-to-edge: without inset handling the
+                        // first child (the Start/Stop button) draws under the status bar.
+                        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Button(onClick = { if (running) stopMonitor() else requestStart() }) {
+                        Button(
+                            onClick = { if (running) stopMonitor() else requestStart() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Text(if (running) "Stop monitor" else "Start monitor")
                         }
                         if (permissionDenied) {

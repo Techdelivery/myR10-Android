@@ -237,12 +237,19 @@ Dispatch on type:
   request, increment the counter.
 - **`B313`** — protobuf **request** (device → app; e.g. event notifications).
   Ack it, parse `WrapperProto` from `msg[16..]`, emit events, handle.
-- **`8813`** — this is the *app's ack format*, never received (see 5.6).
+- **`8813`** — the app's ack format. **Correction 2026-09-24:** this document
+  previously said "never received"; the device **does** send `8813` frames —
+  it acks every app `B313` request with `88 13 b3 13 …`, echoing the request's
+  protobuf length. Ack them with the base body like any unrecognized type.
 
-**Wire asymmetry to preserve exactly**: our B313 requests carry a 14-byte
-inner header before the proto (§5.7), while device-originated B4/B3 frames
-carry the proto at offset 16 of msg. The two directions are *not* symmetric —
-do not normalize either side.
+**Offset symmetry (corrected 2026-09-24, hardware-verified)**: our B313 requests
+carry a **16-byte** inner header before the proto, and device-originated B4/B3
+frames also carry the proto at **offset 16** of msg (§5.5). The two directions
+**are** symmetric. An earlier revision of this document claimed a 14-byte
+request header and warned not to normalize the asymmetry — that was wrong and
+cost a hardware session: with a 2-byte counter the device validates the frame
+(CRC good) and acks it, but cannot parse the proto, so it never answers with
+B413. Pinned by `RequestLayoutTest`.
 
 ### 5.6 Acknowledgements
 
@@ -266,11 +273,12 @@ Payload `P` for a protobuf request:
 
 ```
 B3 13                        // type — two raw bytes, not ASCII
-|| LE16(requestCounter)     // 2 bytes
+|| LE32(requestCounter)     // 4 bytes — the reference counter is a C# `int`,
+                           // so BitConverter.GetBytes(int) emits FOUR bytes
 || 0x00 0x00                // 2 bytes
 || LE32(protobufLength)     // 4 bytes (BitConverter LE32)
 || LE32(protobufLength)     // 4 bytes again
-|| protobufBytes
+|| protobufBytes            // starts at offset 16
 ```
 
 Send through the framing path (§5.2). Wait up to 5 s for the matching `B413`
@@ -278,9 +286,18 @@ response (same counter); only then increment `requestCounter` — a timeout
 leaves the counter unchanged for the next attempt. One request in flight at a
 time (the response event gates the next).
 
-**Offset note**: the proto payload above starts 14 bytes into P, whereas
-inbound device frames put the proto at offset 16 of msg (§5.5). Both are
-field-verified — preserve both as-is.
+**Offset note (corrected 2026-09-24)**: the proto payload starts **16 bytes**
+into P — the same offset inbound device frames use (§5.5). This document
+previously stated LE16 + "14 bytes"; that is incorrect. The counter is a C#
+`int` in the reference (`BaseDevice.cs:64,280`), so `BitConverter.GetBytes`
+yields four bytes. A 2-byte counter shifts the proto to offset 14, the device
+acks the frame but never responds — a silent failure. Regression-pinned by
+`RequestLayoutTest`.
+
+**Inbound counter width differs from outbound**: inbound B413/B313 read the
+counter as `UInt16` from `msg[2..4]` (§5.5), while outbound writes it as LE32
+across `msg[2..6)`. Harmless for counters < 65536, since the LE32 low half
+equals the LE16 value and the high half is zero.
 
 ### 5.8 Raw (non-framed) writes
 
