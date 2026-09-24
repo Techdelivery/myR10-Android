@@ -31,10 +31,10 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 - [x] **C1. ByteUtil** — DONE 2026-09-24. `protocol/.../util/ByteUtil.kt`: LE u16/u32 pack+unpack (range-checked), hex ⇄ bytes (case-insensitive, ignores space/colon/dash), concat.
   - Verify: `ByteUtilTest` green ✅ (9 tests) — endianness pinned (`0x0102`→`[02 01]`, `0x01020304`→`[04 03 02 01]`), hex round-trip over all 256 byte values, range/odd-length rejections
-- [ ] **C2. Crc16** — table-driven, reflected poly `0xA001`, init `0x0000` (CRC-16/ARC), emit LE (low byte first).
+- [x] **C2. Crc16** — DONE 2026-09-24. `protocol/.../util/Crc16.kt`: table-driven, reflected poly `0xA001`, init `0x0000` (CRC-16/ARC), `compute()` + `computeLe()` (low byte first).
   - **Verified 2026-09-24: `"123456789"` → `0xBB3D`, LE bytes `3D BB`.** Three independent implementations agree (table-driven LSB-first `0xA001`; bitwise reflected; `crcmod.Crc(0x18005, initCrc=0, rev=True, xorOut=0)`).
   - **RESOLVED 2026-09-24: `0xBB3D` is correct.** The CRC-16/ARC catalogue check value is `0xBB3D` (reveng catalogue; cross-checked against arcrc/crcZero tables and three independent computations). The earlier `0xBEEF` in DESIGN §5.1 was unreachable from the stated parameters and has been corrected there to `0xBB3D` / `3D BB`. `binascii.crc_hqx` is CRC-16/XMODEM **not** ARC (gives `0x31C3`) — never use it as the reference.
-  - Verify: `./gradlew :protocol:test --tests '*Crc16Test'` green, vector `"123456789"` → `3D BB`
+  - Verify: `Crc16Test` green ✅ (5 tests) — vector `"123456789"` → `3D BB`, empty=0, offset/length subrange, guards against `0xBEEF`/XMODEM
 - [ ] **C3. Cobs (non-standard variant)** — running `distanceIndex` insertion; final pending block appended **only if length ≠ 0 and ≠ 255**; malformed decode returns empty, never throws.
   - Verify: `./gradlew :protocol:test --tests '*CobsTest'` green, boundaries: all-zero, 254/255/256 non-zero runs, single byte, leading+trailing zero, round-trip property
 - [ ] **C4. HexLog** — thread-safe ring buffer (~4096 entries, newest last), entry = direction `TX`/`RX` + millis + bytes, non-destructive `snapshot()`, hex export helper for golden files.
