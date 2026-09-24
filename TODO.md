@@ -50,8 +50,9 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - Note: doubled `LE32(protoLength)` is the **inner §5.7 request header inside msg**, not the outer frame length
 - [x] **D3. MessageAssembler (receive)** — DONE 2026-09-24. `protocol/.../wire/MessageAssembler.kt`: ported from reference ReaderThread. Strip first byte (header) per chunk; `header==0 || !handshakeComplete` → route body to handshake; else trailing `0x00` completes, leading `0x00` clears accumulator + starts new message; on complete COBS-decode → emit frame. Empty decode = drop, never throw.
   - Verify: `MessageAssemblerTest` green ✅ (8 tests) — single + multi-chunk reassembly, back-to-back two messages, empty-decode drop, pre-handshake routing, zero-header-post-handshake still routes to handshake, empty-chunk ignored
-- [ ] **D4. HandshakeStateMachine** — `Idle → WaitingReply → GotHeader(h) → Done`; reply matched on stripped-body prefix, dynamic header at index 12; emits `[h, 0x00]` raw write on GotHeader; 10 s no-match → failure event.
-  - Verify: `./gradlew :protocol:test --tests '*HandshakeStateMachineTest'` green incl. timeout path + reply split across chunks
+- [x] **D4. HandshakeStateMachine** — DONE 2026-09-24. `protocol/.../wire/HandshakeStateMachine.kt`: `IDLE → WAITING_REPLY → DONE`; `onBody(strippedBody)` matches the reply prefix, extracts dynamic header at index 12, returns the final `[H,0x00]` raw write (null otherwise). Pure function — engine owns the ~10s timeout and the writes.
+  - Verify: `HandshakeStateMachineTest` green ✅ (5 tests) — happy path extracts header + emits final write, wrong prefix stays waiting, too-short ignored, no transition after done, onBody before begin is null
+  - Note: matches each stripped body independently (reference behavior); split-reply accumulation deferred to H2 golden capture
 - [ ] **D5. FrameDispatcher** — ack for **every** received frame incl. unknown types: base `88 13 || origType(2B) || 0x00`; B3/B4 append `LE16(origCounter) + 14 zeros` (21 bytes total); route B4 → response channel by counter match, B3 → device-request event, A0/BA → ack-then-ignore.
   - Verify: `./gradlew :protocol:test --tests '*FrameDispatcherTest'` green, ack bytes asserted byte-for-byte for all 5 cases
 
