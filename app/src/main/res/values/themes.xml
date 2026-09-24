@@ -1,0 +1,5 @@
+<resources>
+    <!-- Compose provides its own Material3 theming; the XML theme only needs to
+         remove the platform action bar. -->
+    <style name="Theme.R10Monitor" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

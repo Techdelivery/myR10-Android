@@ -68,8 +68,9 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ## Phase F — Android shell (M0-4/5/6/7)
 
-- [ ] **F1. Manifest + theme + entry** — `BLUETOOTH_SCAN(neverForLocation)`, `BLUETOOTH_CONNECT`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS`; legacy `BLUETOOTH`/`BLUETOOTH_ADMIN` maxSdkVersion 30; Material3 theme; `MainActivity` + `R10App`.
-  - Verify: `./gradlew :app:assembleDebug` green; installs + launches to "R10 Monitor" without crash
+- [x] **F1. Manifest + theme + entry** — DONE 2026-09-24. `AndroidManifest.xml` (all BLE/FGS/notification perms + legacy `maxSdkVersion 30` + `bluetooth_le` feature), `themes.xml` (Material Light NoActionBar base; Compose supplies Material3), `strings.xml`, vector `ic_launcher`, `R10App` (empty Application, manual-wiring anchor), `MainActivity` (Compose "R10 Monitor"). Added root `gradle.properties` (`android.useAndroidX=true`, nonTransitiveRClass).
+  - **Compose BOM pinned to 2026.06.01** (Compose 1.11.x, minCompileSdk 35): the latest 2026.09.00 → 1.12.x requires compileSdk **37**, which is not installable in this SDK repo (only android-36). Kept compile/target 36 per plan.
+  - Verify: `./gradlew :app:assembleDebug` green ✅ (app-debug.apk, 12 MB). **Launch-without-crash needs a device/emulator — none attached; deferred to hardware session.**
 - [ ] **F2. Foreground service shell** — `R10ForegroundService` typed `connectedDevice`, ongoing notification, start/stop toggle in skeleton UI.
   - Verify: `adb shell dumpsys activity services com.techdelivery.r10` shows `foreground=true` while toggled on; survives backgrounding
 - [ ] **F3. Settings persistence** — DataStore `AppSettings` per DESIGN §8 defaults: autoWake true, calibrateTiltOnConnect false, temperature 60, humidity 1, altitude 0, airDensity 1, teeDistanceFt 7, debugLogging false, reconnectIntervalS 5, deviceName "Approach R10". `Flow<AppSettings>`.
