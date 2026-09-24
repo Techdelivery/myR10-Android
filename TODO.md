@@ -24,8 +24,8 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
   - Resolved pins: AGP 8.13.2, Kotlin 2.4.20 (stable) + compose plugin, Compose BOM 2026.09.00, coroutines 1.11.0, protobuf-javalite + protobuf-kotlin-lite 4.36.2, protobuf-gradle-plugin 0.10.0, JVM target 17, minSdk 26, compile/target 36, applicationId `com.techdelivery.r10`
 - [x] **B2. Proto codegen** — DONE 2026-09-24. `protocol/src/main/proto/LaunchMonitor.proto` transcribed from DESIGN Appendix A (proto package `LaunchMonitor.Proto`), plus codegen-only `option java_outer_classname = "R10Protos"` — the package first segment collided with the file-derived outer class name and broke Kotlin-lite fully-qualified refs (wire-irrelevant; noted in DESIGN Appendix A).
   - Verify: `./gradlew :protocol:compileKotlin` green ✅; all 30 appendix messages present as nested classes of `R10Protos` ✅; `AlertNotification` field 1001 generates `alertNotification_` accessor ✅
-- [ ] **B3. Proto smoke test** — construct + serialize + re-parse `WrapperProto`, `ShotConfigRequest`, `AlertDetails`.
-  - Verify: `./gradlew :protocol:test --tests '*ProtoSmokeTest'` green
+- [x] **B3. Proto smoke test** — DONE 2026-09-24. `protocol/src/test/kotlin/ProtoSmokeTest.kt`: construct + serialize + re-parse `ShotConfigRequest` (with §8 ft→m tee_range), `AlertDetails` (state+error), `WrapperProto` wrapping a service, and `AlertNotification` field-1001 (`setAlertNotification`/`getAlertNotification`, backing `alertNotification_`).
+  - Verify: `./gradlew :protocol:test --tests '*ProtoSmokeTest'` green ✅ — 4 tests, 0 skipped, 0 failures
 
 ## Phase C — Wire primitives (M1-8/9/10, M0-3) — pure JVM, no device
 
