@@ -1,0 +1,150 @@
+name: CI
+
+# Tests run on every pull request and on every commit pushed to main.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same PR/branch cancels the in-flight run. Main builds are not
+# cancelled so the history of what landed stays observable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+# All pinned action majors run on Node.js 24 (the Node 20 runtime is deprecated).
+# NOTE: gradle/actions is deliberately held at v5, NOT v6. In v6 the caching
+# implementation was extracted into `gradle-actions-caching`, a proprietary
+# commercial component outside the MIT license, so using v6 means accepting
+# Gradle's commercial Terms of Use. v5.0.2 is node24 and still MIT.
+# See https://blog.gradle.org/github-actions-for-gradle-v6
+jobs:
+  # Guard from TODO B1: :protocol must stay free of any Android dependency so it
+  # remains testable on a plain JVM.
+  protocol-purity:
+    name: Protocol purity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Fail if :protocol imports android.* / androidx.*
+        run: |
+          set -euo pipefail
+          if grep -rnE '^[[:space:]]*import[[:space:]]+(android|androidx)[.]' protocol/src/main --include='*.kt' --include='*.java'; then
+            echo "::error:::protocol must not import Android classes (see TODO B1). Move the code to :app."
+            exit 1
+          fi
+          echo ":protocol is Android-free."
+
+  protocol-tests:
+    name: Protocol tests (:protocol)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          # Only main writes the cache, so PRs share one warm cache instead of
+          # each PR forking its own.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run unit tests
+        run: ./gradlew :protocol:test --max-workers=4
+
+      - name: Publish test summary
+        if: always()
+        env:
+          REPORT_DIR: ${{ github.workspace }}/protocol/build/test-results
+          JOB_NAME: ":protocol unit tests"
+        run: python3 .github/scripts/junit_summary.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: protocol-test-results
+          path: |
+            protocol/build/test-results/**/*.xml
+            protocol/build/reports/tests/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  app-tests:
+    name: App unit tests (:app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Debug variant only: :app:test would compile and run every variant twice.
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --max-workers=4
+
+      - name: Publish test summary
+        if: always()
+        env:
+          REPORT_DIR: ${{ github.workspace }}/app/build/test-results
+          JOB_NAME: ":app debug unit tests"
+        run: python3 .github/scripts/junit_summary.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-test-results
+          path: |
+            app/build/test-results/**/*.xml
+            app/build/reports/tests/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Single green check to make branch protection rules easy to write.
+  tests:
+    name: Tests
+    needs: [protocol-purity, protocol-tests, app-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Aggregate results
+        env:
+          PURITY: ${{ needs.protocol-purity.result }}
+          PROTOCOL: ${{ needs.protocol-tests.result }}
+          APP: ${{ needs.app-tests.result }}
+        run: |
+          echo "protocol-purity: $PURITY"
+          echo "protocol-tests:  $PROTOCOL"
+          echo "app-tests:       $APP"
+          for r in "$PURITY" "$PROTOCOL" "$APP"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::At least one required job did not succeed ($r)."
+              exit 1
+            fi
+          done
+          echo "All required jobs passed."
