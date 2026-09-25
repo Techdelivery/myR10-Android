@@ -45,6 +45,18 @@ class AlertRouterTest {
         assertEquals(999L, shot.receivedAtMs)
         assertEquals(111.845, shot.ball!!.ballSpeedMph, 1e-3)
         assertEquals(2000.0, shot.ball!!.backSpinRpm, 1e-6)
+        assertTrue("present shot_id must be reported", (out[0] as DeviceAlert.ShotAlert).hasDeviceShotId)
+    }
+
+    @Test
+    fun metricsWithoutShotIdReportsHasDeviceShotIdFalse() {
+        val metrics = R10Protos.Metrics.newBuilder()
+            .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(50f))
+            .build()
+        val out = AlertRouter.route(wrap(R10Protos.AlertDetails.newBuilder().setMetrics(metrics).build()))
+        val alert = out.single() as DeviceAlert.ShotAlert
+        assertTrue("absent shot_id must not be reported as present", !alert.hasDeviceShotId)
+        assertEquals(0, alert.shot.shotId) // proto read-back, must not be used as a dedup key
     }
 
     @Test

@@ -338,12 +338,20 @@ class BleTransportImpl(
          * Exponential backoff for reconnect attempts (DESIGN §11): base doubles per
          * attempt and is capped at [capMs]. A non-positive base collapses to the cap
          * so a misconfigured setting cannot produce a hot retry loop.
+         *
+         * Growth is done in `Double`, not `shl`. `baseMs shl n` wraps negative once
+         * the product passes 2^63; the old trailing `coerceAtLeast(1)` then turned
+         * that wrap into a 1 ms hot retry — the exact failure this function exists
+         * to prevent. `Double` saturates to +Inf instead, which lands on the cap.
          */
         fun backoffDelayMs(baseMs: Long, attempt: Int, capMs: Long = 60_000L): Long {
             require(attempt >= 1) { "attempt is 1-based" }
+            require(capMs >= 1L) { "capMs must be at least 1" }
             if (baseMs <= 0L) return capMs
-            val doubled = baseMs shl (attempt - 1).coerceAtMost(20)
-            return doubled.coerceAtMost(capMs).coerceAtLeast(1L)
+            if (baseMs >= capMs) return capMs
+            val grown = baseMs.toDouble() * Math.pow(2.0, (attempt - 1).coerceAtMost(62).toDouble())
+            if (grown.isInfinite() || grown >= capMs.toDouble()) return capMs
+            return grown.toLong().coerceAtLeast(1L)
         }
         const val TAG = "R10DIAG"
         private const val SCAN_TIMEOUT_MS = 15_000L

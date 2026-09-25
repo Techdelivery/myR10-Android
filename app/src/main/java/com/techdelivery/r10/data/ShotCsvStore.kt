@@ -6,6 +6,7 @@ import com.techdelivery.r10.protocol.shot.ClubDisplay
 import com.techdelivery.r10.protocol.shot.Shot
 import com.techdelivery.r10.protocol.shot.SwingDisplay
 import java.io.File
+import java.io.RandomAccessFile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -25,29 +26,83 @@ import kotlinx.coroutines.sync.withLock
  * Thread-safe: one [Mutex] guards the file. All fields are numbers, enum names, or
  * hex, so no CSV quoting/escaping is needed — that is deliberate.
  */
-class ShotCsvStore(private val file: File) {
+class ShotCsvStore(
+    private val file: File,
+    /**
+     * How many recent dedup keys to keep. A constructor parameter rather than only
+     * the constant so LRU eviction is testable without writing thousands of rows.
+     */
+    private val recentKeyWindow: Int = RECENT_KEY_WINDOW,
+) {
+
+    init {
+        require(recentKeyWindow >= 1) { "recentKeyWindow must be at least 1" }
+    }
 
     private val mutex = Mutex()
 
-    suspend fun append(shot: Shot) = mutex.withLock {
-        file.parentFile?.mkdirs()
+    /** Recently-persisted dedup keys, for cross-session duplicate rejection. */
+    private val persistedKeys = HashSet<String>()
+    private val keyOrder = ArrayDeque<String>()
+    private var indexed = false
+
+    /**
+     * Append one shot. Returns true when the row was written, false when an
+     * identical shot is already stored.
+     *
+     * DESIGN §8 asks for cross-session dedup through a `deviceShotId` unique index.
+     * That key cannot be used literally: the R10 restarts its shot-id sequence on
+     * every power cycle (see `ShotDeduper`), so a global unique constraint on
+     * `shot_id` would reject legitimate new shots. The stable identity of a
+     * re-pushed shot is its bytes, so the key here is the raw proto payload — same
+     * frame, same key, whatever `shot_id` or receive time it picked up on the way
+     * back. Only the last [RECENT_KEY_WINDOW] keys are held in memory; a reconnect
+     * replay lands inside that window, and anything older is re-appended rather
+     * than risking a false drop of a real shot.
+     */
+    suspend fun append(shot: Shot): Boolean = mutex.withLock {
+        ensureIndexedUnlocked()
+        val key = dedupKey(shot)
+        if (key != null && key in persistedKeys) {
+            touchUnlocked(key)
+            return@withLock false
+        }
         val needsHeader = !file.exists() || file.length() == 0L
-        file.appendText((if (needsHeader) "$HEADER\n" else "") + encode(shot) + "\n")
+        appendDurable((if (needsHeader) "$HEADER\n" else "") + encode(shot) + "\n")
+        if (key != null) rememberUnlocked(key)
+        true
     }
 
+    /** Bulk append, skipping anything already stored. */
     suspend fun appendAll(shots: List<Shot>) = mutex.withLock {
-        file.parentFile?.mkdirs()
-        val needsHeader = !file.exists() || file.length() == 0L
+        ensureIndexedUnlocked()
         val sb = StringBuilder()
-        if (needsHeader) sb.append(HEADER).append('\n')
-        shots.forEach { sb.append(encode(it)).append('\n') }
-        file.appendText(sb.toString())
+        var wrote = 0
+        shots.forEach {
+            val key = dedupKey(it)
+            if (key != null && key in persistedKeys) {
+                touchUnlocked(key)
+                return@forEach
+            }
+            if (wrote == 0 && (!file.exists() || file.length() == 0L)) sb.append(HEADER).append('\n')
+            sb.append(encode(it)).append('\n')
+            wrote++
+            if (key != null) rememberUnlocked(key)
+        }
+        if (wrote > 0) appendDurable(sb.toString())
     }
 
     /** Oldest first, as stored. Corrupt lines are skipped, never fatal. */
     suspend fun loadAll(): List<Shot> = mutex.withLock { readUnlocked() }
 
-    suspend fun clear() = mutex.withLock { runCatching { file.delete() } }
+    suspend fun clear() = mutex.withLock {
+        runCatching { file.delete() }
+        // Reset the index and force a re-read: if the delete failed the surviving
+        // rows must still be known to the dedup set.
+        persistedKeys.clear()
+        keyOrder.clear()
+        indexed = false
+    }
 
     /** Snapshot text (header + rows) for a bug report. */
     suspend fun exportText(): String = mutex.withLock { snapshotText() }
@@ -58,6 +113,62 @@ class ShotCsvStore(private val file: File) {
         val out = File(dir, "r10-shots-$stamp.csv")
         out.writeText(snapshotText())
         out
+    }
+
+    /**
+     * Content key for cross-session dedup, or null when the shot carries no raw
+     * payload. A null key means "cannot be deduped" and is always written — an
+     * empty payload would otherwise make every such shot a duplicate of the first.
+     *
+     * `shot_id` is folded in even though the proto bytes already carry it, so a
+     * shot whose id differs is never dropped on a payload collision.
+     */
+    private fun dedupKey(shot: Shot): String? =
+        shot.rawMetrics.takeIf { it.isNotEmpty() }?.let { "${shot.shotId}|${toHex(it)}" }
+
+    private fun rememberUnlocked(key: String) {
+        if (!persistedKeys.add(key)) return
+        keyOrder.addLast(key)
+        evictUnlocked()
+    }
+
+    /**
+     * Move a re-observed key to the most-recent end, so eviction is LRU rather
+     * than FIFO. Without this a key that keeps getting replayed could be evicted
+     * while long-dead ones stay.
+     */
+    private fun touchUnlocked(key: String) {
+        if (keyOrder.remove(key)) keyOrder.addLast(key)
+    }
+
+    private fun evictUnlocked() {
+        while (keyOrder.size > recentKeyWindow) {
+            persistedKeys.remove(keyOrder.removeFirst())
+        }
+    }
+
+    /**
+     * Append text durably, in one synchronous write.
+     *
+     * `RandomAccessFile` in `"rwd"` mode pushes each update to the device before
+     * returning, and `fd.sync()` covers platforms that treat `rwd` as advisory.
+     * The point is that a process kill leaves either a whole record or nothing —
+     * never a torn line that `decode` would silently drop, losing the shot.
+     * Costs one fsync per shot (~1/s at play), which is the right trade.
+     */
+    private fun appendDurable(text: String) {
+        file.parentFile?.mkdirs()
+        RandomAccessFile(file, "rwd").use { raf ->
+            raf.seek(raf.length())
+            raf.write(text.toByteArray(Charsets.UTF_8))
+            raf.fd.sync()
+        }
+    }
+
+    private fun ensureIndexedUnlocked() {
+        if (indexed) return
+        indexed = true
+        readUnlocked().forEach { shot -> dedupKey(shot)?.let { rememberUnlocked(it) } }
     }
 
     /** Non-locking snapshot — callers must already hold [mutex]. */
@@ -84,6 +195,13 @@ class ShotCsvStore(private val file: File) {
         ).joinToString(",")
 
         private const val COLS = 21
+
+        /**
+         * How many recent dedup keys to keep in memory for cross-session duplicate
+         * rejection. Sized well above any realistic reconnect-replay burst while
+         * keeping the set bounded (~2 KB/shot of raw payload hex).
+         */
+        const val RECENT_KEY_WINDOW = 2_000
 
         fun encode(s: Shot): String {
             val b = s.ball

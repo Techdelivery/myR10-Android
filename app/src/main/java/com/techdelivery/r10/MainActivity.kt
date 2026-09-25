@@ -34,7 +34,6 @@ import com.techdelivery.r10.data.ShotCsvStore
 import com.techdelivery.r10.settings.AppSettings
 import com.techdelivery.r10.settings.SettingsRepository
 import com.techdelivery.r10.state.DeviceStateHolder
-import com.techdelivery.r10.state.MAX_LIVE_SHOTS
 import com.techdelivery.r10.ui.DeviceScreen
 import com.techdelivery.r10.ui.SettingsScreen
 import com.techdelivery.r10.ui.ShotsScreen
@@ -121,11 +120,9 @@ class MainActivity : ComponentActivity() {
     /** M3: show persisted shot history even before this session connects. */
     private fun loadHistory(store: ShotCsvStore) {
         uiScope.launch {
-            if (DeviceStateHolder.shots.value.isNotEmpty()) return@launch
             val history = runCatching { store.loadAll() }.getOrDefault(emptyList())
-            if (history.isEmpty()) return@launch
-            DeviceStateHolder.shots.value = history.asReversed().take(MAX_LIVE_SHOTS)
-            DeviceStateHolder.shotCount.value = history.size
+            // Merge, never assign: a shot can land while the file is being read.
+            DeviceStateHolder.adoptHistory(history)
         }
     }
 

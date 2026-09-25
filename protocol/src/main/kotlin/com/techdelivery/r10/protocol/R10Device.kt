@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -56,13 +57,46 @@ class R10Device(
 
     private val deduper = ShotDeduper()
 
-    /** Every decoded device alert, including ones this layer does not act on. */
-    private val _alerts = MutableSharedFlow<DeviceAlert>(extraBufferCapacity = 128)
+    /**
+     * Every decoded device alert, including ones this layer does not act on.
+     *
+     * DROP_OLDEST: this stream is a transient UI mirror of state/error/calibration.
+     * A stale alert is worthless, and the pump must never suspend on it — see
+     * [pumpAlerts] for why that matters.
+     */
+    private val _alerts = MutableSharedFlow<DeviceAlert>(
+        extraBufferCapacity = 128,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     val alerts: Flow<DeviceAlert> = _alerts.asSharedFlow()
 
-    /** Deduplicated shots (DESIGN §7.2). Newest are emitted as they arrive. */
-    private val _shots = MutableSharedFlow<Shot>(extraBufferCapacity = 32)
+    /**
+     * Live `alerts` subscriber count. Exposed because "is anyone actually listening"
+     * is worth observing in its own right, and because a test that wants to prove the
+     * pump is unaffected by a wedged subscriber cannot rely on scheduler ordering
+     * to establish that the subscription landed.
+     */
+    val alertSubscriberCount: StateFlow<Int> get() = _alerts.subscriptionCount
+
+    /**
+     * Deduplicated shots (DESIGN §7.2). Newest are emitted as they arrive.
+     *
+     * Left on the default SUSPEND policy on purpose: this flow feeds persistence, so
+     * dropping is not acceptable. The pump keeps it from ever filling by making the
+     * consuming side fast (the service hands disk writes to `Dispatchers.IO`).
+     */
+    private val _shots = MutableSharedFlow<Shot>(extraBufferCapacity = 64)
     val shots: Flow<Shot> = _shots.asSharedFlow()
+
+    /** In-flight `wakeUp()` so repeated STANDBY alerts cannot fan out. */
+    private var wakeJob: Job? = null
+
+    /**
+     * `wakeJob` is written from the pump coroutine and from `connect()` via
+     * [resetForNewConnection], so both accesses are guarded — a plain `var` would
+     * let the pump read a stale non-null value and suppress a legitimate wake.
+     */
+    private val wakeLock = Any()
 
     /** Last device state seen, from the §7.1 step-7 StatusResponse or a state alert. */
     private val _lastStateType = MutableStateFlow<R10Protos.State.StateType?>(null)
@@ -80,14 +114,28 @@ class R10Device(
                     is DeviceAlert.StateChanged -> {
                         _lastStateType.value = alert.state
                         if (alert.state == R10Protos.State.StateType.STANDBY && config.autoWake) {
-                            scope.launch { wakeUp() }
+                            // Single-flight. A device that re-announces STANDBY every
+                            // second used to spawn one WakeUpRequest coroutine per
+                            // alert, piling up unbounded pending requests.
+                            synchronized(wakeLock) {
+                                if (wakeJob?.isActive != true) {
+                                    wakeJob = scope.launch { wakeUp() }
+                                }
+                            }
                         }
                     }
-                    is DeviceAlert.ShotAlert ->
-                        if (deduper.accept(alert.shot.shotId)) _shots.emit(alert.shot)
+                    is DeviceAlert.ShotAlert -> {
+                        // §7.2 dedup by shot_id. A frame that carried no shot_id
+                        // cannot be deduped: `getShotId()` would report 0 and every
+                        // id-less shot would be dropped as a duplicate of the first.
+                        // Prefer a possible duplicate over a lost real shot.
+                        val fresh = !alert.hasDeviceShotId || deduper.accept(alert.shot.shotId)
+                        if (fresh) _shots.emit(alert.shot)
+                    }
                     else -> Unit
                 }
-                _alerts.emit(alert)
+                // tryEmit, never emit: DROP_OLDEST means this cannot suspend.
+                _alerts.tryEmit(alert)
             }
         }
     }
@@ -96,6 +144,10 @@ class R10Device(
     fun resetForNewConnection() {
         deduper.reset()
         _lastStateType.value = null
+        synchronized(wakeLock) {
+            wakeJob?.cancel()
+            wakeJob = null
+        }
     }
 
     /**

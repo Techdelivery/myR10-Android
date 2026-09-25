@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.techdelivery.r10.settings.AppSettings
 import com.techdelivery.r10.settings.SettingsRepository
+import com.techdelivery.r10.settings.asDoubleRange
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -80,6 +81,7 @@ fun SettingsScreen(
                     value = settings.reconnectIntervalS.toDouble(),
                     step = 1.0,
                     unit = "s",
+                    range = AppSettings.RECONNECT_INTERVAL_S.asDoubleRange(),
                     onValue = { scope.launch { repo.setReconnectIntervalS(it.toInt()) } },
                 )
             }
@@ -114,6 +116,7 @@ fun SettingsScreen(
                     value = settings.temperature.toDouble(),
                     step = 1.0,
                     unit = "°F",
+                    range = AppSettings.TEMPERATURE_F.asDoubleRange(),
                     onValue = { scope.launch { repo.setTemperature(it.toInt()) } },
                 )
                 StepperRow(
@@ -121,13 +124,19 @@ fun SettingsScreen(
                     value = settings.humidity.toDouble(),
                     step = 1.0, // stored as Int (AppSettings) — a 0.1 step would be truncated
                     unit = "",
+                    range = AppSettings.HUMIDITY.asDoubleRange(),
                     onValue = { scope.launch { repo.setHumidity(it.toInt()) } },
+                )
+                Text(
+                    "stored as an Int, so only 0 or 1 — a 0..100 % model needs a settings migration",
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 StepperRow(
                     label = "Altitude",
                     value = settings.altitude.toDouble(),
                     step = 10.0,
                     unit = "m",
+                    range = AppSettings.ALTITUDE_M.asDoubleRange(),
                     onValue = { scope.launch { repo.setAltitude(it.toInt()) } },
                 )
                 StepperRow(
@@ -135,6 +144,7 @@ fun SettingsScreen(
                     value = settings.airDensity,
                     step = 0.01,
                     unit = "",
+                    range = AppSettings.AIR_DENSITY,
                     onValue = { scope.launch { repo.setAirDensity(it) } },
                 )
                 StepperRow(
@@ -142,6 +152,7 @@ fun SettingsScreen(
                     value = settings.teeDistanceFt.toDouble(),
                     step = 1.0,
                     unit = "ft",
+                    range = AppSettings.TEE_DISTANCE_FT.asDoubleRange(),
                     onValue = { scope.launch { repo.setTeeDistanceFt(it.toInt()) } },
                 )
                 Text(
@@ -186,14 +197,21 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     }
 }
 
+/**
+ * Bounded +/− stepper. [range] is the same envelope the repository clamps to, so
+ * the buttons disable exactly where the setter would clamp.
+ */
 @Composable
 private fun StepperRow(
     label: String,
     value: Double,
     step: Double,
     unit: String,
+    range: ClosedFloatingPointRange<Double>,
     onValue: (Double) -> Unit,
 ) {
+    val canDecrement = value > range.start
+    val canIncrement = value < range.endInclusive
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -204,12 +222,18 @@ private fun StepperRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
-            OutlinedButton(onClick = { onValue(value - step) }) { Text("−") }
+            OutlinedButton(
+                onClick = { onValue((value - step).coerceAtLeast(range.start)) },
+                enabled = canDecrement,
+            ) { Text("−") }
             Text(
                 formatValue(value) + if (unit.isEmpty()) "" else " $unit",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            OutlinedButton(onClick = { onValue(value + step) }) { Text("+") }
+            OutlinedButton(
+                onClick = { onValue((value + step).coerceAtMost(range.endInclusive)) },
+                enabled = canIncrement,
+            ) { Text("+") }
         }
     }
 }

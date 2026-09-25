@@ -7,6 +7,8 @@ import com.techdelivery.r10.protocol.util.ByteUtil
 import com.techdelivery.r10.protocol.wire.Framing
 import com.techdelivery.r10.protocol.wire.MessageAssembler
 import com.techdelivery.r10.protocol.wire.WireConstants
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancelChildren
@@ -21,6 +23,7 @@ import org.junit.Test
  * M2 — the §7.2 runtime policies wired through [R10Device.pumpAlerts]:
  * shot dedup by `shot_id`, auto-wake on STANDBY, state tracking.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class R10DeviceAlertPumpTest {
 
     private val dynHeader: Byte = 0x07
@@ -42,6 +45,20 @@ class R10DeviceAlertPumpTest {
                             R10Protos.Metrics.newBuilder()
                                 .setShotId(id)
                                 .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(45f)),
+                        ),
+                    ),
+                ),
+            ).build()
+
+    /** Same as [shotWrapper] but with `shot_id` left unset (proto2 `optional uint32`). */
+    private fun shotWrapperNoId(ballSpeed: Float = 45f): R10Protos.WrapperProto =
+        R10Protos.WrapperProto.newBuilder()
+            .setEvent(
+                R10Protos.EventSharing.newBuilder().setNotification(
+                    R10Protos.AlertNotification.newBuilder().setAlertNotification(
+                        R10Protos.AlertDetails.newBuilder().setMetrics(
+                            R10Protos.Metrics.newBuilder()
+                                .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(ballSpeed)),
                         ),
                     ),
                 ),
@@ -174,6 +191,36 @@ class R10DeviceAlertPumpTest {
     }
 
     @Test
+    fun shotsWithoutShotIdAreNotCollapsedIntoOneDuplicate() = runTest {
+        val h = harness(autoWake = false)
+        val shots = mutableListOf<Shot>()
+        launch { h.device.shots.collect { shots.add(it) } }
+        runCurrent()
+
+        // Three distinct real shots whose frames carry no shot_id. `getShotId()`
+        // reports 0 for all three, so a naive dedup would keep only the first.
+        h.fake.emitFramed(b3Msg(shotWrapperNoId(40f)))
+        runCurrent()
+        h.fake.emitFramed(b3Msg(shotWrapperNoId(41f)))
+        runCurrent()
+        h.fake.emitFramed(b3Msg(shotWrapperNoId(42f)))
+        runCurrent()
+
+        assertEquals(
+            "a frame with no shot_id must never be dropped as a duplicate",
+            3,
+            shots.size,
+        )
+        assertEquals(listOf(0, 0, 0), shots.map { it.shotId }) // read-back value, not a dedup key
+        assertEquals(3, shots.map { it.ball!!.ballSpeedMph }.distinct().size)
+        assertTrue(
+            "every id-less shot must report hasDeviceShotId=false",
+            shots.all { it.shotId == 0 },
+        )
+        finish(h)
+    }
+
+    @Test
     fun resetForNewConnectionAllowsReusedShotId() = runTest {
         val h = harness(autoWake = false)
         val shots = mutableListOf<Shot>()
@@ -187,6 +234,86 @@ class R10DeviceAlertPumpTest {
         runCurrent()
 
         assertEquals(listOf(9, 9), shots.map { it.shotId })
+        finish(h)
+    }
+
+    /**
+     * W1 — the old code launched a fresh `wakeUp()` per STANDBY alert. The
+     * engine's send mutex serialises them, so the pile-up is invisible until the
+     * in-flight wake is answered: then every queued coroutine fires in a burst.
+     * The answer below is what makes the fan-out observable.
+     */
+    @Test
+    fun repeatedStandbyDoesNotFanOutWakeRequests() = runTest {
+        val h = harness(autoWake = true)
+        repeat(3) {
+            h.fake.emitFramed(b3Msg(stateWrapper(R10Protos.State.StateType.STANDBY)))
+            runCurrent()
+        }
+        // Answer the in-flight wake. Without the single-flight guard the two queued
+        // wakeUp() coroutines now get their turn and each writes another request.
+        h.fake.emitFramed(ByteUtil.concat(WireConstants.TYPE_B4, ByteUtil.u16le(0), ByteArray(12)))
+        runCurrent()
+
+        val wakes = writtenRequestProtos(h.fake.writes)
+            .count { it.hasService() && it.service.hasWakeUpRequest() }
+        assertEquals("three STANDBY alerts must produce one wake request, not a burst", 1, wakes)
+        finish(h)
+    }
+
+    /**
+     * The single-flight guard must not latch. Once the first wake completes, a later
+     * STANDBY has to be able to wake the device again.
+     */
+    @Test
+    fun wakeIsRetriedOnALaterStandbyOnceTheFirstCompletes() = runTest {
+        val h = harness(autoWake = true)
+        h.fake.emitFramed(b3Msg(stateWrapper(R10Protos.State.StateType.STANDBY)))
+        runCurrent()
+        h.fake.emitFramed(ByteUtil.concat(WireConstants.TYPE_B4, ByteUtil.u16le(0), ByteArray(12)))
+        runCurrent()
+
+        h.fake.emitFramed(b3Msg(stateWrapper(R10Protos.State.StateType.STANDBY)))
+        runCurrent()
+
+        val wakes = writtenRequestProtos(h.fake.writes)
+            .count { it.hasService() && it.service.hasWakeUpRequest() }
+        assertEquals("a later STANDBY must wake again", 2, wakes)
+        finish(h)
+    }
+
+    /**
+     * W2 — a wedged alert subscriber must not hold back real shots. The old
+     * `_alerts.emit(...)` sat on the same suspend path, so once its 128-slot buffer
+     * filled the pump stalled and shot delivery stopped with it. The alert flow is
+     * DROP_OLDEST + `tryEmit` now, so the pump never suspends on it.
+     */
+    @Test
+    fun stalledAlertSubscriberDoesNotStallShots() = runTest {
+        val h = harness(autoWake = false)
+        val gate = CompletableDeferred<Unit>()
+        val shots = mutableListOf<Shot>()
+        launch {
+            h.device.alerts.collect { gate.await() } // permanently wedged consumer
+        }
+        launch { h.device.shots.collect { shots.add(it) } }
+        // Block until the wedged alert subscriber is actually registered. Relying
+        // on runCurrent alone made the test depend on scheduler ordering rather
+        // than on the behaviour under test: with no subscriber registered the
+        // alerts are simply dropped and the pump never had to be proven safe.
+        h.device.alertSubscriberCount.first { it > 0 }
+
+        repeat(500) { i ->
+            h.fake.emitFramed(b3Msg(shotWrapper(2_000 + i)))
+            runCurrent()
+        }
+
+        assertEquals(
+            "a wedged alert subscriber must not hold back real shots",
+            500,
+            shots.size,
+        )
+        gate.complete(Unit)
         finish(h)
     }
 }

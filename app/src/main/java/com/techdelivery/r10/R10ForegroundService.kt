@@ -20,6 +20,8 @@ import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
 import com.techdelivery.r10.protocol.transport.TransportState
 import com.techdelivery.r10.settings.SettingsDataStore
+import com.techdelivery.r10.data.ShotCsvStore
+import com.techdelivery.r10.data.ShotPersistSink
 import com.techdelivery.r10.state.AlertMirror
 import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
@@ -47,12 +49,31 @@ class R10ForegroundService : Service() {
         const val ACTION_START = "com.techdelivery.r10.action.START"
         const val ACTION_STOP = "com.techdelivery.r10.action.STOP"
         private const val TAG = "R10DIAG"
+
+        /** Depth of the in-memory queue feeding the disk writer. */
+        private const val PERSIST_QUEUE_CAPACITY = 512
+
+        /** How long [onDestroy] waits for that queue to drain before giving up. */
+        private const val PERSIST_DRAIN_MS = 2_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var deviceJob: Job? = null
     private var transport: BleTransportImpl? = null
     private var startedForeground = false
+
+    /**
+     * Owns the shot -> disk handoff (queue, IO writer, failure signal). Kept off
+     * [deviceJob] so a reconnect cannot strand queued rows. See [ShotPersistSink].
+     */
+    private var persistSink: ShotPersistSink? = null
+
+    private fun ensurePersistSink(store: ShotCsvStore): ShotPersistSink =
+        persistSink?.takeIf { it.isRunning } ?: ShotPersistSink(store::append, scope, PERSIST_QUEUE_CAPACITY)
+            .also {
+                persistSink = it
+                it.start()
+            }
 
     override fun onCreate() {
         super.onCreate()
@@ -81,7 +102,9 @@ class R10ForegroundService : Service() {
     @SuppressLint("MissingPermission")
     private fun startDevice() {
         deviceJob?.cancel()
-        DeviceStateHolder.reset()
+        // Connection-scoped state only. `shots` / `shotCount` hold persisted CSV
+        // history and must survive a Start.
+        DeviceStateHolder.resetConnection()
         deviceJob = scope.launch {
             try {
                 val settings = (application as R10App).settingsRepository.settings.first()
@@ -105,6 +128,10 @@ class R10ForegroundService : Service() {
                     airDensity = settings.airDensity.toFloat(),
                     teeDistanceFt = settings.teeDistanceFt,
                     calibrateTiltOnConnect = settings.calibrateTiltOnConnect,
+                    // §7.2 auto-wake must come from the persisted setting; the
+                    // DeviceSetupConfig default would silently override the
+                    // Settings toggle if this line were missing.
+                    autoWake = settings.autoWake,
                 )
                 val device = R10Device(transport, engine, config)
 
@@ -129,13 +156,16 @@ class R10ForegroundService : Service() {
                 launch {
                     device.alerts.collect { AlertMirror.apply(it) }
                 }
+                val sink = ensurePersistSink((application as R10App).shotStore)
+                launch { sink.error.collect { DeviceStateHolder.historyError.value = it } }
                 launch {
-                    val store = (application as R10App).shotStore
-                    device.shots.collect {
-                        DeviceStateHolder.addShot(it)
-                        // M3: shot history survives the session (DESIGN §8).
-                        runCatching { store.append(it) }
-                            .onFailure { e -> Log.w(TAG, "shot persist failed: ${e.message}") }
+                    // Fast consumer only. Nothing in this collector may block: a slow
+                    // subscriber backpressures R10Device.shots, then
+                    // ProtocolEngine._events, then the BLE inbound reader. Disk work
+                    // belongs to the sink's IO writer, not here.
+                    device.shots.collect { shot ->
+                        DeviceStateHolder.addShot(shot)
+                        sink.submit(shot)
                     }
                 }
 
@@ -231,6 +261,11 @@ class R10ForegroundService : Service() {
 
     override fun onDestroy() {
         deviceJob?.cancel()
+        // Give queued shots a bounded window to reach disk before the scope dies.
+        val drained = runBlocking {
+            runCatching { persistSink?.close(PERSIST_DRAIN_MS) ?: true }.getOrDefault(false)
+        }
+        if (!drained) Log.e(TAG, "persist writer did not drain in ${PERSIST_DRAIN_MS}ms; queued shots lost")
         // Close the GATT link before tearing down the scope. Without this the
         // BluetoothGatt is never closed, so every Stop->Start cycle leaked another
         // live connection — observed on hardware as every notification being

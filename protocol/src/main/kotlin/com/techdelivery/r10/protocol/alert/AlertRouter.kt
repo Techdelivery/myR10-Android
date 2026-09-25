@@ -13,8 +13,16 @@ sealed interface DeviceAlert {
     /** §7.2 state changes: STANDBY / WAITING / RECORDING / PROCESSING / ERROR / INTERFERENCE_TEST. */
     data class StateChanged(val state: R10Protos.State.StateType) : DeviceAlert
 
-    /** §7.2 shot data. NOT yet deduplicated — the pump owns that (DESIGN §7.2). */
-    data class ShotAlert(val shot: Shot) : DeviceAlert
+    /**
+     * §7.2 shot data. NOT yet deduplicated — the pump owns that (DESIGN §7.2).
+     *
+     * [hasDeviceShotId] records whether the frame actually carried `shot_id`.
+     * `Metrics.shot_id` is `optional uint32`, so an absent field reads back as `0`
+     * and would make every id-less shot look like the same duplicate. The pump uses
+     * this flag to avoid dropping real shots; presence is a wire-level fact, so it
+     * lives here rather than on the persisted [Shot].
+     */
+    data class ShotAlert(val shot: Shot, val hasDeviceShotId: Boolean = true) : DeviceAlert
 
     /** §7.2 errors: OVERHEATING / RADAR_SATURATION / PLATFORM_TILTED + severity. */
     data class ErrorAlert(
@@ -50,7 +58,12 @@ object AlertRouter {
 
         val out = ArrayList<DeviceAlert>(4)
         if (d.hasState()) out += DeviceAlert.StateChanged(d.state.state)
-        if (d.hasMetrics()) out += DeviceAlert.ShotAlert(MetricConverter.shot(d.metrics, nowMs))
+        if (d.hasMetrics()) {
+            out += DeviceAlert.ShotAlert(
+                shot = MetricConverter.shot(d.metrics, nowMs),
+                hasDeviceShotId = d.metrics.hasShotId(),
+            )
+        }
         if (d.hasError()) {
             val e = d.error
             val tilt = if (e.hasDeviceTilt()) e.deviceTilt else null

@@ -33,14 +33,34 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAutoWake(v: Boolean) { dataStore.edit { it[KEY_AUTO_WAKE] = v } }
     suspend fun setCalibrateTiltOnConnect(v: Boolean) { dataStore.edit { it[KEY_CALIBRATE_TILT] = v } }
-    suspend fun setTemperature(v: Int) { dataStore.edit { it[KEY_TEMPERATURE] = v } }
-    suspend fun setHumidity(v: Int) { dataStore.edit { it[KEY_HUMIDITY] = v } }
-    suspend fun setAltitude(v: Int) { dataStore.edit { it[KEY_ALTITUDE] = v } }
-    suspend fun setAirDensity(v: Double) { dataStore.edit { it[KEY_AIR_DENSITY] = v } }
-    suspend fun setTeeDistanceFt(v: Int) { dataStore.edit { it[KEY_TEE_DISTANCE_FT] = v } }
+
+    // Every numeric setter clamps to the DESIGN §8 envelope in AppSettings. The UI
+    // stepper also bounds its buttons, but the repository is the last place that
+    // sees the value before it reaches the device, so it enforces too.
+    suspend fun setTemperature(v: Int) = putClamped(KEY_TEMPERATURE, v, AppSettings.TEMPERATURE_F)
+    suspend fun setHumidity(v: Int) = putClamped(KEY_HUMIDITY, v, AppSettings.HUMIDITY)
+    suspend fun setAltitude(v: Int) = putClamped(KEY_ALTITUDE, v, AppSettings.ALTITUDE_M)
+    suspend fun setTeeDistanceFt(v: Int) = putClamped(KEY_TEE_DISTANCE_FT, v, AppSettings.TEE_DISTANCE_FT)
+    suspend fun setReconnectIntervalS(v: Int) = putClamped(KEY_RECONNECT_INTERVAL_S, v, AppSettings.RECONNECT_INTERVAL_S)
+
+    suspend fun setAirDensity(v: Double) {
+        val clamped = if (v.isNaN()) 1.0 else v.coerceIn(AppSettings.AIR_DENSITY)
+        dataStore.edit { it[KEY_AIR_DENSITY] = clamped }
+    }
+
+    private suspend fun putClamped(key: Preferences.Key<Int>, v: Int, range: IntRange) {
+        val clamped = v.coerceIn(range)
+        dataStore.edit { it[key] = clamped }
+    }
+
     suspend fun setDebugLogging(v: Boolean) { dataStore.edit { it[KEY_DEBUG_LOGGING] = v } }
-    suspend fun setReconnectIntervalS(v: Int) { dataStore.edit { it[KEY_RECONNECT_INTERVAL_S] = v } }
-    suspend fun setDeviceName(v: String) { dataStore.edit { it[KEY_DEVICE_NAME] = v } }
+    suspend fun setDeviceName(v: String) {
+        // Trim, cap at the BLE name limit, and never store blank — this value is
+        // the scan filter, so a blank name means the R10 is never found.
+        val name = v.trim().take(AppSettings.DEVICE_NAME_MAX_LEN)
+            .ifBlank { AppSettings.DEVICE_NAME_FALLBACK }
+        dataStore.edit { it[KEY_DEVICE_NAME] = name }
+    }
 
     companion object {
         private val KEY_AUTO_WAKE = booleanPreferencesKey("autoWake")

@@ -35,6 +35,14 @@ object DeviceStateHolder {
     /** Latest §7.2 tilt-calibration status. */
     val calibration = MutableStateFlow<DeviceAlert.CalibrationAlert?>(null)
 
+    /**
+     * Shot-history write failure. Kept separate from [errorMessage] because
+     * `DeviceScreen` only renders that while `conn == ERROR`; a persistence
+     * backlog happens while the link is healthy, so it needs its own channel to be
+     * visible at all.
+     */
+    val historyError = MutableStateFlow<String?>(null)
+
     /** Total shots accepted this session (before the display cap). */
     val shotCount = MutableStateFlow(0)
 
@@ -48,24 +56,67 @@ object DeviceStateHolder {
         hexLog.listener = { hexFlow.tryEmit(it) }
     }
 
-    fun reset() {
+    /**
+     * Guards every write to [shots] / [shotCount]. They have two concurrent writers
+     * — the service collector and the UI's history load — so a plain read-modify-write
+     * loses updates. A monitor, not a Mutex, because both ops are in-memory and must
+     * not become suspendable for their callers.
+     */
+    private val shotsLock = Any()
+
+    /**
+     * Clear connection-scoped state. Preserves [shots] and [shotCount]: persisted
+     * history (DESIGN §8) is not connection state, and wiping it here made every
+     * Start tap erase the CSV history the UI had just loaded.
+     */
+    fun resetConnection() = synchronized(shotsLock) {
         connectionState.value = ConnState.IDLE
         deviceInfo.value = DeviceInfo()
         wakeUpStatus.value = null
         stateType.value = null
         tilt.value = null
         errorMessage.value = null
-        shots.value = emptyList()
         activeError.value = null
         calibration.value = null
-        shotCount.value = 0
+        historyError.value = null
         hexLog.clear()
     }
 
+    /** Full clear, including shot history. For tests and explicit user-initiated wipes. */
+    fun reset() = synchronized(shotsLock) {
+        resetConnection()
+        shots.value = emptyList()
+        shotCount.value = 0
+    }
+
     /** Prepend a shot, newest first, capped at [MAX_LIVE_SHOTS]. */
-    fun addShot(shot: Shot) {
+    fun addShot(shot: Shot) = synchronized(shotsLock) {
         shotCount.value = shotCount.value + 1
         shots.value = (listOf(shot) + shots.value).take(MAX_LIVE_SHOTS)
+    }
+
+    /**
+     * Adopt persisted history into the live list without clobbering live shots.
+     *
+     * [loaded] is oldest-first, as stored on disk. The old code checked emptiness
+     * *before* the suspending file read and then assigned, so a shot that arrived
+     * during the read was overwritten and lost from the UI. Merging under [shotsLock]
+     * closes that window.
+     */
+    fun adoptHistory(loaded: List<Shot>) = synchronized(shotsLock) {
+        if (loaded.isEmpty()) return@synchronized
+        val current = shots.value
+        if (current.isEmpty()) {
+            shots.value = loaded.asReversed().take(MAX_LIVE_SHOTS)
+            shotCount.value = loaded.size
+        } else {
+            val known = current.mapTo(mutableSetOf()) { it.shotId to it.receivedAtMs }
+            // Loaded rows are older than anything already live, so they go below.
+            val extra = loaded.asReversed().filter { (it.shotId to it.receivedAtMs) !in known }
+            if (extra.isEmpty()) return@synchronized
+            shots.value = (current + extra).take(MAX_LIVE_SHOTS)
+            shotCount.value = shotCount.value + extra.size
+        }
     }
 
     /** A healthy state clears a previously surfaced error (DESIGN §7.2). */

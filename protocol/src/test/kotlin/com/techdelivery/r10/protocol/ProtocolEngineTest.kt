@@ -18,6 +18,7 @@ import org.junit.Test
  * E3 — request/response correlation over a scripted FakeTransport session.
  * This is the regression net for hardware day (DESIGN §5.4-§5.7).
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ProtocolEngineTest {
 
     private val dynHeader: Byte = 0xAB.toByte()

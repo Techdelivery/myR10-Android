@@ -81,4 +81,97 @@ class DeviceStateHolderTest {
         assertNull(DeviceStateHolder.calibration.value)
         assertNull(DeviceStateHolder.activeError.value)
     }
+
+    /**
+     * W5 — the service resets on every Start. Persisted CSV history is not
+     * connection state, so `resetConnection` must leave the shot list alone while
+     * clearing everything that is genuinely per-connection.
+     */
+    @Test
+    fun resetConnectionPreservesShotHistory() {
+        DeviceStateHolder.addShot(shot(9))
+        DeviceStateHolder.activeError.value = DeviceAlert.ErrorAlert(
+            R10Protos.Error.ErrorCode.OVERHEATING,
+            R10Protos.Error.Severity.FATAL,
+            null,
+            null,
+        )
+        DeviceStateHolder.stateType.value = "ERROR"
+
+        DeviceStateHolder.resetConnection()
+
+        assertEquals(listOf(9), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals(1, DeviceStateHolder.shotCount.value)
+        assertEquals(ConnState.IDLE, DeviceStateHolder.connectionState.value)
+        assertNull(DeviceStateHolder.activeError.value)
+        assertNull(DeviceStateHolder.stateType.value)
+    }
+
+    /**
+     * W4 — the old load path checked emptiness before the suspending file read and
+     * then assigned, so a shot that landed mid-read was overwritten. `adoptHistory`
+     * merges instead: the live shot keeps its place and the loaded rows go below it.
+     */
+    @Test
+    fun adoptHistoryMergesLiveShotsInsteadOfClobbering() {
+        DeviceStateHolder.addShot(shot(50)) // arrived while the file was being read
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2))) // oldest-first from disk
+
+        assertEquals(listOf(50, 2, 1), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals(3, DeviceStateHolder.shotCount.value)
+    }
+
+    @Test
+    fun adoptHistoryOnEmptyAdoptsAllNewestFirst() {
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2), shot(3)))
+        assertEquals(listOf(3, 2, 1), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals(3, DeviceStateHolder.shotCount.value)
+    }
+
+    @Test
+    fun adoptHistoryIsIdempotent() {
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2)))
+        val afterFirst = DeviceStateHolder.shots.value
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2)))
+        assertEquals(afterFirst, DeviceStateHolder.shots.value)
+        assertEquals(2, DeviceStateHolder.shotCount.value)
+    }
+
+    @Test
+    fun adoptHistoryRespectsTheLiveCap() {
+        DeviceStateHolder.adoptHistory((1..MAX_LIVE_SHOTS + 50).map { shot(it) })
+        assertEquals(MAX_LIVE_SHOTS, DeviceStateHolder.shots.value.size)
+        assertEquals(MAX_LIVE_SHOTS + 50, DeviceStateHolder.shotCount.value)
+    }
+
+    /**
+     * A history-write failure has its own channel because `DeviceScreen` only
+     * renders `errorMessage` while `conn == ERROR`, and a persist backlog happens
+     * while the link is healthy.
+     */
+    @Test
+    fun historyErrorIsClearedByResetConnection() {
+        DeviceStateHolder.historyError.value = "queue full"
+        DeviceStateHolder.resetConnection()
+        assertNull(DeviceStateHolder.historyError.value)
+    }
+
+    /**
+     * History load and service start race each other on a cold launch. Either order
+     * must end with the same merged list and no duplicated rows.
+     */
+    @Test
+    fun adoptHistoryIsStableAcrossAConnectionResetInEitherOrder() {
+        // History loaded first, then the service starts.
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2)))
+        DeviceStateHolder.resetConnection()
+        assertEquals(listOf(2, 1), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals(2, DeviceStateHolder.shotCount.value)
+
+        // Live shots arrive, then a second load sees them already present.
+        DeviceStateHolder.addShot(shot(3))
+        DeviceStateHolder.adoptHistory(listOf(shot(1), shot(2), shot(3)))
+        assertEquals(listOf(3, 2, 1), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals(3, DeviceStateHolder.shotCount.value)
+    }
 }

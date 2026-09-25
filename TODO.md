@@ -188,6 +188,43 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 - [x] **J4. Reconnect backoff (§11)** — DONE 2026-09-25. `BleTransportImpl.backoffDelayMs(base, attempt, cap=60s)`: doubles per attempt, capped; a non-positive base collapses to the cap so a bad setting cannot produce a hot retry loop. `connectWithRetry` now logs each failed attempt and waits with that backoff; `connectOnce` already closes the GATT client on failure, so a GATT-133 retry starts from a clean slate.
   - Verify: `ReconnectBackoffTest` green ✅ (5 tests) — doubling, cap, non-positive base, never zero, 1-based attempt guard
 
+## Phase L — Code-review remediation (M2/M3 findings)
+
+Two rounds: errors first, then warnings, then the findings from re-reviewing those fixes. Full suite: **158 tests, 0 skipped, 0 failures**.
+
+Verify for the whole phase: `./gradlew :protocol:test :app:testDebugUnitTest --offline --rerun-tasks`
+
+- [x] **L1. `autoWake` never reached the device** — `R10ForegroundService` built `DeviceSetupConfig` without `autoWake`, so the Settings toggle was dead and the `DeviceSetupConfig` default silently won. Now wired from `settings.autoWake`.
+  - Verify: grep `autoWake = settings.autoWake` in `R10ForegroundService.kt` ✅. No Robolectric here, so this one is grep-verified only — see L11.
+- [x] **L2. Shots with no `shot_id` collapsed into one duplicate** — `Metrics.shot_id` is `optional uint32`; an absent field reads back as `0`, so the first id-less shot passed dedup and every later one was silently dropped. `DeviceAlert.ShotAlert` now carries `hasDeviceShotId` (a wire-level fact, kept off the persisted `Shot` so the CSV schema is untouched) and the pump only dedups when it is present.
+  - Verify: `AlertRouterTest.metricsWithoutShotIdReportsHasDeviceShotIdFalse`, `R10DeviceAlertPumpTest.shotsWithoutShotIdAreNotCollapsedIntoOneDuplicate` ✅
+- [x] **L3. Wake fan-out (§7.2)** — every `STANDBY` alert launched a fresh `wakeUp()`. The engine send-mutex hid the pile-up until the in-flight wake was answered, then all queued coroutines fired at once. Now single-flight behind `wakeLock`, cleared on `resetForNewConnection()`.
+  - Verify: `repeatedStandbyDoesNotFanOutWakeRequests`, `wakeIsRetriedOnALaterStandbyOnceTheFirstCompletes` ✅ (both fail with the guard removed)
+- [x] **L4. Alert backpressure reached the BLE inbound path** — `_alerts.emit` suspended the pump once its buffer filled, backing up `ProtocolEngine._events` and then the frame reader. Alert flow is `DROP_OLDEST` + `tryEmit` now (a stale UI mirror is worthless). `_shots` stays `SUSPEND` on purpose: it feeds persistence, so dropping a real shot is worse than a bounded stall.
+  - Verify: `stalledAlertSubscriberDoesNotStallShots` ✅ (fails with `UncompletedCoroutinesError` when reverted); subscription registration is pinned via `alertSubscriberCount` so the test cannot pass by the subscriber never landing
+- [x] **L5. Blocking disk I/O on `Dispatchers.Default`** — shot delivery was serialized behind every file write. Extracted `ShotPersistSink`: bounded queue, one writer on an injectable IO dispatcher, non-blocking `submit`. The service collector only does the in-memory mirror plus a `submit`.
+  - Verify: `ShotPersistSinkTest` ✅ (6 tests: drain, failure surfaces, full-queue drop + count, drain timeout, idempotent start, submit-after-close)
+- [x] **L6. `loadHistory` TOCTOU** — emptiness was checked before the suspending file read and the result assigned after, so a shot arriving mid-read was overwritten and lost from the UI. `DeviceStateHolder.adoptHistory` merges under a lock instead.
+  - Verify: `adoptHistoryMergesLiveShotsInsteadOfClobbering`, `adoptHistoryIsIdempotent`, `adoptHistoryIsStableAcrossAConnectionResetInEitherOrder` ✅
+- [x] **L7. `reset()` wiped loaded history** — every Start cleared the CSV history the UI had just loaded. Split into `resetConnection()` (preserves `shots`/`shotCount`) used by the service, and `reset()` (full clear) for tests.
+  - Verify: `resetConnectionPreservesShotHistory` ✅
+- [x] **L8. No cross-session dedup (§8)** — see the §8 key-resolution note in `DESIGN.md`. `ShotCsvStore` keys on `shot_id || hex(raw_metrics)` over an LRU window; `append` returns whether it wrote. Shots with no raw payload carry no key and are always written.
+  - Verify: `secondStoreOnSameFileSkipsAnAlreadyPersistedFrame`, `differingShotIdIsStillWritten`, `shotsWithoutRawPayloadAreNeverDeduped`, `keyWindowEvictsLeastRecentlyUsedNotFirstIn`, `clearResetsTheDedupIndex` ✅
+- [x] **L9. Torn writes** — `appendText` with no sync could leave a partial line that `decode` silently drops, losing the shot. Appends go through `RandomAccessFile("rwd")` + `fd.sync()` in one write.
+  - Verify: `durableAppendLeavesACompleteReadableFile` ✅ (every line parses)
+- [x] **L10. Unbounded settings** — steppers had no bounds and the repository validated nothing, so a runaway `−` could put a negative `tee_range` on the wire. Ranges live in `AppSettings`, every setter clamps, `StepperRow` disables its buttons at the same bounds. `NaN` air density falls back to 1.0. Device name is trimmed, capped at 31 (the BLE advertised-name limit — it is also the scan filter, so a blank name means the R10 is never found).
+  - Verify: `numericSettersClampToDesignRanges`, `clampsAtTheUpperBoundToo`, `inRangeValuesAreStoredUnclamped`, `deviceNameIsTrimmedCappedAndNeverBlank` ✅
+- [x] **L11. Backoff overflowed to a 1 ms hot retry** — `baseMs shl n` wrapped negative past 2^63 and the trailing `coerceAtLeast(1)` landed on 1 ms, the exact failure the function exists to prevent. Growth is in `Double` now, which saturates at the cap.
+  - Verify: `hugeBaseSaturatesInsteadOfWrappingTo1ms`, `capMustBePositive` ✅ (both fail with the `shl` version)
+- [x] **L12. Findings from re-reviewing L1–L11** — `wakeJob` was written from two coroutines unsynchronized (a stale read could suppress a legitimate wake); the persist-overflow message was invisible because `DeviceScreen` renders `errorMessage` only while `conn == ERROR`, so a `historyError` channel was added and surfaced in the Shots tab; the overflow log said "full" when the queue was closed; `DESIGN.md` §8 still claimed a `deviceShotId` unique index.
+  - Verify: `historyErrorIsClearedByResetConnection` ✅, `historyError` rendered in `ShotsScreen` ✅
+- [x] **L13. Compiler-warning cleanup** — `@OptIn(ExperimentalCoroutinesApi::class)` on `ProtocolEngineTest`, `GoldenReplayTest`, `RequestLayoutTest`, `R10DeviceAlertPumpTest`. Test-warning count went from 41 to 0; the only remaining warnings are pre-existing deprecated-BLE-API in `BleTransportImpl` (9), `ScanDumpActivity` (2), the `TabRow` deprecation in `MainActivity`, and one needed `!!` in `AlertRouterTest`.
+  - Verify: `./gradlew :protocol:compileTestKotlin :app:compileDebugUnitTestKotlin --rerun-tasks` → no test-source warnings ✅
+
+**Not done:** no Robolectric added, so the service wiring (L1) and the `historyError` mirror stay grep-verified. No detekt/ktlint added — introducing a style gate would fail on pre-existing formatting and is its own task.
+
+---
+
 ## Phase K — Remaining hardware-gated items
 
 - [ ] **K1. [HW] M2 acceptance: hit balls.** Shots appear in the Shots tab with sane units (ball speed in mph, spin in rpm, angles in degrees), dedup by `shot_id` holds under device re-push, `STANDBY` auto-wakes, error alerts surface for OVERHEATING / RADAR_SATURATION / PLATFORM_TILTED.
