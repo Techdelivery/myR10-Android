@@ -16,6 +16,12 @@ concurrency:
 permissions:
   contents: read
 
+# All pinned action majors run on Node.js 24 (the Node 20 runtime is deprecated).
+# NOTE: gradle/actions is deliberately held at v5, NOT v6. In v6 the caching
+# implementation was extracted into `gradle-actions-caching`, a proprietary
+# commercial component outside the MIT license, so using v6 means accepting
+# Gradle's commercial Terms of Use. v5.0.2 is node24 and still MIT.
+# See https://blog.gradle.org/github-actions-for-gradle-v6
 jobs:
   # Guard from TODO B1: :protocol must stay free of any Android dependency so it
   # remains testable on a plain JVM.
@@ -24,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Fail if :protocol imports android.* / androidx.*
         run: |
@@ -40,14 +46,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         with:
           # Only main writes the cache, so PRs share one warm cache instead of
           # each PR forking its own.
@@ -65,7 +71,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: protocol-test-results
           path: |
@@ -79,20 +85,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
           accept-android-sdk-licenses: true
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
@@ -109,7 +115,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-test-results
           path: |
