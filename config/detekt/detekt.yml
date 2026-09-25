@@ -1,0 +1,128 @@
+# R10Monitor detekt configuration.
+#
+# The root build sets `buildUponDefaultConfig = true`, so detekt's shipped
+# defaults are in force and this file records ONLY the deltas — each with the
+# reason it differs. If a rule is not listed here, it runs at the detekt default.
+#
+#   ./gradlew detekt              run the gate
+#   ./gradlew detektBaseline      re-absorb existing findings into the baseline
+#
+# Findings that are deliberate, already-known debt live in baseline.xml rather
+# than being silenced here, so the rule still fires on new code.
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+comments:
+  # KDoc is expected on public API (this repo documents heavily) but not enforced
+  # mechanically — it produced no signal on a codebase this small.
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  # `@deprecated` block tags without a replacement are worth flagging.
+  DeprecatedBlockTag:
+    active: true
+
+complexity:
+  LongMethod:
+    # Default 60 is too tight for Compose screens and for the §7.1 setup
+    # sequencer, both of which are long-but-flat by nature.
+    threshold: 80
+  LongParameterList:
+    # Compose row/cell composables legitimately take a label, a value, a range
+    # and a callback.
+    functionThreshold: 7
+    constructorThreshold: 8
+  TooManyFunctions:
+    # SettingsRepository / ShotCsvStore / R10Device are facades: many small,
+    # single-purpose methods is the design, not a smell.
+    thresholdInFiles: 25
+    thresholdInClasses: 20
+    thresholdInObjects: 20
+  NestedBlockDepth:
+    # GATT callbacks + retry loops nest one level deeper than the default 4.
+    threshold: 5
+
+coroutines:
+  # `GlobalScope.launch` leaks past the owning lifecycle. Banned outright; the
+  # app passes an explicit scope everywhere already.
+  GlobalCoroutineUsage:
+    active: true
+  # A suspend function that catches CancellationException without rethrowing
+  # silently breaks structured cancellation. Worth the noise in BLE code.
+  SuspendFunSwallowedCancellation:
+    active: true
+
+exceptions:
+  SwallowedException:
+    # A scan timeout is a normal, logged, null-returning outcome here, not a
+    # swallowed error.
+    ignoredExceptionTypes:
+      - 'InterruptedException'
+      - 'MalformedURLException'
+      - 'NumberFormatException'
+      - 'ParseException'
+      - 'TimeoutCancellationException'
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by convention.
+    ignoreAnnotated: ['Composable']
+  InvalidPackageDeclaration:
+    # Package must match the source-set-relative directory.
+    active: true
+
+performance:
+  UnnecessaryPartOfBinaryExpression:
+    active: true
+
+potential-bugs:
+  CastNullableToNonNullableType:
+    active: true
+  DontDowncastCollectionTypes:
+    active: true
+  NullCheckOnMutableProperty:
+    active: true
+  NullableToStringCall:
+    active: true
+  PropertyUsedBeforeDeclaration:
+    active: true
+  UnconditionalJumpStatementInLoop:
+    active: true
+  UnnecessaryNotNullCheck:
+    active: true
+
+style:
+  ReturnCount:
+    # Guard clauses are the preferred shape in the codec code; counting them as
+    # extra returns pushes every parser over the default of 2.
+    max: 4
+    excludeGuardClauses: true
+  MagicNumber:
+    # The :protocol module is a byte-level codec — 0xFF, 255 and field widths
+    # ARE the domain. Named constants already exist for the values that mean
+    # something (WireConstants); flagging the rest would only push people to
+    # write worse code. Still enforced in :app.
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'
+      - '**/commonTest/**'
+      - '**/jvmTest/**'
+      - '**/androidUnitTest/**'
+      - '**/androidInstrumentedTest/**'
+      - '**/jsTest/**'
+      - '**/iosTest/**'
+      - '**/*.kts'
+      - '**/protocol/**'
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+  MaxLineLength:
+    # Formatting is ktlint's job (see .editorconfig). Running a second,
+    # differently-scoped line-length rule here only produces conflicting noise —
+    # detekt counts comment lines ktlint deliberately leaves alone.
+    active: false
+  WildcardImport:
+    active: true
+    excludeImports: []

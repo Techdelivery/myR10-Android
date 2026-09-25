@@ -33,16 +33,15 @@ import com.techdelivery.r10.settings.asDoubleRange
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/** Feet per metre — used to echo the tee distance in metric next to the imperial input. */
+private const val FT_PER_M = 3.281f
+
 /**
  * DESIGN §9 tab 3 — every §8 settings key, persisted straight to DataStore.
  * Numeric keys use steppers so there is no half-typed value to parse.
  */
 @Composable
-fun SettingsScreen(
-    repo: SettingsRepository,
-    onExportCsv: suspend () -> String,
-    modifier: Modifier = Modifier,
-) {
+fun SettingsScreen(repo: SettingsRepository, onExportCsv: suspend () -> String, modifier: Modifier = Modifier) {
     val settings by repo.settings.collectAsState(initial = AppSettings())
     val scope = rememberCoroutineScope()
     var nameDraft by remember { mutableStateOf(settings.deviceName) }
@@ -155,8 +154,9 @@ fun SettingsScreen(
                     range = AppSettings.TEE_DISTANCE_FT.asDoubleRange(),
                     onValue = { scope.launch { repo.setTeeDistanceFt(it.toInt()) } },
                 )
+                val teeRangeMeters = String.format(Locale.US, "%.3f", settings.teeDistanceFt / FT_PER_M)
                 Text(
-                    "tee_range sent to device = ${String.format(Locale.US, "%.3f", settings.teeDistanceFt / 3.281f)} m",
+                    "tee_range sent to device = $teeRangeMeters m",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -241,6 +241,9 @@ private fun StepperRow(
 /** Trim trailing zeros: 1.0 -> "1", 0.01 -> "0.01". */
 private fun formatValue(v: Double): String {
     val rounded = Math.rint(v * 1000.0) / 1000.0
-    return if (rounded == Math.rint(rounded)) Math.rint(rounded).toInt().toString()
-    else rounded.toString()
+    return if (rounded == Math.rint(rounded)) {
+        Math.rint(rounded).toInt().toString()
+    } else {
+        rounded.toString()
+    }
 }

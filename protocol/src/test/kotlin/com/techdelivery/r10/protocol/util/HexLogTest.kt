@@ -43,7 +43,10 @@ class HexLogTest {
         val log = HexLog(capacity = 4096)
         val t1 = Thread { repeat(500) { log.tx(byteArrayOf(1)) } }
         val t2 = Thread { repeat(500) { log.rx(byteArrayOf(2)) } }
-        t1.start(); t2.start(); t1.join(); t2.join()
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
         assertEquals(1000, log.size())
     }
 
@@ -60,7 +63,8 @@ class HexLogTest {
     @Test
     fun clear_empties() {
         val log = HexLog(capacity = 4)
-        log.tx(byteArrayOf(1)); log.rx(byteArrayOf(2))
+        log.tx(byteArrayOf(1))
+        log.rx(byteArrayOf(2))
         log.clear()
         assertEquals(0, log.size())
         assertTrue(log.snapshot().isEmpty())

@@ -124,10 +124,75 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Style gate: ktlint (formatting, .editorconfig) + detekt (code smells) on every
+  # module, plus Android Lint on :app. docs/CODING_STANDARDS.md is the prose.
+  lint:
+    name: Style gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Run the format gate before the slower Android lint so a formatting failure
+      # surfaces in seconds rather than after a full lint analysis.
+      - name: ktlint + detekt (all modules)
+        run: ./gradlew ktlintCheck detekt --max-workers=4
+
+      - name: Android Lint (:app)
+        run: ./gradlew :app:lintDebug --max-workers=4
+
+      - name: Publish lint summary
+        if: always()
+        run: |
+          {
+            echo "## Style gate"
+            echo
+            echo "| Tool | Report |"
+            echo "| --- | --- |"
+            for f in $(find . -path '*/build/reports/ktlint/*' -name '*.html' | sort); do
+              echo "| ktlint | \`$f\` |"
+            done
+            for f in $(find . -path '*/build/reports/detekt/*' -name '*.html' | sort); do
+              echo "| detekt | \`$f\` |"
+            done
+            for f in $(find . -path '*/build/reports/*' -name 'lint-results-*.html' | sort); do
+              echo "| Android Lint | \`$f\` |"
+            done
+            echo
+            echo "Reports are also attached to this run as the \`lint-reports\` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-reports
+          path: |
+            **/build/reports/ktlint/**
+            **/build/reports/detekt/**
+            **/build/reports/lint-results-*.html
+          if-no-files-found: warn
+          retention-days: 14
+
   # Single green check to make branch protection rules easy to write.
   tests:
     name: Tests
-    needs: [protocol-purity, protocol-tests, app-tests]
+    needs: [protocol-purity, protocol-tests, app-tests, lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -137,11 +202,13 @@ jobs:
           PURITY: ${{ needs.protocol-purity.result }}
           PROTOCOL: ${{ needs.protocol-tests.result }}
           APP: ${{ needs.app-tests.result }}
+          LINT: ${{ needs.lint.result }}
         run: |
           echo "protocol-purity: $PURITY"
           echo "protocol-tests:  $PROTOCOL"
           echo "app-tests:       $APP"
-          for r in "$PURITY" "$PROTOCOL" "$APP"; do
+          echo "lint:            $LINT"
+          for r in "$PURITY" "$PROTOCOL" "$APP" "$LINT"; do
             if [ "$r" != "success" ]; then
               echo "::error::At least one required job did not succeed ($r)."
               exit 1

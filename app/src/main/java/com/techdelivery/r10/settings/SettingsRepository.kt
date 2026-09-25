@@ -31,8 +31,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         )
     }
 
-    suspend fun setAutoWake(v: Boolean) { dataStore.edit { it[KEY_AUTO_WAKE] = v } }
-    suspend fun setCalibrateTiltOnConnect(v: Boolean) { dataStore.edit { it[KEY_CALIBRATE_TILT] = v } }
+    suspend fun setAutoWake(v: Boolean) {
+        dataStore.edit { it[KEY_AUTO_WAKE] = v }
+    }
+    suspend fun setCalibrateTiltOnConnect(v: Boolean) {
+        dataStore.edit { it[KEY_CALIBRATE_TILT] = v }
+    }
 
     // Every numeric setter clamps to the DESIGN §8 envelope in AppSettings. The UI
     // stepper also bounds its buttons, but the repository is the last place that
@@ -41,7 +45,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setHumidity(v: Int) = putClamped(KEY_HUMIDITY, v, AppSettings.HUMIDITY)
     suspend fun setAltitude(v: Int) = putClamped(KEY_ALTITUDE, v, AppSettings.ALTITUDE_M)
     suspend fun setTeeDistanceFt(v: Int) = putClamped(KEY_TEE_DISTANCE_FT, v, AppSettings.TEE_DISTANCE_FT)
-    suspend fun setReconnectIntervalS(v: Int) = putClamped(KEY_RECONNECT_INTERVAL_S, v, AppSettings.RECONNECT_INTERVAL_S)
+    suspend fun setReconnectIntervalS(v: Int) =
+        putClamped(KEY_RECONNECT_INTERVAL_S, v, AppSettings.RECONNECT_INTERVAL_S)
 
     suspend fun setAirDensity(v: Double) {
         val clamped = if (v.isNaN()) 1.0 else v.coerceIn(AppSettings.AIR_DENSITY)
@@ -53,7 +58,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[key] = clamped }
     }
 
-    suspend fun setDebugLogging(v: Boolean) { dataStore.edit { it[KEY_DEBUG_LOGGING] = v } }
+    suspend fun setDebugLogging(v: Boolean) {
+        dataStore.edit { it[KEY_DEBUG_LOGGING] = v }
+    }
     suspend fun setDeviceName(v: String) {
         // Trim, cap at the BLE name limit, and never store blank — this value is
         // the scan filter, so a blank name means the R10 is never found.

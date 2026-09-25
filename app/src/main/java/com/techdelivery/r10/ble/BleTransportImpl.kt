@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
-import android.os.ParcelUuid
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
@@ -18,6 +17,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.ParcelUuid
 import android.util.Log
 import com.techdelivery.r10.protocol.transport.Transport
 import com.techdelivery.r10.protocol.transport.TransportState
@@ -26,6 +26,7 @@ import com.techdelivery.r10.protocol.wire.GattUuids
 import com.techdelivery.r10.protocol.wire.WireConstants
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,7 +34,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.util.UUID
@@ -79,6 +79,7 @@ class BleTransportImpl(
                     _state.value = TransportState.CONNECTED
                     g.discoverServices()
                 }
+
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     _state.value = TransportState.DISCONNECTED
                     connectDeferred?.completeExceptionally(IOException("gatt disconnected status=$status"))
@@ -103,24 +104,27 @@ class BleTransportImpl(
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) opDeferred?.complete(Unit)
-            else {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                opDeferred?.complete(Unit)
+            } else {
                 Log.w(TAG, "char write FAILED ${c.uuid} status=$status")
                 opDeferred?.completeExceptionally(IOException("write status=$status"))
             }
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) opDeferred?.complete(Unit)
-            else {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                opDeferred?.complete(Unit)
+            } else {
                 Log.w(TAG, "descriptor write FAILED ${d.uuid} status=$status")
                 opDeferred?.completeExceptionally(IOException("desc write status=$status"))
             }
         }
 
         override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) readDeferred?.complete(c.value ?: ByteArray(0))
-            else {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                readDeferred?.complete(c.value ?: ByteArray(0))
+            } else {
                 Log.w(TAG, "char read FAILED ${c.uuid} status=$status")
                 readDeferred?.completeExceptionally(IOException("read status=$status"))
             }
@@ -138,7 +142,10 @@ class BleTransportImpl(
             scanForDevice()
                 ?: throw IOException("device '$deviceName' not found (not bonded, not advertising)")
         }
-        Log.i(TAG, "target ${device.address} bondState=${device.bondState} via=${if (bonded != null) "bonded-direct" else "scan"}")
+        Log.i(
+            TAG,
+            "target ${device.address} bondState=${device.bondState} via=${if (bonded != null) "bonded-direct" else "scan"}",
+        )
 
         if (device.bondState != BluetoothDevice.BOND_BONDED) {
             Log.i(TAG, "bonding with ${device.address}")
@@ -207,7 +214,7 @@ class BleTransportImpl(
 
     // --- internals ---
 
-    private fun requireGatt(): BluetoothGatt = gatt ?: throw IllegalStateException("not connected")
+    private fun requireGatt(): BluetoothGatt = gatt ?: error("not connected")
 
     private fun findCharacteristic(uuid: UUID): BluetoothGattCharacteristic? {
         val g = gatt ?: return null
@@ -277,8 +284,10 @@ class BleTransportImpl(
                 Log.i(TAG, "bond broadcast addr=${d?.address} state=${d?.bondState}")
                 when (d?.bondState) {
                     BluetoothDevice.BOND_BONDED -> if (!deferred.isCompleted) deferred.complete(Unit)
-                    BluetoothDevice.BOND_NONE -> if (!deferred.isCompleted)
+
+                    BluetoothDevice.BOND_NONE -> if (!deferred.isCompleted) {
                         deferred.completeExceptionally(IOException("bonding failed"))
+                    }
                 }
             }
         }

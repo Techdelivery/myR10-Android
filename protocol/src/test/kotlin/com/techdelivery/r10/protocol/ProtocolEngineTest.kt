@@ -36,10 +36,6 @@ class ProtocolEngineTest {
         for (slice in Framing.sliceToChunks(msg)) emit(byteArrayOf(header) + slice)
     }
 
-    private suspend fun ProtocolEngine.completeHandshake() {
-        // caller must have started; push the device reply
-    }
-
     @Test
     fun handshakeCompletesAndWritesFinalRawWrite() = runTest {
         val fake = FakeTransport()
@@ -48,7 +44,7 @@ class ProtocolEngineTest {
         runCurrent()
         // first handshake write on air = [0x00] + 12-byte literal
         assertTrue(
-            fake.writes.any { it.contentEquals(byteArrayOf(0x00) + WireConstants.HANDSHAKE_FIRST_WRITE) }
+            fake.writes.any { it.contentEquals(byteArrayOf(0x00) + WireConstants.HANDSHAKE_FIRST_WRITE) },
         )
         // device reply (header 0x00 -> routed to handshake)
         fake.emit(byteArrayOf(0x00) + replyBody)

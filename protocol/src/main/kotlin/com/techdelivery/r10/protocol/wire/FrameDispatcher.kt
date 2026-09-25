@@ -13,16 +13,15 @@ import com.techdelivery.r10.protocol.util.ByteUtil
  * CRC mismatch -> log + drop (deliberate hardening; the reference logs and
  * continues, we drop to avoid dispatching/acking garbage).
  */
-class FrameDispatcher(
-    private val log: (String) -> Unit = {},
-) {
+class FrameDispatcher(private val log: (String) -> Unit = {}) {
 
     sealed interface Dispatch {
         /** Ack payload P to send through the framing path with the current header. */
         val ackPayload: ByteArray?
 
         /** B413 response whose counter matches the pending request. */
-        data class Response(val counter: Int, val proto: R10Protos.WrapperProto, override val ackPayload: ByteArray) : Dispatch
+        data class Response(val counter: Int, val proto: R10Protos.WrapperProto, override val ackPayload: ByteArray) :
+            Dispatch
 
         /** B313 device-originated request (e.g. event notification). */
         data class DeviceRequest(val proto: R10Protos.WrapperProto, override val ackPayload: ByteArray) : Dispatch
@@ -47,8 +46,11 @@ class FrameDispatcher(
         ) {
             val counter = ByteUtil.readU16le(msg, 2)
             ByteUtil.concat(
-                WireConstants.TYPE_ACK, origType, byteArrayOf(0x00),
-                ByteUtil.u16le(counter), WireConstants.ACK_COUNTER_TAIL,
+                WireConstants.TYPE_ACK,
+                origType,
+                byteArrayOf(0x00),
+                ByteUtil.u16le(counter),
+                WireConstants.ACK_COUNTER_TAIL,
             )
         } else {
             ByteUtil.concat(WireConstants.TYPE_ACK, origType, byteArrayOf(0x00))
@@ -65,24 +67,28 @@ class FrameDispatcher(
         val ack = buildAck(msg)
         return when {
             WireConstants.isType(msg, WireConstants.TYPE_A0) -> Dispatch.InfoAck("A013", ack)
+
             WireConstants.isType(msg, WireConstants.TYPE_BA) -> Dispatch.InfoAck("BA13", ack)
+
             WireConstants.isType(msg, WireConstants.TYPE_B4) -> {
                 val counter = ByteUtil.readU16le(msg, 2)
                 if (counter == expectedCounter) {
                     val proto = R10Protos.WrapperProto.parseFrom(
-                        msg.copyOfRange(WireConstants.INBOUND_PROTO_OFFSET, msg.size)
+                        msg.copyOfRange(WireConstants.INBOUND_PROTO_OFFSET, msg.size),
                     )
                     Dispatch.Response(counter, proto, ack)
                 } else {
                     Dispatch.InfoAck("B413-stale", ack) // ack only, no completion
                 }
             }
+
             WireConstants.isType(msg, WireConstants.TYPE_B3) -> {
                 val proto = R10Protos.WrapperProto.parseFrom(
-                    msg.copyOfRange(WireConstants.INBOUND_PROTO_OFFSET, msg.size)
+                    msg.copyOfRange(WireConstants.INBOUND_PROTO_OFFSET, msg.size),
                 )
                 Dispatch.DeviceRequest(proto, ack)
             }
+
             else -> Dispatch.UnknownAck(ByteUtil.toHex(msg.copyOfRange(0, minOf(2, msg.size))), ack)
         }
     }

@@ -2,7 +2,6 @@ package com.techdelivery.r10.data
 
 import LaunchMonitor.Proto.R10Protos
 import com.techdelivery.r10.protocol.shot.Shot
-import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -12,6 +11,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 /**
  * M3 — the shot -> disk handoff. These are the cases the foreground service used to
@@ -28,7 +28,11 @@ class ShotPersistSinkTest {
     @Test
     fun submittedShotsReachTheAppender() = runTest {
         val written = mutableListOf<Int>()
-        val sink = ShotPersistSink({ s -> written.add(s.shotId); true }, backgroundScope, 8, UnconfinedTestDispatcher(testScheduler))
+        val sink =
+            ShotPersistSink({ s ->
+                written.add(s.shotId)
+                true
+            }, backgroundScope, 8, UnconfinedTestDispatcher(testScheduler))
         sink.start()
         repeat(5) { assertTrue(sink.submit(shot(it))) }
 
@@ -80,7 +84,11 @@ class ShotPersistSinkTest {
     @Test
     fun closeReportsFalseWhenTheWriterCannotDrainInTime() = runTest {
         val gate = CompletableDeferred<Unit>()
-        val sink = ShotPersistSink({ _ -> gate.await(); true }, backgroundScope, 4, UnconfinedTestDispatcher(testScheduler))
+        val sink =
+            ShotPersistSink({ _ ->
+                gate.await()
+                true
+            }, backgroundScope, 4, UnconfinedTestDispatcher(testScheduler))
         sink.start()
         sink.submit(shot(1))
         testScheduler.advanceUntilIdle()
@@ -92,7 +100,11 @@ class ShotPersistSinkTest {
     @Test
     fun startIsIdempotentSoAReconnectCannotSpawnASecondWriter() = runTest {
         var writes = 0
-        val sink = ShotPersistSink({ _ -> writes++; true }, backgroundScope, ioDispatcher = UnconfinedTestDispatcher(testScheduler))
+        val sink =
+            ShotPersistSink({ _ ->
+                writes++
+                true
+            }, backgroundScope, ioDispatcher = UnconfinedTestDispatcher(testScheduler))
         sink.start()
         sink.start()
         sink.start()

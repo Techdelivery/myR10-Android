@@ -37,15 +37,15 @@ import com.techdelivery.r10.state.DeviceStateHolder
 import com.techdelivery.r10.ui.DeviceScreen
 import com.techdelivery.r10.ui.SettingsScreen
 import com.techdelivery.r10.ui.ShotsScreen
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val TABS = listOf("Device", "Shots", "Settings")
 
@@ -104,7 +104,9 @@ class MainActivity : ComponentActivity() {
                         }
                         when (tab) {
                             0 -> DeviceScreen(showHexLog = settings.debugLogging, modifier = Modifier.fillMaxSize())
+
                             1 -> ShotsScreen(Modifier.fillMaxSize())
+
                             else -> SettingsScreen(
                                 repo = repo,
                                 onExportCsv = { exportCsv(store) },

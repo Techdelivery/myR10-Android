@@ -80,7 +80,9 @@ class AlertRouterTest {
             .setCode(R10Protos.Error.ErrorCode.OVERHEATING)
             .setSeverity(R10Protos.Error.Severity.FATAL)
             .build()
-        val e = AlertRouter.route(wrap(R10Protos.AlertDetails.newBuilder().setError(err).build())).single() as DeviceAlert.ErrorAlert
+        val e = AlertRouter.route(
+            wrap(R10Protos.AlertDetails.newBuilder().setError(err).build()),
+        ).single() as DeviceAlert.ErrorAlert
         assertNull(e.rollDeg)
         assertNull(e.pitchDeg)
     }
@@ -91,7 +93,9 @@ class AlertRouterTest {
             .setStatus(R10Protos.CalibrationStatus.StatusType.RECALIBRATION_REQUIRED)
             .setResult(R10Protos.CalibrationStatus.CalibrationResult.UNIT_MOVING)
             .build()
-        val c = AlertRouter.route(wrap(R10Protos.AlertDetails.newBuilder().setTiltCalibration(cal).build())).single() as DeviceAlert.CalibrationAlert
+        val c = AlertRouter.route(
+            wrap(R10Protos.AlertDetails.newBuilder().setTiltCalibration(cal).build()),
+        ).single() as DeviceAlert.CalibrationAlert
         assertEquals(R10Protos.CalibrationStatus.StatusType.RECALIBRATION_REQUIRED, c.status)
         assertEquals(R10Protos.CalibrationStatus.CalibrationResult.UNIT_MOVING, c.result)
     }
@@ -119,7 +123,9 @@ class AlertRouterTest {
         val noDetails = R10Protos.WrapperProto.newBuilder()
             .setEvent(
                 R10Protos.EventSharing.newBuilder().setNotification(
-                    R10Protos.AlertNotification.newBuilder().setType(R10Protos.AlertNotification.AlertType.ACTIVITY_STOP),
+                    R10Protos.AlertNotification.newBuilder().setType(
+                        R10Protos.AlertNotification.AlertType.ACTIVITY_STOP,
+                    ),
                 ),
             ).build()
         assertTrue(AlertRouter.route(noDetails).single() is DeviceAlert.Ignored)

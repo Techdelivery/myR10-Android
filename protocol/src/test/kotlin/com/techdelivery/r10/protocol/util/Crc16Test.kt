@@ -15,7 +15,7 @@ class Crc16Test {
     fun checkVector_emitsLittleEndianBytes() {
         assertArrayEquals(
             byteArrayOf(0x3D, 0xBB.toByte()),
-            Crc16.computeLe("123456789".toByteArray(Charsets.US_ASCII))
+            Crc16.computeLe("123456789".toByteArray(Charsets.US_ASCII)),
         )
     }
 

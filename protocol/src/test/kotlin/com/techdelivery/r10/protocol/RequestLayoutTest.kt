@@ -35,13 +35,12 @@ class RequestLayoutTest {
 
     private val dynHeader: Byte = 0x07
 
-    private fun wakeUpProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(
-                R10Protos.LaunchMonitorService.newBuilder()
-                    .setWakeUpRequest(R10Protos.WakeUpRequest.getDefaultInstance()),
-            )
-            .build()
+    private fun wakeUpProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder()
+                .setWakeUpRequest(R10Protos.WakeUpRequest.getDefaultInstance()),
+        )
+        .build()
 
     @Test
     fun requestCounterIsLe32AndProtoStartsAtOffset16() = runTest {

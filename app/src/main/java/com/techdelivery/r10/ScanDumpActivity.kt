@@ -11,8 +11,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import android.util.Log
-import com.techdelivery.r10.protocol.wire.GattUuids
 import androidx.activity.ComponentActivity
+import com.techdelivery.r10.protocol.wire.GattUuids
 import java.util.Locale
 
 /**
@@ -64,7 +64,7 @@ class ScanDumpActivity : ComponentActivity() {
             return
         }
 
-        Log.i(TAG, "=== SCAN DUMP START (unfiltered, read-only, ${DUMP_MS / 1000}s) ===")
+        Log.i(TAG, "=== SCAN DUMP START (unfiltered, read-only, ${DUMP_MS / MS_PER_S}s) ===")
 
         val cb = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) = dump(result)
@@ -108,7 +108,9 @@ class ScanDumpActivity : ComponentActivity() {
                     Log.i(
                         TAG,
                         "FILTER MATCH %s name=%s rssi=%d%s".format(
-                            a, result.device?.name, result.rssi,
+                            a,
+                            result.device?.name,
+                            result.rssi,
                             if (a.equals(TARGET, true)) " <<< R10 (production filter WORKS)" else "",
                         ),
                     )
@@ -123,7 +125,17 @@ class ScanDumpActivity : ComponentActivity() {
         handler.postDelayed({
             runCatching { scanner.stopScan(fcb) }
             Log.i(TAG, "=== FILTERED SCAN END (matched=${matched.size}) ===")
-            Log.i(TAG, if (matched.any { it.equals(TARGET, true) }) "VERDICT: production filter finds the R10" else "VERDICT: production filter did NOT find the R10")
+            Log.i(
+                TAG,
+                if (matched.any {
+                        it.equals(TARGET, true)
+                    }
+                ) {
+                    "VERDICT: production filter finds the R10"
+                } else {
+                    "VERDICT: production filter did NOT find the R10"
+                },
+            )
             finish()
         }, FILTERED_MS)
     }
@@ -153,7 +165,14 @@ class ScanDumpActivity : ComponentActivity() {
         Log.i(
             TAG,
             "%s name=%-18s rssi=%-5d connectable=%-5s uuids=%s mfg=%s %s%s".format(
-                d.address, name ?: "null", r.rssi, r.isConnectable, uuids, mfg, advFlags, marker,
+                d.address,
+                name ?: "null",
+                r.rssi,
+                r.isConnectable,
+                uuids,
+                mfg,
+                advFlags,
+                marker,
             ),
         )
     }
@@ -161,6 +180,7 @@ class ScanDumpActivity : ComponentActivity() {
     companion object {
         private const val TAG = "R10SCAN"
         private const val DUMP_MS = 20_000L
+        private const val MS_PER_S = 1_000L
         private const val FILTERED_MS = 12_000L
         private const val TARGET = "CE:33:1E:DF:1D:07"
 

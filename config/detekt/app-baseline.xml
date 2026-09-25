@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<!--
+  Pre-existing detekt findings, absorbed so the gate can be strict from here on.
+  A baselined rule STILL FIRES on new code — only these exact signatures are exempt.
+
+  Do not add to this file to make a build go green. Fix the finding, or record the
+  debt in TODO.md and let the baseline entry be removed when it is paid down.
+
+  Tracked in TODO.md under "Style gate debt (K5)".
+-->
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:R10ForegroundService.kt$R10ForegroundService$@SuppressLint("MissingPermission") private fun startDevice()</ID>
+    <ID>LongMethod:R10ForegroundService.kt$R10ForegroundService$@SuppressLint("MissingPermission") private fun startDevice()</ID>
+    <ID>LongMethod:SettingsScreen.kt$@Composable fun SettingsScreen(repo: SettingsRepository, onExportCsv: suspend () -&gt; String, modifier: Modifier = Modifier)</ID>
+    <ID>ReturnCount:ShotCsvStore.kt$ShotCsvStore.Companion$fun decode(line: String): Shot?</ID>
+    <ID>TooGenericExceptionCaught:BleTransportImpl.kt$BleTransportImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:R10ForegroundService.kt$R10ForegroundService$e: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>

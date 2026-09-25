@@ -1,0 +1,39 @@
+# EditorConfig — single source of truth for formatting in R10Monitor.
+#
+# IntelliJ/Android Studio and ktlint both read this file, so "Reformat Code" in
+# the IDE and `./gradlew ktlintCheck` agree by construction. Do not set
+# formatting preferences in the IDE alone; change them here.
+#
+# Style choice: ktlint's `intellij_idea` code style — the formatting a stock
+# Kotlin IDE applies. `ktlint_official` was evaluated and rejected for this repo:
+# it rewrites every expression-body function (`fun f() = expr` gets split across
+# lines, adding an indent level to the whole body) and collapses the aligned
+# trailing comments the wire-protocol code uses to document byte layout and
+# setup-step numbering. It is a one-line change here if that is ever preferred.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+ktlint_code_style = intellij_idea
+# Composables are PascalCase by framework convention; JUnit test methods use
+# backticked sentences. Neither is a naming violation here.
+ktlint_function_naming_ignore_when_annotated_with = Composable, Test
+# Aligned trailing comments are load-bearing in the protocol/codec code
+# (`// m/s`, `// rpm`, `// 6`, `// 3000 * sin(-90deg)`). ktlint would
+# squash each run of spaces to one.
+ktlint_standard_no-multi-spaces = disabled
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

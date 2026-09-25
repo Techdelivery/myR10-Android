@@ -10,9 +10,9 @@ import com.techdelivery.r10.protocol.wire.GattUuids
 import com.techdelivery.r10.protocol.wire.WireConstants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -124,6 +124,7 @@ class R10Device(
                             }
                         }
                     }
+
                     is DeviceAlert.ShotAlert -> {
                         // §7.2 dedup by shot_id. A frame that carried no shot_id
                         // cannot be deduped: `getShotId()` would report 0 and every
@@ -132,6 +133,7 @@ class R10Device(
                         val fresh = !alert.hasDeviceShotId || deduper.accept(alert.shot.shotId)
                         if (fresh) _shots.emit(alert.shot)
                     }
+
                     else -> Unit
                 }
                 // tryEmit, never emit: DROP_OLDEST means this cannot suspend.
@@ -214,37 +216,42 @@ class R10Device(
 
     // --- Proto builders ---
 
-    private fun wakeUpProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(R10Protos.LaunchMonitorService.newBuilder().setWakeUpRequest(R10Protos.WakeUpRequest.getDefaultInstance()))
-            .build()
+    private fun wakeUpProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder().setWakeUpRequest(
+                R10Protos.WakeUpRequest.getDefaultInstance(),
+            ),
+        )
+        .build()
 
-    private fun statusProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(R10Protos.LaunchMonitorService.newBuilder().setStatusRequest(R10Protos.StatusRequest.getDefaultInstance()))
-            .build()
+    private fun statusProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder().setStatusRequest(
+                R10Protos.StatusRequest.getDefaultInstance(),
+            ),
+        )
+        .build()
 
-    private fun tiltProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(R10Protos.LaunchMonitorService.newBuilder().setTiltRequest(R10Protos.TiltRequest.getDefaultInstance()))
-            .build()
+    private fun tiltProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder().setTiltRequest(R10Protos.TiltRequest.getDefaultInstance()),
+        )
+        .build()
 
-    private fun startTiltCalProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(
-                R10Protos.LaunchMonitorService.newBuilder()
-                    .setStartTiltCalRequest(R10Protos.StartTiltCalibrationRequest.getDefaultInstance()),
-            )
-            .build()
+    private fun startTiltCalProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder()
+                .setStartTiltCalRequest(R10Protos.StartTiltCalibrationRequest.getDefaultInstance()),
+        )
+        .build()
 
     private fun subscribeAlertsProto(): R10Protos.WrapperProto = AlertRouter.launchMonitorSubscribeWrapper()
 
-    private fun shotConfigProto(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setService(
-                R10Protos.LaunchMonitorService.newBuilder().setShotConfigRequest(shotConfigRequest(config)),
-            )
-            .build()
+    private fun shotConfigProto(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setService(
+            R10Protos.LaunchMonitorService.newBuilder().setShotConfigRequest(shotConfigRequest(config)),
+        )
+        .build()
 
     companion object {
         /** Build the §7.1 step-11 ShotConfigRequest from setup config. */
@@ -260,8 +267,7 @@ class R10Device(
         }
 
         /** Battery level = value byte 0, unsigned (DESIGN §7.1 step 3). */
-        fun batteryPercent(bytes: ByteArray): Int =
-            if (bytes.isEmpty()) -1 else bytes[0].toInt() and 0xFF
+        fun batteryPercent(bytes: ByteArray): Int = if (bytes.isEmpty()) -1 else bytes[0].toInt() and 0xFF
 
         fun ByteArray.ascii(): String = String(this, Charsets.US_ASCII).trim('\u0000', ' ', '\r', '\n')
     }
