@@ -459,7 +459,8 @@ Swing timing (microseconds):
 
 Room entities:
 
-- **Shot**: id (autogen), deviceShotId (unique index — dedup across sessions),
+- **Shot**: id (autogen), deviceShotId (dedup key component — NOT unique on its
+  own; see the implementation note below),
   timestamp, shotType (practice/normal), ballSpeedMph, launchAngle,
   launchDirection, spinAxisDeg, totalSpin, sideSpin, backSpin, clubSpeedMph,
   faceAngle, path, attackAngle, rawMetrics (proto bytes, optional, for future
@@ -468,6 +469,26 @@ Room entities:
   (default true), calibrateTiltOnConnect (default false), temperature (60),
   humidity (1), altitude (0), airDensity (1), teeDistanceFt (7), debugLogging
   (false), reconnectIntervalS (5).
+
+**Persistence implementation note (2026-09-25).** The shipped store is an
+append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
+above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
+release matching the pinned Kotlin 2.4.x compiler, and routing Room through kapt
+was rejected because the build container is capped at 2 GiB and the extra
+annotation-processing round tips the build over. The persisted shape is flat,
+numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
+no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
+nothing else reads the file. Dedup across sessions must keep the same guarantee the
+`deviceShotId` unique index was meant to give — the in-memory dedup is per
+connection only, so a Room migration should enforce the unique key on insert.
+
+**Dedup key resolution (2026-09-25).** `deviceShotId` cannot be that key as
+written. The R10 restarts its `shot_id` sequence on every power cycle, so a
+global unique constraint on `shot_id` would reject legitimate new shots after a
+reboot. The stable identity of a re-pushed shot is its bytes, so `ShotCsvStore`
+deduplicates on `shot_id || hex(raw_metrics)` over the most recent 2000 rows.
+A Room migration should use the same composite key, not `deviceShotId` alone.
+Shots with no `raw_metrics` carry no key and are always written.
 
 ---
 

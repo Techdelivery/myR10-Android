@@ -20,6 +20,7 @@ import org.junit.Test
  * The golden file is captured during the [HW] H2 hardware session. Until then
  * this test SKIPS cleanly so CI stays green.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class GoldenReplayTest {
 
     private val goldenResource = "golden/session-r10.hex"

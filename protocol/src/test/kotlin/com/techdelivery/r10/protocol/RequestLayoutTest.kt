@@ -30,6 +30,7 @@ import org.junit.Test
  * assert on-air byte offsets — which is exactly why this survived to hardware
  * day. This test pins the actual bytes on the wire.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class RequestLayoutTest {
 
     private val dynHeader: Byte = 0x07
