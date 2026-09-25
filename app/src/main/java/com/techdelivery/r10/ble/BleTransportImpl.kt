@@ -306,7 +306,12 @@ class BleTransportImpl(
                 return
             } catch (e: Exception) {
                 if (attempt >= MAX_CONNECT_ATTEMPTS) throw e
-                delay(reconnectIntervalMs)
+                // DESIGN §11: retry with exponential backoff (GATT 133 and friends).
+                // connectOnce already closed the GATT client, so the next attempt
+                // starts from a clean slate rather than a half-open link.
+                val wait = backoffDelayMs(reconnectIntervalMs, attempt)
+                Log.w(TAG, "connect attempt $attempt failed (${e.message}); retrying in ${wait}ms")
+                delay(wait)
             }
         }
     }
@@ -328,6 +333,18 @@ class BleTransportImpl(
 
     companion object {
         private val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        /**
+         * Exponential backoff for reconnect attempts (DESIGN §11): base doubles per
+         * attempt and is capped at [capMs]. A non-positive base collapses to the cap
+         * so a misconfigured setting cannot produce a hot retry loop.
+         */
+        fun backoffDelayMs(baseMs: Long, attempt: Int, capMs: Long = 60_000L): Long {
+            require(attempt >= 1) { "attempt is 1-based" }
+            if (baseMs <= 0L) return capMs
+            val doubled = baseMs shl (attempt - 1).coerceAtMost(20)
+            return doubled.coerceAtMost(capMs).coerceAtLeast(1L)
+        }
         const val TAG = "R10DIAG"
         private const val SCAN_TIMEOUT_MS = 15_000L
         private const val BOND_TIMEOUT_MS = 30_000L

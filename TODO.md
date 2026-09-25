@@ -159,9 +159,47 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 ---
 
-## Out of scope this pass (M2/M3 — planned after H2 passes)
+## Phase I — M2 shot data (pure logic + UI)
 
-Shot display + `shot_id` dedup UI, auto-wake on `STANDBY`, error banner surfacing beyond basic, calibration UI, Room shot history, CSV export, practice/normal filter, log export for bug reports, GATT-133 backoff tuning.
+- [x] **I1. MetricConverter (§7.3)** — DONE 2026-09-25. `protocol/.../shot/MetricConverter.kt`: `MPS_TO_MPH = 2.2369`, ball/club/swing conversions transcribed from the §7.3 table. `spinAxis = spin_axis × -1` and side/back spin are computed from the **negated** axis (`sideSpin = totalSpin × sin(-spin_axis·π/180)`). `tempo = backswingDuration / downswingDuration` with `backswingDuration = impact - backswingStart`, `downswingDuration = impact - downswingStart`; zero downswing duration yields `null`, not a divide-by-zero. `shot()` keeps `rawMetrics` (proto bytes) for future re-parse (§8).
+  - Verify: `MetricConverterTest` green ✅ (7 tests) — 50 m/s → 111.845 mph, axis 90° → side −3000 / back ~0, axis 0° → pure back spin, tempo 10.0, null tempo on zero downswing, rawMetrics re-parses to the original `Metrics`
+- [x] **I2. ShotDeduper (§7.2)** — DONE 2026-09-25. `protocol/.../shot/ShotDeduper.kt`: `accept(shotId)` returns true once per id. Scoped **per connection** (`reset()` on connect) because a power-cycled R10 restarts its id sequence — carrying ids across connections would silently drop a real shot. Cross-session dedup belongs to the store's unique-key requirement.
+  - Verify: `ShotDeduperTest` green ✅ (3 tests) — dup rejected, reset re-accepts, 8 threads racing one id → exactly one winner
+- [x] **I3. AlertRouter (§6 / §7.2)** — DONE 2026-09-25. `protocol/.../alert/AlertRouter.kt`: `WrapperProto`(B313) → `EventSharing.notification` → `AlertDetails` (field 1001) → `List<DeviceAlert>`: `StateChanged` / `ShotAlert` / `ErrorAlert(code, severity, roll, pitch)` / `CalibrationAlert(status, result)` / `Ignored(reason)`. Returns a **list** because one `AlertDetails` can carry several payloads. Anything unrecognised is `Ignored`, never thrown.
+  - Verify: `AlertRouterTest` green ✅ (8 tests) — each payload type, multi-payload ordering, error without tilt → null angles, empty/absent notification → `Ignored`, subscribe wrapper targets `LAUNCH_MONITOR`
+- [x] **I4. R10Device alert pump (§7.2)** — DONE 2026-09-25. `R10Device.pumpAlerts(scope)` drains `engine.eventNotification` and applies the two runtime policies: shots are deduped by `shot_id` before reaching `shots`, and `STANDBY` + `autoWake` fires a `WakeUpRequest`. Auto-wake is launched in its own coroutine so a slow/failed wake cannot stall the pump. `lastStateType` is also updated by the §7.1 step-7 `StatusRequest`. `resetForNewConnection()` clears dedup state on every connect.
+  - Verify: `R10DeviceAlertPumpTest` green ✅ (5 tests) — duplicate `shot_id` delivered once (raw alerts still show both), STANDBY+autoWake puts a `wake_up_request` on air and advances the request counter, autoWake=false sends nothing, WAITING sends nothing, reset lets a reused id through
+- [x] **I5. UI-facing state + mirror** — DONE 2026-09-25. `DeviceStateHolder` gains `shots` (newest-first, capped at `MAX_LIVE_SHOTS = 200`), `shotCount` (uncapped), `activeError`, `calibration`. `AlertMirror.apply(alert)` maps §7.2 alerts onto that state — kept out of the Service so the mapping is unit-testable without Android. A healthy state clears a previously surfaced error; `ERROR` keeps it.
+  - Verify: `DeviceStateHolderTest` (5) + `AlertMirrorTest` (4) green ✅ — newest-first ordering, list capped while the count keeps counting, error cleared by a healthy state and retained by `ERROR`
+- [x] **I6. Shots + Settings tabs (§9)** — DONE 2026-09-25. `ui/ShotsScreen.kt`: latest-shot card (ball speed / launch angle / direction / total-back-side spin / spin axis / club speed / face / path / attack angle / tempo / swing durations) + newest-first list + PRACTICE/NORMAL/ALL filter. `ui/SettingsScreen.kt`: every §8 key — device name field, reconnect interval, auto-wake, calibrate-on-connect, debug logging, temperature, humidity, altitude, air density, tee distance (steppers; shows the computed `tee_range` metres). `MainActivity` is now a 3-tab scaffold (Device / Shots / Settings); the hex pane is shown only when `debugLogging` is on.
+  - Verify: `:app:assembleDebug` green ✅. **Live render needs a device — deferred to [HW].**
+- [x] **I7. Live foreground notification** — DONE 2026-09-25. The ongoing notification now reflects `connection · device state · shot count · battery%` via `combine` over the holder, instead of a static "Connecting…".
+  - Verify: `:app:assembleDebug` green ✅. **Visual update on a real shot needs a device — deferred to [HW].**
+
+## Phase J — M3 persistence, export, reconnect
+
+- [x] **J1. Shot history store** — DONE 2026-09-25. `app/.../data/ShotCsvStore.kt`: append-only CSV in `filesDir/shots.csv`, one `Mutex` guarding the file, header written once, corrupt rows skipped (never fatal), `loadAll()` oldest-first, `clear()`, `exportText()`, `exportSnapshot(dir, stamp)`.
+  - **DEVIATION FROM DESIGN §8 (deliberate, recorded here and in DESIGN):** DESIGN names Room. This build uses the CSV store because (a) KSP has no release matching the pinned Kotlin 2.4.x compiler, and (b) routing Room through kapt was rejected — this build container is capped at 2 GiB (`memory.max=2147483648`) and the extra annotation-processing round is what tips the build over (see F4). The persisted shape is flat, numeric, app-owned, so CSV is lossless here and doubles as the M3 export with no second serializer. Swapping in Room later means replacing this one class; nothing else reads the file.
+  - Verify: `ShotCsvStoreTest` green ✅ (8 tests) — full and minimal shot round-trip (incl. `rawMetrics` hex), corrupt rows rejected, header written once across appends, missing file → empty, clear, snapshot re-parses, hex helpers round-trip all 256 byte values
+- [x] **J2. CSV export** — DONE 2026-09-25. Settings → "Export shots to CSV" writes `r10-shots-<yyyyMMdd-HHmmss>.csv` into the app-specific external dir (no storage permission needed on API 26+) and shows the path and byte count in-app.
+  - Verify: `exportSnapshotWritesReadableCopy` ✅. **Tapping it on a device needs [HW].**
+- [x] **J3. History survives a restart** — DONE 2026-09-25. `R10App` owns the single `ShotCsvStore`; the service appends every deduped shot, `MainActivity` loads stored shots into the holder on create (so the Shots tab shows history before this session connects).
+  - Verify: unit-level ✅. **Kill app → relaunch → history visible needs [HW].**
+- [x] **J4. Reconnect backoff (§11)** — DONE 2026-09-25. `BleTransportImpl.backoffDelayMs(base, attempt, cap=60s)`: doubles per attempt, capped; a non-positive base collapses to the cap so a bad setting cannot produce a hot retry loop. `connectWithRetry` now logs each failed attempt and waits with that backoff; `connectOnce` already closes the GATT client on failure, so a GATT-133 retry starts from a clean slate.
+  - Verify: `ReconnectBackoffTest` green ✅ (5 tests) — doubling, cap, non-positive base, never zero, 1-based attempt guard
+
+## Phase K — Remaining hardware-gated items
+
+- [ ] **K1. [HW] M2 acceptance: hit balls.** Shots appear in the Shots tab with sane units (ball speed in mph, spin in rpm, angles in degrees), dedup by `shot_id` holds under device re-push, `STANDBY` auto-wakes, error alerts surface for OVERHEATING / RADAR_SATURATION / PLATFORM_TILTED.
+- [ ] **K2. [HW] M3 acceptance: kill the app → relaunch → shot history still listed; export CSV opens with the same rows; reconnect backs off instead of hot-looping after a forced disconnect.**
+- [ ] **K3. [HW] Close the H4 residual:** exercise the `0xFE1F` `ScanFilter` branch with both Garmin apps disabled and the R10 power-cycled (`ScanDumpActivity` prints the VERDICT line).
+- [ ] **K4. [HW] F4 literal gate:** full `./gradlew build` (release + lint) on a ≥4 GiB machine.
+
+---
+
+## Out of scope this pass (later milestones)
+
+Calibration UI beyond the connect-time toggle, carry/distance modelling, unit-switching UI, multi-device support, log export beyond the hex pane + CSV, GATT service-cache refresh workaround (only if a real 133 loop shows up on hardware).
 
 ## Standing rules
 

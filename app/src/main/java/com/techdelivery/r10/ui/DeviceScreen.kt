@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,14 +29,21 @@ import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
 import kotlinx.coroutines.delay
 
+/**
+ * DESIGN §9 tab 1 — connection state, device info, live device readouts,
+ * §7.2 error/calibration surfacing, and (when `debugLogging` is on) the hex pane.
+ */
 @Composable
-fun DeviceScreen(modifier: Modifier = Modifier) {
+fun DeviceScreen(showHexLog: Boolean, modifier: Modifier = Modifier) {
     val conn by DeviceStateHolder.connectionState.collectAsState()
     val info by DeviceStateHolder.deviceInfo.collectAsState()
     val wake by DeviceStateHolder.wakeUpStatus.collectAsState()
     val stateType by DeviceStateHolder.stateType.collectAsState()
     val tilt by DeviceStateHolder.tilt.collectAsState()
     val error by DeviceStateHolder.errorMessage.collectAsState()
+    val alertError by DeviceStateHolder.activeError.collectAsState()
+    val calibration by DeviceStateHolder.calibration.collectAsState()
+    val shotCount by DeviceStateHolder.shotCount.collectAsState()
 
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
@@ -62,10 +70,45 @@ fun DeviceScreen(modifier: Modifier = Modifier) {
                 Labeled("WakeUp", wake ?: "—")
                 Labeled("State", stateType ?: "—")
                 Labeled("Tilt", tilt ?: "—")
+                Labeled("Shots", "$shotCount")
             }
         }
 
-        HexLogPane(Modifier.fillMaxWidth().weight(1f))
+        // §7.2: a device-reported error stays visible until a healthy state clears it.
+        alertError?.let { e ->
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "${e.code.name} — ${e.severity.name}",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    if (e.rollDeg != null || e.pitchDeg != null) {
+                        Text(
+                            "device tilt roll=${e.rollDeg} pitch=${e.pitchDeg}",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        }
+
+        calibration?.let { c ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Labeled("Tilt calibration", c.status.name)
+                    Labeled("Result", c.result?.name ?: "—")
+                }
+            }
+        }
+
+        if (showHexLog) {
+            HexLogPane(Modifier.fillMaxWidth().weight(1f))
+        }
     }
 }
 

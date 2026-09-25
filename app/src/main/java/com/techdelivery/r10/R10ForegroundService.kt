@@ -20,6 +20,7 @@ import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
 import com.techdelivery.r10.protocol.transport.TransportState
 import com.techdelivery.r10.settings.SettingsDataStore
+import com.techdelivery.r10.state.AlertMirror
 import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -50,6 +52,7 @@ class R10ForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var deviceJob: Job? = null
     private var transport: BleTransportImpl? = null
+    private var startedForeground = false
 
     override fun onCreate() {
         super.onCreate()
@@ -119,13 +122,35 @@ class R10ForegroundService : Service() {
                         }
                     }
                 }
-                // Device-pushed alerts (B3) -> surface latest state type if present.
+                // Device-pushed alerts (B313) -> UI state. The §7.2 policies
+                // (shot dedup by shot_id, auto-wake on STANDBY) live in
+                // R10Device.pumpAlerts; this layer only surfaces the result.
+                device.pumpAlerts(this)
                 launch {
-                    engine.eventNotification.collect { proto ->
-                        proto.service?.statusResponse?.state?.state?.let {
-                            DeviceStateHolder.stateType.value = it.name
-                        }
+                    device.alerts.collect { AlertMirror.apply(it) }
+                }
+                launch {
+                    val store = (application as R10App).shotStore
+                    device.shots.collect {
+                        DeviceStateHolder.addShot(it)
+                        // M3: shot history survives the session (DESIGN §8).
+                        runCatching { store.append(it) }
+                            .onFailure { e -> Log.w(TAG, "shot persist failed: ${e.message}") }
                     }
+                }
+
+                // Persistent notification: connection state + device state + shot count + battery.
+                launch {
+                    combine(
+                        DeviceStateHolder.connectionState,
+                        DeviceStateHolder.stateType,
+                        DeviceStateHolder.shotCount,
+                        DeviceStateHolder.deviceInfo,
+                    ) { conn, st, count, info ->
+                        val batt = if (info.batteryLevel >= 0) " · ${info.batteryLevel}%" else ""
+                        val shotTxt = if (count > 0) " · $count shots" else ""
+                        "$conn${st?.let { " · $it" } ?: ""}$shotTxt$batt"
+                    }.collect { updateNotification(it) }
                 }
 
                 DeviceStateHolder.connectionState.value = ConnState.SCANNING
@@ -193,6 +218,15 @@ class R10ForegroundService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         } else 0
         ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification("Connecting…"), type)
+        startedForeground = true
+    }
+
+    /** M3: keep the ongoing notification live (state + battery + shot count). */
+    private fun updateNotification(text: String) {
+        if (!startedForeground) return
+        runCatching {
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(text))
+        }
     }
 
     override fun onDestroy() {

@@ -469,6 +469,18 @@ Room entities:
   humidity (1), altitude (0), airDensity (1), teeDistanceFt (7), debugLogging
   (false), reconnectIntervalS (5).
 
+**Persistence implementation note (2026-09-25).** The shipped store is an
+append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
+above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
+release matching the pinned Kotlin 2.4.x compiler, and routing Room through kapt
+was rejected because the build container is capped at 2 GiB and the extra
+annotation-processing round tips the build over. The persisted shape is flat,
+numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
+no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
+nothing else reads the file. Dedup across sessions must keep the same guarantee the
+`deviceShotId` unique index was meant to give — the in-memory dedup is per
+connection only, so a Room migration should enforce the unique key on insert.
+
 ---
 
 ## 9. UI Design
