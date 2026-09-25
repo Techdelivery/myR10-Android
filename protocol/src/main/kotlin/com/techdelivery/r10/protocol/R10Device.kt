@@ -1,13 +1,23 @@
 package com.techdelivery.r10.protocol
 
 import LaunchMonitor.Proto.R10Protos
+import com.techdelivery.r10.protocol.alert.AlertRouter
+import com.techdelivery.r10.protocol.alert.DeviceAlert
+import com.techdelivery.r10.protocol.shot.Shot
+import com.techdelivery.r10.protocol.shot.ShotDeduper
 import com.techdelivery.r10.protocol.transport.Transport
 import com.techdelivery.r10.protocol.wire.GattUuids
 import com.techdelivery.r10.protocol.wire.WireConstants
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Settings the setup sequence needs (subset of AppSettings relevant to the device). */
@@ -18,6 +28,8 @@ data class DeviceSetupConfig(
     val airDensity: Float = 1f,
     val teeDistanceFt: Int = 7,
     val calibrateTiltOnConnect: Boolean = false,
+    /** §7.2: on a STANDBY state alert, send WakeUpRequest instead of only notifying. */
+    val autoWake: Boolean = true,
 )
 
 data class DeviceInfo(
@@ -42,12 +54,57 @@ class R10Device(
     private val _deviceInfo = MutableStateFlow(DeviceInfo())
     val deviceInfo: StateFlow<DeviceInfo> = _deviceInfo.asStateFlow()
 
+    private val deduper = ShotDeduper()
+
+    /** Every decoded device alert, including ones this layer does not act on. */
+    private val _alerts = MutableSharedFlow<DeviceAlert>(extraBufferCapacity = 128)
+    val alerts: Flow<DeviceAlert> = _alerts.asSharedFlow()
+
+    /** Deduplicated shots (DESIGN §7.2). Newest are emitted as they arrive. */
+    private val _shots = MutableSharedFlow<Shot>(extraBufferCapacity = 32)
+    val shots: Flow<Shot> = _shots.asSharedFlow()
+
+    /** Last device state seen, from the §7.1 step-7 StatusResponse or a state alert. */
+    private val _lastStateType = MutableStateFlow<R10Protos.State.StateType?>(null)
+    val lastStateType: StateFlow<R10Protos.State.StateType?> = _lastStateType.asStateFlow()
+
+    /**
+     * Drain `engine.eventNotification` (B313) into [alerts] / [shots], applying
+     * the §7.2 policies: shot dedup by `shot_id`, auto-wake on STANDBY.
+     * Auto-wake is launched separately so a slow/failed wake cannot stall the pump.
+     */
+    fun pumpAlerts(scope: CoroutineScope): Job = scope.launch {
+        engine.eventNotification.collect { wrapper ->
+            for (alert in AlertRouter.route(wrapper)) {
+                when (alert) {
+                    is DeviceAlert.StateChanged -> {
+                        _lastStateType.value = alert.state
+                        if (alert.state == R10Protos.State.StateType.STANDBY && config.autoWake) {
+                            scope.launch { wakeUp() }
+                        }
+                    }
+                    is DeviceAlert.ShotAlert ->
+                        if (deduper.accept(alert.shot.shotId)) _shots.emit(alert.shot)
+                    else -> Unit
+                }
+                _alerts.emit(alert)
+            }
+        }
+    }
+
+    /** Per-connection reset: the R10 restarts its shot-id sequence on power cycle. */
+    fun resetForNewConnection() {
+        deduper.reset()
+        _lastStateType.value = null
+    }
+
     /**
      * Steps 1-5: connect, subscribe measurement/control/status, read device info
      * + battery, subscribe the data-channel notifier, then handshake.
      * Returns true if the handshake completed within [WireConstants.HANDSHAKE_TIMEOUT_MS].
      */
     suspend fun connect(): Boolean {
+        resetForNewConnection()
         transport.start()
 
         // Step 2 — these come FIRST, before any reads or the handshake.
@@ -88,7 +145,16 @@ class R10Device(
     // --- Command / request API (steps 6-11) ---
 
     suspend fun wakeUp(): ResponseEvent? = engine.sendProtobufRequest(wakeUpProto())
-    suspend fun statusRequest(): ResponseEvent? = engine.sendProtobufRequest(statusProto())
+
+    suspend fun statusRequest(): ResponseEvent? {
+        val ev = engine.sendProtobufRequest(statusProto())
+        ev?.proto?.takeIf { it.hasService() }
+            ?.service?.takeIf { it.hasStatusResponse() }
+            ?.statusResponse?.takeIf { it.hasState() }
+            ?.state?.let { _lastStateType.value = it.state }
+        return ev
+    }
+
     suspend fun tiltRequest(): ResponseEvent? = engine.sendProtobufRequest(tiltProto())
     suspend fun subscribeAlerts(): ResponseEvent? = engine.sendProtobufRequest(subscribeAlertsProto())
     suspend fun startTiltCalibration(): ResponseEvent? = engine.sendProtobufRequest(startTiltCalProto())
@@ -119,15 +185,7 @@ class R10Device(
             )
             .build()
 
-    private fun subscribeAlertsProto(): R10Protos.WrapperProto {
-        val alert = R10Protos.AlertMessage.newBuilder()
-            .setType(R10Protos.AlertNotification.AlertType.LAUNCH_MONITOR)
-            .build()
-        val sub = R10Protos.SubscribeRequest.newBuilder().addAlerts(alert).build()
-        return R10Protos.WrapperProto.newBuilder()
-            .setEvent(R10Protos.EventSharing.newBuilder().setSubscribeRequest(sub))
-            .build()
-    }
+    private fun subscribeAlertsProto(): R10Protos.WrapperProto = AlertRouter.launchMonitorSubscribeWrapper()
 
     private fun shotConfigProto(): R10Protos.WrapperProto =
         R10Protos.WrapperProto.newBuilder()
