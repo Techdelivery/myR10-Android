@@ -116,6 +116,25 @@ class ShotCsvStore(
     }
 
     /**
+     * Validate the live store (ROADMAP R4).
+     *
+     * The export path used to trust the file: `exportSnapshot` copied it and
+     * reported a byte count, while `decode` silently skipped malformed rows — so a
+     * torn or truncated file exported "successfully" with rows quietly missing.
+     * Validation makes that visible instead.
+     */
+    suspend fun validate(): CsvValidation = mutex.withLock { validateText(snapshotText()) }
+
+    /**
+     * Validate an arbitrary CSV file (e.g. one just exported), without touching the store.
+     */
+    fun validateFile(file: File): CsvValidation = if (!file.exists()) {
+        CsvValidation(false, 0, 0, listOf("file does not exist: ${file.absolutePath}"))
+    } else {
+        validateText(file.readText())
+    }
+
+    /**
      * Content key for cross-session dedup, or null when the shot carries no raw
      * payload. A null key means "cannot be deduped" and is always written — an
      * empty payload would otherwise make every such shot a duplicate of the first.
@@ -183,7 +202,8 @@ class ShotCsvStore(
     }
 
     companion object {
-        val HEADER: String = listOf(
+        /** Column order, single source of truth for [HEADER] and for validation messages. */
+        val COL_NAMES: List<String> = listOf(
             "shot_id", "shot_type", "received_at_ms",
             "ball_speed_mph", "launch_angle_deg", "launch_direction_deg",
             "spin_axis_deg", "total_spin_rpm", "side_spin_rpm", "back_spin_rpm",
@@ -191,12 +211,20 @@ class ShotCsvStore(
             "backswing_start_us", "downswing_start_us", "impact_us",
             "follow_through_end_us", "end_recording_us", "tempo",
             "raw_metrics_hex",
-        ).joinToString(",")
+        )
+
+        val HEADER: String = COL_NAMES.joinToString(",")
 
         private const val COLS = 21
 
         /** Index of the trailing `raw_metrics_hex` column in [HEADER]. */
         private const val COL_RAW_METRICS = 20
+
+        /** Hex encodes one byte as two characters. */
+        private const val HEX_CHARS_PER_BYTE = 2
+
+        /** Characters accepted in the `raw_metrics_hex` column (either case). */
+        private const val HEX_VALID = "0123456789abcdefABCDEF"
 
         /**
          * How many recent dedup keys to keep in memory for cross-session duplicate
@@ -298,6 +326,87 @@ class ShotCsvStore(
             )
         }
 
+        /**
+         * Validate CSV text: header, then every data row. Line numbers are 1-based
+         * against the original text so they match what an editor shows.
+         */
+        fun validateText(text: String): CsvValidation {
+            val problems = mutableListOf<String>()
+            var headerOk = false
+            var sawHeader = false
+            var dataRows = 0
+            var parsed = 0
+
+            text.split('\n').forEachIndexed { index, raw ->
+                val line = raw.trim()
+                if (line.isEmpty()) return@forEachIndexed
+                if (!sawHeader) {
+                    sawHeader = true
+                    headerOk = line == HEADER
+                    if (!headerOk) {
+                        problems += "line ${index + 1}: header mismatch (expected the $COLS-column header)"
+                    }
+                    return@forEachIndexed
+                }
+                dataRows++
+                val rowErrors = checkRow(line)
+                if (rowErrors.isEmpty() && decode(line) != null) {
+                    parsed++
+                } else {
+                    problems += rowErrors.ifEmpty { listOf("row does not decode") }
+                        .map { "line ${index + 1}: $it" }
+                }
+            }
+
+            if (!sawHeader) problems += "file is empty"
+            return CsvValidation(headerOk, dataRows, parsed, problems)
+        }
+
+        /**
+         * Row-level checks behind [decode]'s "skip it" behaviour. A bare "invalid
+         * file" is undiagnosable in a bug report; "bad hex in raw_metrics_hex" is
+         * actionable (ROADMAP R4).
+         */
+        private fun checkRow(line: String): List<String> {
+            val f = line.split(',', limit = COLS)
+            if (f.size != COLS) return listOf("expected $COLS fields, got ${f.size}")
+            val errs = mutableListOf<String>()
+            if (f[0].toLongOrNull() == null) errs += "${COL_NAMES[0]} '${f[0]}' is not an integer"
+            if (f[1] != "PRACTICE" && f[1] != "NORMAL") errs += "${COL_NAMES[1]} '${f[1]}' is not PRACTICE or NORMAL"
+            if (f[2].toLongOrNull() == null) errs += "${COL_NAMES[2]} '${f[2]}' is not an integer"
+
+            val doubleCols = intArrayOf(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 19)
+            for (i in doubleCols) {
+                if (f[i].isNotEmpty() && f[i].toDoubleOrNull() == null) {
+                    errs += "${COL_NAMES[i]} '${f[i]}' is not a number"
+                }
+            }
+            val longCols = intArrayOf(14, 15, 16, 17, 18)
+            for (i in longCols) {
+                if (f[i].isNotEmpty() && f[i].toLongOrNull() == null) {
+                    errs += "${COL_NAMES[i]} '${f[i]}' is not an integer"
+                }
+            }
+            hexError(f[COL_RAW_METRICS])?.let { errs += it }
+            return errs
+        }
+
+        /**
+         * Validate the `raw_metrics_hex` column: even length (a cut byte means a
+         * torn row) and hex-only. Returns the problem message, or null when the
+         * field is blank or well-formed.
+         */
+        private fun hexError(hex: String): String? {
+            if (hex.isEmpty()) return null
+            if (hex.length % HEX_CHARS_PER_BYTE != 0) {
+                return "${COL_NAMES[COL_RAW_METRICS]} has odd length ${hex.length} (truncated row?)"
+            }
+            if (hex.any { it !in HEX_VALID }) {
+                return "${COL_NAMES[COL_RAW_METRICS]} contains non-hex characters"
+            }
+            return null
+        }
+
         private fun <T> T?.orBlank(render: (T) -> String): String = this?.let(render) ?: ""
 
         /** Round-trip-safe decimal format: no scientific notation, no trailing zeros. */
@@ -335,5 +444,27 @@ class ShotCsvStore(
             }
             return out
         }
+    }
+}
+
+/**
+ * Result of a CSV validation pass (ROADMAP R4).
+ *
+ * Exists because `decode` deliberately skips malformed rows: without an explicit
+ * check, a torn file exports as a success with rows silently missing.
+ */
+data class CsvValidation(val headerOk: Boolean, val dataRows: Int, val parsed: Int, val problems: List<String>) {
+    val isClean: Boolean get() = headerOk && problems.isEmpty()
+
+    /** One-line human summary for the Export button / logs. */
+    fun summary(): String {
+        if (isClean) return "$parsed row${if (parsed == 1) "" else "s"} OK"
+        val shown = problems.take(MAX_REPORTED)
+        val more = if (problems.size > shown.size) " (+${problems.size - shown.size} more)" else ""
+        return "$parsed/$dataRows rows OK · ${problems.size} problem(s): ${shown.joinToString("; ")}$more"
+    }
+
+    private companion object {
+        const val MAX_REPORTED = 5
     }
 }

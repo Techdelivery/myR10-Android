@@ -208,4 +208,183 @@ class ShotCsvStoreTest {
         lines.drop(1).forEach { assertNotNull("torn line: $it", ShotCsvStore.decode(it)) }
         assertEquals(3, store.loadAll().size)
     }
+
+    // --- ROADMAP R4: validate the CSV instead of trusting it ---
+
+    /** A store we wrote ourselves must validate clean. */
+    @Test
+    fun aStoreWeWroteValidatesClean() = runTest {
+        val store = ShotCsvStore(tmp.newFile())
+        store.appendAll(listOf(full, minimal, full.copy(shotId = 9, rawMetrics = byteArrayOf(0x11, 0x22))))
+
+        val v = store.validate()
+        assertTrue(v.isClean)
+        assertTrue(v.headerOk)
+        assertEquals(3, v.dataRows)
+        assertEquals(3, v.parsed)
+        assertTrue(v.problems.isEmpty())
+        assertEquals("3 rows OK", v.summary())
+    }
+
+    /** A missing header is the first thing a corrupt file gets hit with. */
+    @Test
+    fun aMissingHeaderIsReportedNotSkipped() {
+        // A lone data row with no header: the validator treats line 1 as the
+        // (wrong) header, so it is flagged, not counted as a data row.
+        val text = "${ShotCsvStore.encode(full)}\n"
+        val v = ShotCsvStore.validateText(text)
+        assertFalse(v.headerOk)
+        assertEquals(0, v.dataRows)
+        assertEquals(0, v.parsed)
+        assertTrue("line 1: header mismatch", v.problems.first().startsWith("line 1"))
+    }
+
+    /**
+     * The failure mode that motivated R4: a torn row. It must be reported *with its
+     * line number* and the good rows still counted, not swallowed silently.
+     */
+    @Test
+    fun aTornRowIsReportedWithItsLineNumber() {
+        val good = ShotCsvStore.encode(full)
+        // Drop the last three fields: a plausible mid-write truncation.
+        val torn = good.split(",").dropLast(3).joinToString(",")
+        val text = listOf(ShotCsvStore.HEADER, good, torn, good).joinToString("\n")
+
+        val v = ShotCsvStore.validateText(text)
+        assertTrue(v.headerOk)
+        assertEquals(3, v.dataRows)
+        assertEquals(2, v.parsed)
+        val line3 = v.problems.firstOrNull()
+        requireNotNull(line3) { "expected a problem for line 3, got ${v.problems}" }
+        assertTrue("line 3 should be reported: $line3", "line 3" in line3)
+        assertTrue("column-count problem expected: $line3", "fields" in line3)
+    }
+
+    /** A non-hex byte in raw_metrics_hex is a data-integrity error, not a guess. */
+    @Test
+    fun badHexInRawMetricsIsReported() {
+        val good = ShotCsvStore.encode(full)
+        val f = good.split(",", limit = 21)
+        val bad = f.mapIndexed { i, v -> if (i == 20) "ZZ" else v }.joinToString(",")
+        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$bad")
+        assertEquals(1, v.problems.size)
+        assertTrue("expected raw_metrics_hex named: ${v.problems[0]}", "raw_metrics_hex" in v.problems[0])
+        assertTrue("expected non-hex named: ${v.problems[0]}", "non-hex" in v.problems[0])
+    }
+
+    /** Odd-length hex is the signature of a row cut in the middle of a byte. */
+    @Test
+    fun oddLengthHexIsFlaggedAsTruncated() {
+        val good = ShotCsvStore.encode(full)
+        val f = good.split(",", limit = 21)
+        val bad = f.mapIndexed { i, v -> if (i == 20) "0A1" else v }.joinToString(",")
+        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$bad")
+        assertTrue("expected truncated named: ${v.problems[0]}", "truncated" in v.problems[0])
+    }
+
+    /** An empty file is a named error, not a silent success with 0 rows. */
+    @Test
+    fun anEmptyFileIsReported() {
+        val v = ShotCsvStore.validateText("")
+        assertFalse(v.headerOk)
+        assertEquals(0, v.parsed)
+        assertTrue(v.problems.any { "empty" in it })
+    }
+
+    /** The Export button validates the file it just wrote. */
+    @Test
+    fun validateFileChecksTheWrittenCopy() = runTest {
+        val store = ShotCsvStore(tmp.newFile())
+        store.appendAll(listOf(full, minimal))
+        val out = store.exportSnapshot(tmp.root, "test")
+        val v = store.validateFile(out)
+        assertTrue(v.isClean)
+        assertEquals(2, v.parsed)
+    }
+
+    /** A file that does not exist is reported, not thrown on. */
+    @Test
+    fun validateFileOnAMissingFileReportsIt() {
+        val v = ShotCsvStore(tmp.newFile()).validateFile(File(tmp.root, "never-written.csv"))
+        assertFalse(v.isClean)
+        assertTrue(v.problems.any { it.startsWith("file does not exist") })
+    }
+
+    /**
+     * The summary is what a human sees in the Export message, so it must carry the
+     * counts and the first few problems — enough to act on, not a wall of hex.
+     */
+    @Test
+    fun theSummaryNamesCountsAndFirstProblems() {
+        val good = ShotCsvStore.encode(full)
+        val bad = good.split(",", limit = 21).mapIndexed { i, v -> if (i == 4) "not-a-number" else v }.joinToString(",")
+        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$good\n$bad")
+        val s = v.summary()
+        assertTrue("summary should name the count: $s", "1/2 rows OK" in s)
+        assertTrue("summary should name the bad column: $s", s.contains("launch_angle_deg"))
+        assertTrue("summary should carry the first problem: $s", s.contains("not a number"))
+    }
+
+    /**
+     * encode must be exactly reversible so that `decode(encode(shot)) == shot`. If a
+     * formatting change ever lost precision or a field, this would fail before the
+     * CSV export ever produced a silent gap.
+     */
+    @Test
+    fun randomShotsRoundTripExactly() {
+        val rnd = java.util.Random(20260925)
+        repeat(200) {
+            val hasBall = rnd.nextBoolean()
+            val hasClub = rnd.nextBoolean()
+            val hasSwing = rnd.nextBoolean()
+            val n = rnd.nextDouble() * 1000.0
+            val shot = Shot(
+                shotId = rnd.nextInt(1_000_000),
+                shotType = if (rnd.nextBoolean()) {
+                    R10Protos.Metrics.ShotType.PRACTICE
+                } else {
+                    R10Protos.Metrics.ShotType.NORMAL
+                },
+                receivedAtMs = 1_000_000_000_000L + rnd.nextLong(1_000_000),
+                ball = if (hasBall) {
+                    BallDisplay(
+                        rnd.nextDouble() * 150,
+                        rnd.nextDouble() * 60,
+                        rnd.nextDouble() * 90 - 45,
+                        rnd.nextDouble() * 360 - 180,
+                        rnd.nextDouble() * 12000,
+                        rnd.nextDouble() * 6000 - 3000,
+                        rnd.nextDouble() * 6000 - 3000,
+                    )
+                } else {
+                    null
+                },
+                club = if (hasClub) {
+                    ClubDisplay(
+                        rnd.nextDouble() * 120,
+                        rnd.nextDouble() * 20 - 10,
+                        rnd.nextDouble() * 20 - 10,
+                        rnd.nextDouble() * 16 - 8,
+                    )
+                } else {
+                    null
+                },
+                swing = if (hasSwing) {
+                    SwingDisplay(
+                        rnd.nextLong(5000),
+                        rnd.nextLong(5000),
+                        rnd.nextLong(6000),
+                        rnd.nextLong(8000),
+                        rnd.nextLong(9000),
+                        tempo = if (rnd.nextBoolean()) n else null,
+                    )
+                } else {
+                    null
+                },
+                rawMetrics = ByteArray(rnd.nextInt(40)).also { rnd.nextBytes(it) },
+            )
+            val back = ShotCsvStore.decode(ShotCsvStore.encode(shot))
+            assertEquals("round-trip failed:\n$shot\n!=\n$back", shot, back)
+        }
+    }
 }
