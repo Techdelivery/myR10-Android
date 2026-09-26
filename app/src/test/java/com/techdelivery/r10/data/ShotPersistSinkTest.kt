@@ -17,6 +17,7 @@ import java.io.IOException
  * M3 — the shot -> disk handoff. These are the cases the foreground service used to
  * own inline and could not be tested for, having no Robolectric here.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ShotPersistSinkTest {
 
     private fun shot(id: Int) = Shot(
