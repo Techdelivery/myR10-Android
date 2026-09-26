@@ -23,3 +23,7 @@ captures/
 *.log
 # ...but the committed golden capture MUST be tracked
 !protocol/src/test/resources/golden/*.hex
+
+# Local device identity (serial / BT MAC) — a debugging aid, never committed.
+# Copy DEVICE.example.md -> DEVICE.local.md and fill in your unit's values.
+*.local.md
