@@ -25,6 +25,7 @@ import com.techdelivery.r10.settings.SettingsDataStore
 import com.techdelivery.r10.state.AlertMirror
 import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
+import com.techdelivery.r10.state.TiltReading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -221,7 +222,10 @@ class R10ForegroundService : Service() {
                 Log.i(TAG, "step: tiltRequest")
                 device.tiltRequest()?.let {
                     val t = it.proto.service?.tiltResponse?.tilt
-                    if (t != null) DeviceStateHolder.tilt.value = "roll=${t.roll} pitch=${t.pitch}"
+                    if (t != null) {
+                        DeviceStateHolder.tilt.value = "roll=${t.roll} pitch=${t.pitch}"
+                        DeviceStateHolder.tiltReading.value = TiltReading(t.roll, t.pitch)
+                    }
                 }
                 Log.i(TAG, "step: subscribeAlerts")
                 device.subscribeAlerts()
