@@ -13,10 +13,7 @@ import com.techdelivery.r10.protocol.util.Cobs
  *
  * Empty COBS decode (malformed) is dropped, never thrown (§5.1).
  */
-class MessageAssembler(
-    val onHandshakeBody: suspend (ByteArray) -> Unit,
-    val onFrame: suspend (ByteArray) -> Unit,
-) {
+class MessageAssembler(val onHandshakeBody: suspend (ByteArray) -> Unit, val onFrame: suspend (ByteArray) -> Unit) {
     @Volatile
     var handshakeComplete: Boolean = false
 

@@ -15,13 +15,13 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.techdelivery.r10.ble.BleTransportImpl
+import com.techdelivery.r10.data.ShotCsvStore
+import com.techdelivery.r10.data.ShotPersistSink
 import com.techdelivery.r10.protocol.DeviceSetupConfig
 import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
 import com.techdelivery.r10.protocol.transport.TransportState
 import com.techdelivery.r10.settings.SettingsDataStore
-import com.techdelivery.r10.data.ShotCsvStore
-import com.techdelivery.r10.data.ShotPersistSink
 import com.techdelivery.r10.state.AlertMirror
 import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
@@ -108,10 +108,16 @@ class R10ForegroundService : Service() {
         deviceJob = scope.launch {
             try {
                 val settings = (application as R10App).settingsRepository.settings.first()
-                Log.i(TAG, "settings loaded: name='${settings.deviceName}' tee=${settings.teeDistanceFt}ft calib=${settings.calibrateTiltOnConnect}")
+                Log.i(
+                    TAG,
+                    "settings loaded: name='${settings.deviceName}' tee=${settings.teeDistanceFt}ft calib=${settings.calibrateTiltOnConnect}",
+                )
                 val adapter = getSystemService(BluetoothManager::class.java)?.adapter
                     ?: error("Bluetooth unavailable")
-                Log.i(TAG, "adapter=${adapter.name} enabled=${adapter.isEnabled} leScanner=${adapter.bluetoothLeScanner != null}")
+                Log.i(
+                    TAG,
+                    "adapter=${adapter.name} enabled=${adapter.isEnabled} leScanner=${adapter.bluetoothLeScanner != null}",
+                )
 
                 val transport = BleTransportImpl(
                     context = this@R10ForegroundService,
@@ -140,11 +146,18 @@ class R10ForegroundService : Service() {
                     transport.state.collect { st ->
                         DeviceStateHolder.connectionState.value = when (st) {
                             TransportState.SCANNING -> ConnState.SCANNING
+
                             TransportState.CONNECTING -> ConnState.CONNECTING
+
                             TransportState.CONNECTED ->
-                                if (DeviceStateHolder.connectionState.value == ConnState.READY) ConnState.READY
-                                else ConnState.HANDSHAKE
+                                if (DeviceStateHolder.connectionState.value == ConnState.READY) {
+                                    ConnState.READY
+                                } else {
+                                    ConnState.HANDSHAKE
+                                }
+
                             TransportState.DISCONNECTED -> ConnState.ERROR
+
                             else -> DeviceStateHolder.connectionState.value
                         }
                     }
@@ -196,9 +209,15 @@ class R10ForegroundService : Service() {
 
                 // Steps 6-11 with readouts captured for the UI.
                 Log.i(TAG, "step: wakeUp")
-                device.wakeUp()?.let { DeviceStateHolder.wakeUpStatus.value = it.proto.service?.wakeUpResponse?.status?.name }
+                device.wakeUp()?.let {
+                    DeviceStateHolder.wakeUpStatus.value =
+                        it.proto.service?.wakeUpResponse?.status?.name
+                }
                 Log.i(TAG, "step: statusRequest")
-                device.statusRequest()?.let { DeviceStateHolder.stateType.value = it.proto.service?.statusResponse?.state?.state?.name }
+                device.statusRequest()?.let {
+                    DeviceStateHolder.stateType.value =
+                        it.proto.service?.statusResponse?.state?.state?.name
+                }
                 Log.i(TAG, "step: tiltRequest")
                 device.tiltRequest()?.let {
                     val t = it.proto.service?.tiltResponse?.tilt
@@ -206,7 +225,10 @@ class R10ForegroundService : Service() {
                 }
                 Log.i(TAG, "step: subscribeAlerts")
                 device.subscribeAlerts()
-                if (config.calibrateTiltOnConnect) { Log.i(TAG, "step: startTiltCalibration"); device.startTiltCalibration() }
+                if (config.calibrateTiltOnConnect) {
+                    Log.i(TAG, "step: startTiltCalibration")
+                    device.startTiltCalibration()
+                }
                 Log.i(TAG, "step: sendShotConfig")
                 device.sendShotConfig()
 
@@ -223,7 +245,9 @@ class R10ForegroundService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_LOW,
+                CHANNEL_ID,
+                getString(R.string.app_name),
+                NotificationManager.IMPORTANCE_LOW,
             ).apply { description = "R10 Monitor connection" }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
@@ -231,7 +255,9 @@ class R10ForegroundService : Service() {
 
     private fun buildNotification(text: String): Notification {
         val pi = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -246,7 +272,9 @@ class R10ForegroundService : Service() {
     private fun startAsForeground() {
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-        } else 0
+        } else {
+            0
+        }
         ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification("Connecting…"), type)
         startedForeground = true
     }

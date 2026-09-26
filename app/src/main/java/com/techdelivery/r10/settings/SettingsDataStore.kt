@@ -33,8 +33,7 @@ object SettingsDataStore {
     }
 
     // Visible for tests: a real DataStore over an arbitrary file.
-    fun produceStore(file: File): DataStore<Preferences> =
-        PreferenceDataStoreFactory.create { file }
+    fun produceStore(file: File): DataStore<Preferences> = PreferenceDataStoreFactory.create { file }
 }
 
 // Context extension lives here to avoid pulling Context into SettingsRepository.kt.

@@ -53,7 +53,11 @@ object AlertRouter {
         val event = wrapper.event
         if (!event.hasNotification()) return listOf(DeviceAlert.Ignored("event has no notification"))
         val note = event.notification
-        if (!note.hasAlertNotification()) return listOf(DeviceAlert.Ignored("notification has no AlertDetails (field 1001)"))
+        if (!note.hasAlertNotification()) {
+            return listOf(
+                DeviceAlert.Ignored("notification has no AlertDetails (field 1001)"),
+            )
+        }
         val d = note.alertNotification
 
         val out = ArrayList<DeviceAlert>(4)
@@ -86,15 +90,14 @@ object AlertRouter {
     }
 
     /** Build the `AlertNotification` wrapper used by §7.1 step 9 (subscribe). */
-    fun launchMonitorSubscribeWrapper(): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setEvent(
-                R10Protos.EventSharing.newBuilder().setSubscribeRequest(
-                    R10Protos.SubscribeRequest.newBuilder().addAlerts(
-                        R10Protos.AlertMessage.newBuilder()
-                            .setType(R10Protos.AlertNotification.AlertType.LAUNCH_MONITOR),
-                    ),
+    fun launchMonitorSubscribeWrapper(): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setEvent(
+            R10Protos.EventSharing.newBuilder().setSubscribeRequest(
+                R10Protos.SubscribeRequest.newBuilder().addAlerts(
+                    R10Protos.AlertMessage.newBuilder()
+                        .setType(R10Protos.AlertNotification.AlertType.LAUNCH_MONITOR),
                 ),
-            )
-            .build()
+            ),
+        )
+        .build()
 }

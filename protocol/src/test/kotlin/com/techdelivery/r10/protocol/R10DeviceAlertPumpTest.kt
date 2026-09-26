@@ -8,10 +8,10 @@ import com.techdelivery.r10.protocol.wire.Framing
 import com.techdelivery.r10.protocol.wire.MessageAssembler
 import com.techdelivery.r10.protocol.wire.WireConstants
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -36,33 +36,31 @@ class R10DeviceAlertPumpTest {
         for (slice in Framing.sliceToChunks(msg)) emit(byteArrayOf(header) + slice)
     }
 
-    private fun shotWrapper(id: Int): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setEvent(
-                R10Protos.EventSharing.newBuilder().setNotification(
-                    R10Protos.AlertNotification.newBuilder().setAlertNotification(
-                        R10Protos.AlertDetails.newBuilder().setMetrics(
-                            R10Protos.Metrics.newBuilder()
-                                .setShotId(id)
-                                .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(45f)),
-                        ),
+    private fun shotWrapper(id: Int): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setEvent(
+            R10Protos.EventSharing.newBuilder().setNotification(
+                R10Protos.AlertNotification.newBuilder().setAlertNotification(
+                    R10Protos.AlertDetails.newBuilder().setMetrics(
+                        R10Protos.Metrics.newBuilder()
+                            .setShotId(id)
+                            .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(45f)),
                     ),
                 ),
-            ).build()
+            ),
+        ).build()
 
     /** Same as [shotWrapper] but with `shot_id` left unset (proto2 `optional uint32`). */
-    private fun shotWrapperNoId(ballSpeed: Float = 45f): R10Protos.WrapperProto =
-        R10Protos.WrapperProto.newBuilder()
-            .setEvent(
-                R10Protos.EventSharing.newBuilder().setNotification(
-                    R10Protos.AlertNotification.newBuilder().setAlertNotification(
-                        R10Protos.AlertDetails.newBuilder().setMetrics(
-                            R10Protos.Metrics.newBuilder()
-                                .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(ballSpeed)),
-                        ),
+    private fun shotWrapperNoId(ballSpeed: Float = 45f): R10Protos.WrapperProto = R10Protos.WrapperProto.newBuilder()
+        .setEvent(
+            R10Protos.EventSharing.newBuilder().setNotification(
+                R10Protos.AlertNotification.newBuilder().setAlertNotification(
+                    R10Protos.AlertDetails.newBuilder().setMetrics(
+                        R10Protos.Metrics.newBuilder()
+                            .setBallMetrics(R10Protos.BallMetrics.newBuilder().setBallSpeed(ballSpeed)),
                     ),
                 ),
-            ).build()
+            ),
+        ).build()
 
     private fun stateWrapper(state: R10Protos.State.StateType): R10Protos.WrapperProto =
         R10Protos.WrapperProto.newBuilder()

@@ -5,7 +5,6 @@ import com.techdelivery.r10.protocol.shot.BallDisplay
 import com.techdelivery.r10.protocol.shot.ClubDisplay
 import com.techdelivery.r10.protocol.shot.Shot
 import com.techdelivery.r10.protocol.shot.SwingDisplay
-import java.io.File
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 /**
  * M3 — shot-history persistence round-trip (DESIGN §8 / §11 CSV export).

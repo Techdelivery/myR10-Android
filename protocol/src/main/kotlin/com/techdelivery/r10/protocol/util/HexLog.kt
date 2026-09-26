@@ -42,11 +42,9 @@ class HexLog(private val capacity: Int = 4096) {
         listener?.invoke(entry)
     }
 
-    fun tx(bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) =
-        log(HexDirection.TX, bytes, timestampMs)
+    fun tx(bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) = log(HexDirection.TX, bytes, timestampMs)
 
-    fun rx(bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) =
-        log(HexDirection.RX, bytes, timestampMs)
+    fun rx(bytes: ByteArray, timestampMs: Long = System.currentTimeMillis()) = log(HexDirection.RX, bytes, timestampMs)
 
     /** Non-destructive copy of current entries, oldest -> newest. */
     fun snapshot(): List<HexEntry> = synchronized(lock) { ring.toList() }

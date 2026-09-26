@@ -29,6 +29,9 @@ import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
 import kotlinx.coroutines.delay
 
+/** Hex pane poll interval while the pane is visible (~2 Hz). */
+private const val HEX_REFRESH_MS = 500L
+
 /**
  * DESIGN §9 tab 1 — connection state, device info, live device readouts,
  * §7.2 error/calibration surfacing, and (when `debugLogging` is on) the hex pane.
@@ -126,7 +129,7 @@ private fun HexLogPane(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         while (true) {
             entries = DeviceStateHolder.hexLog.snapshot()
-            delay(500) // ~2 Hz while visible
+            delay(HEX_REFRESH_MS) // ~2 Hz while visible
         }
     }
     Text("Hex log (${entries.size})", style = MaterialTheme.typography.labelLarge)
@@ -141,8 +144,11 @@ private fun HexLogPane(modifier: Modifier = Modifier) {
                 text = "${e.direction.name}  ${e.bytes.joinToString(" ") { "%02X".format(it) }}",
                 fontFamily = FontFamily.Monospace,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (e.direction == HexDirection.TX)
-                    MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                color = if (e.direction == HexDirection.TX) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.tertiary
+                },
             )
         }
     }

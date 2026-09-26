@@ -32,12 +32,12 @@ class ProtoSmokeTest {
     fun alertDetails_roundTrips() {
         val details = R10Protos.AlertDetails.newBuilder()
             .setState(
-                R10Protos.State.newBuilder().setState(R10Protos.State.StateType.WAITING)
+                R10Protos.State.newBuilder().setState(R10Protos.State.StateType.WAITING),
             )
             .setError(
                 R10Protos.Error.newBuilder()
                     .setCode(R10Protos.Error.ErrorCode.PLATFORM_TILTED)
-                    .setSeverity(R10Protos.Error.Severity.SERIOUS)
+                    .setSeverity(R10Protos.Error.Severity.SERIOUS),
             )
             .build()
         val bytes = details.toByteArray()
@@ -67,7 +67,7 @@ class ProtoSmokeTest {
     fun alertNotification_field1001_roundTrips() {
         val inner = R10Protos.AlertDetails.newBuilder()
             .setState(
-                R10Protos.State.newBuilder().setState(R10Protos.State.StateType.RECORDING)
+                R10Protos.State.newBuilder().setState(R10Protos.State.StateType.RECORDING),
             )
             .build()
         val note = R10Protos.AlertNotification.newBuilder()
@@ -79,7 +79,7 @@ class ProtoSmokeTest {
         assertEquals(note, parsed)
         assertEquals(
             R10Protos.State.StateType.RECORDING,
-            parsed.getAlertNotification().getState().getState()
+            parsed.getAlertNotification().getState().getState(),
         )
     }
 }

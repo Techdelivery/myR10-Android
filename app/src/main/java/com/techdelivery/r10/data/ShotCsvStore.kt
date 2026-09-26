@@ -5,10 +5,10 @@ import com.techdelivery.r10.protocol.shot.BallDisplay
 import com.techdelivery.r10.protocol.shot.ClubDisplay
 import com.techdelivery.r10.protocol.shot.Shot
 import com.techdelivery.r10.protocol.shot.SwingDisplay
-import java.io.File
-import java.io.RandomAccessFile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
+import java.io.RandomAccessFile
 
 /**
  * Shot-history persistence (DESIGN §8 `Shot` entity, DESIGN §11 M3).
@@ -172,8 +172,7 @@ class ShotCsvStore(
     }
 
     /** Non-locking snapshot — callers must already hold [mutex]. */
-    private fun snapshotText(): String =
-        if (!file.exists()) "$HEADER\n" else file.readText()
+    private fun snapshotText(): String = if (!file.exists()) "$HEADER\n" else file.readText()
 
     private fun readUnlocked(): List<Shot> {
         if (!file.exists()) return emptyList()
@@ -195,6 +194,9 @@ class ShotCsvStore(
         ).joinToString(",")
 
         private const val COLS = 21
+
+        /** Index of the trailing `raw_metrics_hex` column in [HEADER]. */
+        private const val COL_RAW_METRICS = 20
 
         /**
          * How many recent dedup keys to keep in memory for cross-session duplicate
@@ -255,7 +257,9 @@ class ShotCsvStore(
                     sideSpinRpm = f[8].toDoubleOrZero(),
                     backSpinRpm = f[9].toDoubleOrZero(),
                 )
-            } else null
+            } else {
+                null
+            }
 
             val hasClub = f[10].isNotEmpty()
             val club = if (hasClub) {
@@ -265,7 +269,9 @@ class ShotCsvStore(
                     pathDeg = f[12].toDoubleOrZero(),
                     attackAngleDeg = f[13].toDoubleOrZero(),
                 )
-            } else null
+            } else {
+                null
+            }
 
             val hasSwing = f[14].isNotEmpty()
             val swing = if (hasSwing) {
@@ -277,7 +283,9 @@ class ShotCsvStore(
                     endRecordingUs = f[18].toLongOrZero(),
                     tempo = f[19].toDoubleOrNull(),
                 )
-            } else null
+            } else {
+                null
+            }
 
             return Shot(
                 shotId = shotId,
@@ -286,7 +294,7 @@ class ShotCsvStore(
                 ball = ball,
                 club = club,
                 swing = swing,
-                rawMetrics = fromHex(f[20]),
+                rawMetrics = fromHex(f[COL_RAW_METRICS]),
             )
         }
 
@@ -302,12 +310,16 @@ class ShotCsvStore(
         private fun String.toLongOrZero(): Long = toLongOrNull() ?: 0L
 
         private val HEX = "0123456789ABCDEF".toCharArray()
+        private const val HEX_RADIX = 16
+        private const val BITS_PER_NIBBLE = 4
+        private const val NIBBLE_MASK = 0x0F
+        private const val BYTE_MASK = 0xFF
 
         fun toHex(bytes: ByteArray): String {
             val out = StringBuilder(bytes.size * 2)
             for (b in bytes) {
-                val v = b.toInt() and 0xFF
-                out.append(HEX[v ushr 4]).append(HEX[v and 0x0F])
+                val v = b.toInt() and BYTE_MASK
+                out.append(HEX[v ushr BITS_PER_NIBBLE]).append(HEX[v and NIBBLE_MASK])
             }
             return out.toString()
         }
@@ -317,7 +329,9 @@ class ShotCsvStore(
             if (hex.length % 2 != 0) return ByteArray(0)
             val out = ByteArray(hex.length / 2)
             for (i in out.indices) {
-                out[i] = ((Character.digit(hex[i * 2], 16) shl 4) + Character.digit(hex[i * 2 + 1], 16)).toByte()
+                val hi = Character.digit(hex[i * 2], HEX_RADIX) shl BITS_PER_NIBBLE
+                val lo = Character.digit(hex[i * 2 + 1], HEX_RADIX)
+                out[i] = (hi + lo).toByte()
             }
             return out
         }

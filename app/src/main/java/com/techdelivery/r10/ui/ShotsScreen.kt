@@ -1,5 +1,6 @@
 package com.techdelivery.r10.ui
 
+import LaunchMonitor.Proto.R10Protos
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import LaunchMonitor.Proto.R10Protos
 import com.techdelivery.r10.protocol.shot.Shot
 import com.techdelivery.r10.state.DeviceStateHolder
 import java.text.SimpleDateFormat
@@ -74,7 +74,11 @@ fun ShotsScreen(modifier: Modifier = Modifier) {
 
         if (visible.isEmpty()) {
             Text(
-                if (shots.isEmpty()) "No shots yet. Hit a ball with the R10 connected." else "No shots match this filter.",
+                text = if (shots.isEmpty()) {
+                    "No shots yet. Hit a ball with the R10 connected."
+                } else {
+                    "No shots match this filter."
+                },
                 style = MaterialTheme.typography.bodyMedium,
             )
             return@Column

@@ -11,8 +11,7 @@ import org.junit.Test
  */
 class MetricConverterTest {
 
-    private fun approx(expected: Double, actual: Double, eps: Double = 1e-6) =
-        assertEquals(expected, actual, eps)
+    private fun approx(expected: Double, actual: Double, eps: Double = 1e-6) = assertEquals(expected, actual, eps)
 
     @Test
     fun speedConversionUsesDocumentedFactor() {

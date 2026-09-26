@@ -4,13 +4,13 @@ import LaunchMonitor.Proto.R10Protos
 import com.techdelivery.r10.protocol.transport.Transport
 import com.techdelivery.r10.protocol.util.ByteUtil
 import com.techdelivery.r10.protocol.util.HexLog
-import com.techdelivery.r10.protocol.wire.Framing
 import com.techdelivery.r10.protocol.wire.FrameDispatcher
+import com.techdelivery.r10.protocol.wire.Framing
 import com.techdelivery.r10.protocol.wire.HandshakeStateMachine
 import com.techdelivery.r10.protocol.wire.MessageAssembler
 import com.techdelivery.r10.protocol.wire.WireConstants
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -52,11 +52,11 @@ class ProtocolEngine(
     private val _handshakeComplete = MutableSharedFlow<Unit>(replay = 1)
     val handshakeComplete: Flow<Unit> = _handshakeComplete.asSharedFlow()
 
-    private val _events = MutableSharedFlow<R10Protos.WrapperProto>(extraBufferCapacity = 64)
-    val eventNotification: Flow<R10Protos.WrapperProto> = _events.asSharedFlow()
+    private val _eventNotification = MutableSharedFlow<R10Protos.WrapperProto>(extraBufferCapacity = 64)
+    val eventNotification: Flow<R10Protos.WrapperProto> = _eventNotification.asSharedFlow()
 
-    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 64)
-    val error: Flow<String> = _errors.asSharedFlow()
+    private val _error = MutableSharedFlow<String>(extraBufferCapacity = 64)
+    val error: Flow<String> = _error.asSharedFlow()
 
     private var pending: kotlinx.coroutines.CompletableDeferred<ResponseEvent>? = null
     private val sendMutex = Mutex()
@@ -104,7 +104,9 @@ class ProtocolEngine(
                     currentRequestCounter++
                 }
             }
-            is FrameDispatcher.Dispatch.DeviceRequest -> _events.emit(d.proto)
+
+            is FrameDispatcher.Dispatch.DeviceRequest -> _eventNotification.emit(d.proto)
+
             else -> Unit
         }
     }
@@ -114,17 +116,15 @@ class ProtocolEngine(
      * One request in flight; counter increments only on success.
      * Returns null on timeout (counter left unchanged).
      */
-    suspend fun sendProtobufRequest(proto: R10Protos.WrapperProto): ResponseEvent? {
-        return sendMutex.withLock {
-            val counter = currentRequestCounter
-            val payload = buildRequestPayload(counter, proto.toByteArray())
-            val deferred = CompletableDeferred<ResponseEvent>()
-            pending = deferred
-            sendFramed(payload)
-            val result = withTimeoutOrNull(WireConstants.REQUEST_TIMEOUT_MS) { deferred.await() }
-            if (result == null) pending = null
-            result
-        }
+    suspend fun sendProtobufRequest(proto: R10Protos.WrapperProto): ResponseEvent? = sendMutex.withLock {
+        val counter = currentRequestCounter
+        val payload = buildRequestPayload(counter, proto.toByteArray())
+        val deferred = CompletableDeferred<ResponseEvent>()
+        pending = deferred
+        sendFramed(payload)
+        val result = withTimeoutOrNull(WireConstants.REQUEST_TIMEOUT_MS) { deferred.await() }
+        if (result == null) pending = null
+        result
     }
 
     private fun buildRequestPayload(counter: Int, protoBytes: ByteArray): ByteArray {

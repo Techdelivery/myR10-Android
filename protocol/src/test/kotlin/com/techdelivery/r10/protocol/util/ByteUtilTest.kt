@@ -17,11 +17,11 @@ class ByteUtilTest {
     fun u32le_pinsLittleEndianByteOrder() {
         assertArrayEquals(
             byteArrayOf(0x04, 0x03, 0x02, 0x01),
-            ByteUtil.u32le(0x01020304L)
+            ByteUtil.u32le(0x01020304L),
         )
         assertArrayEquals(
             byteArrayOf(0x11, 0x22, 0x33, 0x44),
-            ByteUtil.u32le(0x44332211L)
+            ByteUtil.u32le(0x44332211L),
         )
     }
 
@@ -42,7 +42,7 @@ class ByteUtilTest {
     fun hex_isCaseInsensitive_andIgnoresSeparators() {
         assertArrayEquals(
             byteArrayOf(0xAB.toByte(), 0xCD.toByte(), 0xEF.toByte()),
-            ByteUtil.fromHex("aB cD-eF:")
+            ByteUtil.fromHex("aB cD-eF:"),
         )
         assertEquals("abcdef", ByteUtil.toHex(byteArrayOf(0xAB.toByte(), 0xCD.toByte(), 0xEF.toByte())))
         assertEquals("b4 13", ByteUtil.toHex(byteArrayOf(0xB4.toByte(), 0x13), sep = " "))
@@ -58,7 +58,7 @@ class ByteUtilTest {
     fun concat_joinsInOrder() {
         assertArrayEquals(
             byteArrayOf(1, 2, 3, 4, 5),
-            ByteUtil.concat(byteArrayOf(1, 2, 3), byteArrayOf(4, 5))
+            ByteUtil.concat(byteArrayOf(1, 2, 3), byteArrayOf(4, 5)),
         )
         assertArrayEquals(byteArrayOf(), ByteUtil.concat())
     }

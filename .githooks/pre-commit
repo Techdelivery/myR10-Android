@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Pre-commit style gate: refuses the commit if any Kotlin file violates the
+# formatting standard.
+#
+#   Install once per clone:  ./scripts/install-git-hooks.sh
+#   Fix what it reports:    ./gradlew ktlintFormat
+#   Emergency bypass:       git commit --no-verify
+#
+# Deliberately check-only. It never rewrites your working tree, because
+# `ktlintFormat` + `git add` would silently pull unstaged changes (including
+# anything from a partial `git add -p`) into the commit.
+#
+# detekt and Android Lint are NOT in this hook — they are slower and belong to CI.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- '*.kt' '*.kts')
+if [ -z "$staged" ]; then
+    exit 0
+fi
+
+count=$(printf '%s\n' "$staged" | wc -l | tr -d ' ')
+echo "pre-commit: checking ${count} Kotlin file(s) against .editorconfig"
+
+if ! ./gradlew --quiet ktlintCheck; then
+    cat >&2 <<'MSG'
+
+pre-commit: FAILED — formatting does not match .editorconfig.
+
+  ./gradlew ktlintFormat     # fix it automatically
+  ./gradlew ktlintCheck      # see every violation
+
+Nothing was committed and your working tree was left untouched.
+MSG
+    exit 1
+fi
+
+echo "pre-commit: OK"

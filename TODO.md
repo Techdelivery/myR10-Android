@@ -221,7 +221,13 @@ Verify for the whole phase: `./gradlew :protocol:test :app:testDebugUnitTest --o
 - [x] **L13. Compiler-warning cleanup** — `@OptIn(ExperimentalCoroutinesApi::class)` on `ProtocolEngineTest`, `GoldenReplayTest`, `RequestLayoutTest`, `R10DeviceAlertPumpTest`. Test-warning count went from 41 to 0; the only remaining warnings are pre-existing deprecated-BLE-API in `BleTransportImpl` (9), `ScanDumpActivity` (2), the `TabRow` deprecation in `MainActivity`, and one needed `!!` in `AlertRouterTest`.
   - Verify: `./gradlew :protocol:compileTestKotlin :app:compileDebugUnitTestKotlin --rerun-tasks` → no test-source warnings ✅
 
-**Not done:** no Robolectric added, so the service wiring (L1) and the `historyError` mirror stay grep-verified. No detekt/ktlint added — introducing a style gate would fail on pre-existing formatting and is its own task.
+**Not done:** no Robolectric added, so the service wiring (L1) and the `historyError` mirror stay grep-verified.
+
+The style gate that line used to defer is now in place — see
+[docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md). ktlint 1.8.0 + detekt 1.23.8 +
+Android Lint, wired into `check`, with `.editorconfig` as the formatting source of
+touch. Pre-existing formatting was auto-fixed; pre-existing code smells were
+baselined rather than silenced, and are tracked as **K5** below.
 
 ---
 
@@ -231,6 +237,12 @@ Verify for the whole phase: `./gradlew :protocol:test :app:testDebugUnitTest --o
 - [ ] **K2. [HW] M3 acceptance: kill the app → relaunch → shot history still listed; export CSV opens with the same rows; reconnect backs off instead of hot-looping after a forced disconnect.**
 - [ ] **K3. [HW] Close the H4 residual:** exercise the `0xFE1F` `ScanFilter` branch with both Garmin apps disabled and the R10 power-cycled (`ScanDumpActivity` prints the VERDICT line).
 - [ ] **K4. [HW] F4 literal gate:** full `./gradlew build` (release + lint) on a ≥4 GiB machine.
+- [ ] **K5. Pay down the style-gate baseline.** `config/detekt/app-baseline.xml` carries 6 pre-existing findings that the gate now tolerates but still reports on for any new code. Clear them in this order — each is easier the more often the file gets touched:
+  1. `ReturnCount` — `ShotCsvStore.decode()`: 5 returns in a row parser. Fold the field-level null returns into a single failure path.
+  2. `LongMethod` — `SettingsScreen` (137 lines): split per §8 settings group. Cosmetic, no behaviour risk.
+  3. `LongMethod` + `CyclomaticComplexMethod` — `R10ForegroundService.startDevice()` (116 lines / CC 20): the §7.1 sequencer. Split only with the reconnect tests in hand; this is the one entry where a careless refactor could change reconnect behaviour.
+  4. `TooGenericExceptionCaught` — `BleTransportImpl` / `R10ForegroundService`: leave as-is unless the BLE exception surface gets pinned down. These are deliberate boundary catches (see **Errors** in the standard); the baseline entry is the documentation.
+  - Verify: `./gradlew detekt` stays green as each entry is removed from the baseline file.
 
 ---
 

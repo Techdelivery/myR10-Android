@@ -33,6 +33,18 @@ android {
         compose = true
         buildConfig = true // needed for the debug-only ScanDumpActivity guard (AGP 8 opt-in)
     }
+
+    // Android Lint — third leg of the style gate (with ktlint + detekt).
+    // Explicit rather than implicit so the standard is visible in the build file.
+    // Accepted warnings (see docs/CODING_STANDARDS.md) are left as warnings, which
+    // do not fail the build; only errors do.
+    lint {
+        abortOnError = true
+        warningsAsErrors = false
+        htmlReport = true
+        xmlReport = true
+        textReport = true
+    }
 }
 
 kotlin {

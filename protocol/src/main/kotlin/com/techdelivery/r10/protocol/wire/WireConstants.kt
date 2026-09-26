@@ -42,6 +42,5 @@ object WireConstants {
     /** §5.7 — request/response timeout. */
     const val REQUEST_TIMEOUT_MS: Long = 5_000L
 
-    fun isType(msg: ByteArray, type: ByteArray): Boolean =
-        msg.size >= 2 && msg[0] == type[0] && msg[1] == type[1]
+    fun isType(msg: ByteArray, type: ByteArray): Boolean = msg.size >= 2 && msg[0] == type[0] && msg[1] == type[1]
 }
