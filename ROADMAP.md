@@ -75,6 +75,33 @@ the way of using the app at the range.
   - Verify: `ShotCsvStoreTest` — clean file passes, injected torn row reported
     with its line number, wrong column count reported, bad hex reported.
 
+- [ ] **R5. Assign a club to a shot (Shots tab → CSV → detail).**
+  The R10 reports club *metrics* (`ClubDisplay`: club speed, face/path/attack
+  angle) but never *which club* you swung. Let the user tag a shot with the club
+  they used, persist it, and show it with the shot.
+  - **User-entered label, not device data.** The device cannot supply the club
+    identity, so treat it as an annotation on an otherwise device-owned shot —
+    keep it separate from `ClubDisplay`. (If a club-type field turns up in the
+    proto, use it as the default selection, not the source of truth.)
+  - **Selection UX:** hang the club picker off the **selected** shot (R3 already
+    gives selection). Start with a fixed golf set — Driver, 3W/5W, 3–9 iron,
+    PW/GW/SW/LW, putter — defined in one place so it can become configurable
+    later. A "current club" that stamps incoming shots is a nice-to-have on top.
+  - **Persistence is the hard part.** The CSV store is append-only, so "change a
+    shot's club" is not an in-place edit. Choose deliberately between (a) a store
+    update that rewrites the row, (b) a `shot_id → club` sidecar, or (c) a
+    current-club stamp at arrival time — and write the choice down. Do not let the
+    store drift half-mutable.
+  - **Schema change:** a new `club_label` column bumps the column count R4
+    validates against. Existing CSVs without it must still load — bump a schema
+    version or make `decode`/`validate` tolerate the missing column, so a
+    previously-exported file never becomes "invalid".
+  - **Display:** show it in `ShotDetailCard` and compactly in the list row, so a
+    tagged shot reads "7-iron · 155 mph …" instead of burying it.
+  - Verify: select a shot → pick "7-iron" → it shows in the detail card; kill +
+    relaunch → the tag survives; export → `club_label` is present and the file
+    still validates; an old CSV without the column still loads.
+
 ---
 
 ## Next — hardware acceptance still open
