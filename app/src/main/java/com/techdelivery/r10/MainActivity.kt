@@ -148,7 +148,11 @@ class MainActivity : ComponentActivity() {
         val dir = getExternalFilesDir(null) ?: filesDir
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val out: File = store.exportSnapshot(dir, stamp)
-        return "Wrote ${out.name} (${out.length()} bytes)\n${out.absolutePath}"
+        // Validate what was just written instead of trusting the copy: `decode`
+        // skips malformed rows, so a torn file used to export as a success with
+        // rows silently missing (ROADMAP R4).
+        val v = store.validateFile(out)
+        return "Wrote ${out.name} (${out.length()} bytes) · ${v.summary()}\n${out.absolutePath}"
     }
 
     override fun onDestroy() {
