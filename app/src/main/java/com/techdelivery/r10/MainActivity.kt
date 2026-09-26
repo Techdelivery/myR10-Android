@@ -21,12 +21,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +50,9 @@ import java.util.Date
 import java.util.Locale
 
 private val TABS = listOf("Device", "Shots", "Settings")
+
+/** Index of the Shots tab in [TABS]; the tab that holds the screen awake. */
+private const val SHOTS_TAB = 1
 
 class MainActivity : ComponentActivity() {
 
@@ -79,6 +84,17 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val settings by repo.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
                     var tab by remember { mutableIntStateOf(0) }
+
+                    // ROADMAP R1: the screen sleeping mid-session loses the shot
+                    // you just hit. Hold it awake on the Shots tab only, so the
+                    // phone can still sleep in the pocket from any other tab.
+                    // The window flag only applies while our window is focused, so
+                    // backgrounding the app does not pin the screen either.
+                    val windowView = LocalView.current
+                    DisposableEffect(tab) {
+                        windowView.keepScreenOn = tab == SHOTS_TAB
+                        onDispose { windowView.keepScreenOn = false }
+                    }
                     Column(
                         // targetSdk 36 forces edge-to-edge: without inset handling the
                         // first child (the Start/Stop button) draws under the status bar.
