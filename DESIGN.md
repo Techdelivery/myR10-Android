@@ -120,7 +120,7 @@ Captured with a debug-only unfiltered scan (`ScanDumpActivity`), 442 packets fro
 an R10 that was **not connected**:
 
 ```
-address   CE:33:1E:DF:1D:07        (static random — stable across sessions)
+address   <MAC>        (static random — stable across sessions)
 name      "Approach R10"           (present in the advertisement)
 services  0000FE1F-0000-1000-8000-00805f9b34fb   (16-bit 0xFE1F)
 mfg data  0x0087 = 0E2601A5180CCF
@@ -131,11 +131,49 @@ connectable true
 must filter on `0xFE1F` and/or the name — filtering on the data-service UUID
 matches nothing.
 
-**Advertising is a function of connection state, not bonding.** A bonded-but-
-disconnected R10 advertises normally; a *connected* one does not advertise at all.
+**Advertising is a function of connection state, not bonding — but the PAYLOAD is a
+function of bonding.** A bonded-but-disconnected R10 does advertise (168 packets
+observed in 20 s), so "bonded devices go silent" is false. What changes is *what*
+it advertises. Measured 2026-09-25 on the same unit, now **paired** and
+**disconnected**, 75 s continuous scan, exactly ONE distinct payload:
+
+```
+02 01 04              Flags (LE only, no BR/EDR)
+05 FF 87 00 0E 26     Manufacturer Specific: company 0x0087 (Garmin), 2 data bytes
+00 00 00 ...          zero padding to 62 bytes
+```
+
+There is **no `0x09`/`0x08` local-name field and no service UUID in the packet at
+all.** The `"Approach R10"` string that scan callbacks report comes from the
+phone's cached GATT name (`BluetoothDevice.getName()`), not from the
+advertisement — which is why it looks present while being unmatchable.
+
+Consequences, both load-bearing:
+
+- `ScanFilter.setDeviceName("Approach R10")` **cannot match a paired R10** — the
+  name is not in the advertisement, and hardware filtering matches the packet, not
+  the cache.
+- `ScanFilter.setServiceUuid(0xFE1F)` **cannot match a paired R10** either — that
+  UUID is absent from this payload.
+- Therefore the **bonded-direct connect path (§2 path 1) is not an optimization, it
+  is the only way to reach a paired R10.** A scan-only implementation would be
+  permanently unable to reconnect after the first pair.
+
+The `0xFE1F` + name + 7-byte-mfg form above was captured from an **unpaired** unit,
+so the discoverable form appears to belong to pairing mode. Still to be proven
+end-to-end (see TODO K3): Forget the R10 → power-cycle → the `0xFE1F` form should
+return and the production filter should match it.
+
 The system can also hold the LE ACL link after our app is gone (`ACL LE:Y` observed
 80+ s past a force-stop), so "our app isn't monitoring" does not imply "the R10 is
 advertising."
+
+**Android gotcha that produced a false "0 devices found":** an **unfiltered** scan
+is refused while the screen is off — `BtScan.ScanManager: Cannot start unfiltered
+scan in screen-off` — and silently delivers nothing (no exception, zero results).
+Wake the screen first (`adb shell input keyevent KEYCODE_WAKEUP && adb shell svc
+power stayon true`). Filtered scans are unaffected, so this only bites
+diagnostics, never the production path.
 
 ### Contention with Garmin's official apps (important)
 

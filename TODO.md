@@ -1,4 +1,4 @@
-# R10 Monitor — M0 + M1 Execution Checklist
+# R10 Monitor — Execution Checklist (M0–M3 + review remediation + hardware acceptance)
 
 Live working checklist. Tick boxes as each step is executed **and verified**.
 Detail/rationale lives in `.omp/supipowers/plans/2026-09-12-r10-android-m0-m1-plan.md`.
@@ -102,9 +102,9 @@ Rule: a step is not ticked until its **Verify** command passes. Never tick on "l
 
 - [x] **H1. Golden replay harness** — DONE 2026-09-24. `GoldenReplayTest.kt`: reads `golden/session-r10.hex` (one `TX <hex>`/`RX <hex>` per line, `#` comments allowed), feeds every `RX` chunk through `FakeTransport` into the live engine, asserts handshake completes. **Skips cleanly via `Assume` while the file is absent** (captured during [HW] H2). Full B4-counter/ack parity is already unit-covered (`FrameDispatcherTest`, `ProtocolEngineTest`); the replay adds real-bytes framing/COBS/CRC validation once captured.
   - Verify: `:protocol:test --tests '*GoldenReplayTest'` → 1 test, **1 skipped** ✅ (CI green with no golden file).
-- [x] **[HW] H2. Real-device handshake validation — M1 acceptance gate** — DONE 2026-09-24 on Approach R10 (serial 3473676453, fw 4.50, 49%) + Pixel 7 (Android 17 / API 37).
+- [x] **[HW] H2. Real-device handshake validation — M1 acceptance gate** — DONE 2026-09-24 on Approach R10 (serial <SERIAL>, fw 4.50, 49%) + Pixel 7 (Android 17 / API 37).
   - [x] Full §7.1 setup completes — ~7 s end-to-end, all five requests answered
-  - [x] UI shows model `Approach R10` (`0x2A24`), firmware `4.50` (`0x2A28`), serial `3473676453` (`0x2A25`), battery 49% — all populated
+  - [x] UI shows model `Approach R10` (`0x2A24`), firmware `4.50` (`0x2A28`), serial `<SERIAL>` (`0x2A25`), battery 49% — all populated
   - [x] `WakeUpResponse` (ALREADY_AWAKE) + `StatusResponse(StateType)` + `TiltResponse(roll/pitch)` visible
   - [x] Hex log: first TX `00 00 00 00 00 00 00 00 00 00 01 00 00`; RX prefix `01 00 00 00 00 00 00 00 00 01 00 00`; **dynamic header `0x07` at index 12**, prefixed to every later TX chunk
   - [x] Golden saved to `protocol/src/test/resources/golden/session-r10.hex`; `GoldenReplayTest` no longer skips and **passes** (81 tests, 0 failures, 0 skipped)
@@ -231,18 +231,96 @@ baselined rather than silenced, and are tracked as **K5** below.
 
 ---
 
-## Phase K — Remaining hardware-gated items
+## Phase K — Hardware acceptance (in progress, 2026-09-25 session 2)
 
-- [ ] **K1. [HW] M2 acceptance: hit balls.** Shots appear in the Shots tab with sane units (ball speed in mph, spin in rpm, angles in degrees), dedup by `shot_id` holds under device re-push, `STANDBY` auto-wakes, error alerts surface for OVERHEATING / RADAR_SATURATION / PLATFORM_TILTED.
-- [ ] **K2. [HW] M3 acceptance: kill the app → relaunch → shot history still listed; export CSV opens with the same rows; reconnect backs off instead of hot-looping after a forced disconnect.**
-- [ ] **K3. [HW] Close the H4 residual:** exercise the `0xFE1F` `ScanFilter` branch with both Garmin apps disabled and the R10 power-cycled (`ScanDumpActivity` prints the VERDICT line).
-- [ ] **K4. [HW] F4 literal gate:** full `./gradlew build` (release + lint) on a ≥4 GiB machine.
+Device: Approach R10 serial `<SERIAL>`, fw 4.50, battery 99% · Pixel 7, Android 17 / API 37.
+
+- [x] **K0. Re-verified the full §7.1 connect on hardware** — DONE 2026-09-25.
+  `Start monitor` → bonded-direct → `§7.1 setup complete -> READY` in ~4.5 s, all
+  five requests answered, UI populated (model / fw / serial / battery 99% /
+  WakeUp SUCCESS / tilt).
+  - Verify: logcat `R10DIAG` shows `target <MAC> bondState=12 via=bonded-direct` → `handshake complete` → each `step:` → `READY` ✅
+
+- [x] **K4. F4 literal gate: full `./gradlew build`** — CLOSED 2026-09-25.
+  The blocker was environmental and is gone: this box now has **64 GiB** and no
+  cgroup cap (`/sys/fs/cgroup/memory.max` absent), versus the 2 GiB that killed the
+  dexing step in F4. Full `build` (debug + release + lint + all unit tests) is
+  **green**. `:app:lintVitalAnalyzeRelease` needs network on first run (it fetches
+  `com.android.tools.lint:lint-gradle`); it fails under `--offline`, not for code
+  reasons.
+  - Only lint findings: `UnusedAttribute`, `ObsoleteSdkInt` (informational).
+  - Also fixed the 6 `ExperimentalCoroutinesApi` opt-in warnings in
+    `ShotPersistSinkTest` that L13 missed; class-level `@OptIn` added.
+  - Verify: `./gradlew build` → `BUILD SUCCESSFUL`, 158 tests / 0 failures / 0 skipped ✅
+
+- [ ] **K1. [HW] M2 acceptance: hit balls.** Shots appear in the Shots tab with
+  sane units (ball speed mph, spin rpm, angles degrees), dedup by `shot_id` holds
+  under device re-push, `STANDBY` auto-wakes, error alerts surface for OVERHEATING
+  / RADAR_SATURATION / PLATFORM_TILTED.
+  - **Partially verified 2026-09-25 — the error-alert half passes live.** The R10
+    was sitting at `roll=11.17 pitch=94.48` and the UI surfaced
+    `PLATFORM_TILTED — WARNING` / `device tilt roll=11.105147 pitch=94.66107`
+    end-to-end (B313 → AlertRouter → AlertMirror → Shots tab). That is one of the
+    three named error conditions, proven on real bytes.
+  - **Blocked on physics, not code:** at pitch ≈ 94.6° the R10 is essentially
+    vertical, so it refuses to take shots. Needs the unit laid flat and balls hit.
+  - Remaining: shot values sane in the UI, `shot_id` dedup under re-push,
+    `STANDBY` auto-wake, OVERHEATING / RADAR_SATURATION.
+
+- [ ] **K2. [HW] M3 acceptance:** kill the app → relaunch → shot history still
+  listed; export CSV opens with the same rows; reconnect backs off instead of
+  hot-looping after a forced disconnect. **Not started — needs shots on the board
+  first** (no `shots.csv` exists yet; `files/` holds only `profileInstalled`).
+
+- [ ] **K3. [HW] Close the H4 residual — the `0xFE1F` `ScanFilter` branch.**
+  **Major finding 2026-09-25: the production filter cannot match a PAIRED R10, and
+  never could.** Measured, not inferred — raw advertisement bytes from a paired,
+  disconnected R10 (75 s scan, one single distinct payload):
+
+  ```
+  02 01 04 05 FF 87 00 0E 26 00 00 00 ... (zero-padded to 62 B)
+  ```
+
+  No `0x09` local-name field, no service UUID. The `"Approach R10"` name in the
+  scan result comes from the phone's **cached GATT name**, not the packet, so
+  `setDeviceName()` cannot match it either. Full write-up in DESIGN §4.
+
+  - **This refines, and does not contradict, H4's retraction.** H4 was right that a
+    bonded R10 *does* advertise. What was missed: the payload changes with bonding
+    state. The `0xFE1F` + name + 7-byte-mfg form H4 captured came from an
+    **unpaired** unit — the discoverable form belongs to pairing mode.
+  - **Consequence: the bonded-direct path in `BleTransportImpl` is load-bearing.**
+    A scan-only implementation could never reconnect after the first pair.
+  - **Tooling bug found and fixed while measuring this.** `ScanDumpActivity` ran the
+    unfiltered pass and the filtered pass **sequentially**, and they raced: the
+    R10's last packet landed 16 ms before the filtered phase started, so
+    "filter did not match" was unverifiable. Now both scans run **concurrently**,
+    every distinct raw R10 payload is logged once, and the verdict distinguishes a
+    real miss from `VERDICT INCONCLUSIVE: R10 was not on air`.
+  - **Still to do (needs the bond destroyed):** Settings → Bluetooth → Forget
+    `Approach R10` → power-cycle the R10 → `ScanDumpActivity` should show the
+    `0xFE1F` form and the production filter should match it. Do this **after**
+    K1/K2, since unpairing drops the working connect path.
+
 - [ ] **K5. Pay down the style-gate baseline.** `config/detekt/app-baseline.xml` carries 6 pre-existing findings that the gate now tolerates but still reports on for any new code. Clear them in this order — each is easier the more often the file gets touched:
   1. `ReturnCount` — `ShotCsvStore.decode()`: 5 returns in a row parser. Fold the field-level null returns into a single failure path.
   2. `LongMethod` — `SettingsScreen` (137 lines): split per §8 settings group. Cosmetic, no behaviour risk.
   3. `LongMethod` + `CyclomaticComplexMethod` — `R10ForegroundService.startDevice()` (116 lines / CC 20): the §7.1 sequencer. Split only with the reconnect tests in hand; this is the one entry where a careless refactor could change reconnect behaviour.
   4. `TooGenericExceptionCaught` — `BleTransportImpl` / `R10ForegroundService`: leave as-is unless the BLE exception surface gets pinned down. These are deliberate boundary catches (see **Errors** in the standard); the baseline entry is the documentation.
   - Verify: `./gradlew detekt` stays green as each entry is removed from the baseline file.
+
+### ⚠️ Phone state left modified — restore before handing back
+
+`com.garmin.android.apps.connectmobile` and `com.garmin.android.apps.golf` are
+**`disabled-user`** (required to free the R10's ACL link; `am force-stop` does not
+release it). Restore with:
+
+```
+adb shell pm enable com.garmin.android.apps.connectmobile
+adb shell pm enable com.garmin.android.apps.golf
+```
+
+Also `svc power stayon true` is set (plugged in) and the R10 is paired to this phone.
 
 ---
 
