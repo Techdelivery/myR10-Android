@@ -10,6 +10,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 enum class ConnState { IDLE, SCANNING, CONNECTING, HANDSHAKE, READY, ERROR }
 
+/**
+ * Device tilt in degrees, as the R10 last reported it.
+ *
+ * Typed because the formatted [DeviceStateHolder.tilt] string is fine for the
+ * Device tab and useless for logic — the Shots tab needs the numbers to warn about
+ * a bad pitch (ROADMAP R2). The values are the device's own; the app deliberately
+ * does not invent its own level/unlevel threshold, because a locally guessed one can
+ * disagree with the R10's and be worse than nothing.
+ */
+data class TiltReading(val rollDeg: Float, val pitchDeg: Float)
+
 /** Cap on in-memory shots so a long range session cannot grow the UI list unbounded. */
 const val MAX_LIVE_SHOTS = 200
 
@@ -24,6 +35,9 @@ object DeviceStateHolder {
     val wakeUpStatus = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val stateType = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val tilt = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+    /** Typed counterpart of [tilt]: the latest roll/pitch the device reported. */
+    val tiltReading = MutableStateFlow<TiltReading?>(null)
     val errorMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     /** Live shots, newest first (DESIGN §9 Shots tab). Dedup already applied upstream. */
@@ -75,6 +89,7 @@ object DeviceStateHolder {
         wakeUpStatus.value = null
         stateType.value = null
         tilt.value = null
+        tiltReading.value = null
         errorMessage.value = null
         activeError.value = null
         calibration.value = null

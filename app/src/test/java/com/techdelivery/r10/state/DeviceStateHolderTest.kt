@@ -157,6 +157,19 @@ class DeviceStateHolderTest {
     }
 
     /**
+     * ROADMAP R2: the typed tilt reading is connection state, so a reconnect (and
+     * Stop) must clear it, exactly like the formatted `tilt` string beside it.
+     */
+    @Test
+    fun tiltReadingIsClearedByResetConnection() {
+        DeviceStateHolder.tilt.value = "roll=1.0 pitch=2.0"
+        DeviceStateHolder.tiltReading.value = TiltReading(1.0f, 2.0f)
+        DeviceStateHolder.resetConnection()
+        assertNull(DeviceStateHolder.tilt.value)
+        assertNull(DeviceStateHolder.tiltReading.value)
+    }
+
+    /**
      * History load and service start race each other on a cold launch. Either order
      * must end with the same merged list and no duplicated rows.
      */

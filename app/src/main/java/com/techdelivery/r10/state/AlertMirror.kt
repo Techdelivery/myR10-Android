@@ -15,7 +15,16 @@ object AlertMirror {
                 DeviceStateHolder.onHealthyState(alert.state.name)
             }
 
-            is DeviceAlert.ErrorAlert -> DeviceStateHolder.activeError.value = alert
+            is DeviceAlert.ErrorAlert -> {
+                DeviceStateHolder.activeError.value = alert
+                // A tilt error carries the angles that triggered it, so it is also
+                // the freshest tilt reading. Keep the typed value in step (R2).
+                val roll = alert.rollDeg
+                val pitch = alert.pitchDeg
+                if (roll != null && pitch != null) {
+                    DeviceStateHolder.tiltReading.value = TiltReading(roll, pitch)
+                }
+            }
 
             is DeviceAlert.CalibrationAlert -> DeviceStateHolder.calibration.value = alert
 

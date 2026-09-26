@@ -73,4 +73,36 @@ class AlertMirrorTest {
         assertNull(DeviceStateHolder.activeError.value)
         assertNull(DeviceStateHolder.stateType.value)
     }
+
+    /**
+     * ROADMAP R2: a tilt error carries the angles that caused it, so it is also
+     * the freshest tilt reading. The Shots tab warns from this.
+     */
+    @Test
+    fun tiltErrorAlsoUpdatesTheTypedTiltReading() {
+        AlertMirror.apply(
+            DeviceAlert.ErrorAlert(
+                R10Protos.Error.ErrorCode.PLATFORM_TILTED,
+                R10Protos.Error.Severity.WARNING,
+                11.1f,
+                94.6f,
+            ),
+        )
+        assertEquals(TiltReading(11.1f, 94.6f), DeviceStateHolder.tiltReading.value)
+    }
+
+    /** An error with no angles must not fabricate a tilt reading. */
+    @Test
+    fun errorWithoutAnglesLeavesTheTiltReadingAlone() {
+        DeviceStateHolder.tiltReading.value = TiltReading(1.0f, 2.0f)
+        AlertMirror.apply(
+            DeviceAlert.ErrorAlert(
+                R10Protos.Error.ErrorCode.OVERHEATING,
+                R10Protos.Error.Severity.WARNING,
+                null,
+                null,
+            ),
+        )
+        assertEquals(TiltReading(1.0f, 2.0f), DeviceStateHolder.tiltReading.value)
+    }
 }
