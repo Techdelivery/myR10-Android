@@ -553,14 +553,27 @@ deliberately returns null for a malformed row — without an explicit pass, a to
 file exports as a success with rows silently missing.
 
 **The store is mutable, but only from inside it (decided 2026-09-26, ROADMAP R5).**
-Tagging a shot with a club means editing a row that already exists, so the store
-is no longer append-only. The rule that keeps this from drifting half-mutable:
-`ShotCsvStore` stays the only writer of `shots.csv`, under its existing mutex, and
-the UI never touches the file. It grows exactly three operations — `append`
-(current), `updateClub(shotId, club)` which rewrites one row, and
-`exportSnapshot`. A rewrite is read-all, replace the row whose `shot_id` matches,
-write a temp file and rename it over the original, so a process kill mid-write
-leaves the previous file intact rather than a truncated history.
+Tagging a shot with a club means editing a row that already exists, and a shot
+can be deleted outright, so the store is not append-only and is not going to be.
+The rule that keeps this from drifting half-mutable: `ShotCsvStore` stays the only
+writer of `shots.csv`, under its existing mutex, and the UI never touches the
+file. Its operations are:
+
+- `append(shot)` / `appendAll(shots)` — current behaviour.
+- `updateClub(shotId, club)` — rewrite one row.
+- `deleteShot(shotId)` — remove one row. Needed independently of the club tag: a
+  mis-hit practice swing, a row from a bad session, or a shot the user simply
+  does not want in their history. Deleting is a user-visible data loss, so the UI
+  must confirm it and there is no undo — the export snapshot is the only way back.
+- `exportSnapshot(dir, stamp)` — current behaviour.
+
+Every mutating operation is one rewrite: read all rows, apply the change, write a
+temp file and rename it over the original, so a process kill mid-write leaves the
+previous file intact rather than a truncated history. Each rewrite also rebuilds
+the in-memory dedup index from the surviving rows, because the index is a cache of
+what the file contains — deleting a row must not leave a key that suppresses a
+re-pushed shot later. `clear()` (delete everything) already existed and keeps its
+own faster path.
 
 **Schema versioning with explicit evolution (planned ROADMAP R5).** `club_label`
 adds a column, so the file carries a version instead of a column count that
