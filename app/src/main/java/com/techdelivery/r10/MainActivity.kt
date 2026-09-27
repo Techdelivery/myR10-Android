@@ -188,7 +188,17 @@ class MainActivity : ComponentActivity() {
         // does not decode is skipped, so a torn file used to export as a success
         // with rows silently missing (ROADMAP R4).
         val v = ShotCsvFormat.validateFile(out)
-        return "Wrote ${out.name} (${out.length()} bytes) · ${v.summary()}\n${out.absolutePath}"
+        // ...and validate the source too. The CSV is a derived copy, so it is
+        // well-formed by construction: validating only the copy reports a healthy
+        // export while damaged records were dropped on the way out. Asked of the
+        // store after the export returns, because validate() takes the store's mutex.
+        val storeProblems = runCatching { store.validate() }.getOrNull()?.problems.orEmpty()
+        val damage = if (storeProblems.isEmpty()) {
+            ""
+        } else {
+            " · store check: ${storeProblems.size} problem(s): ${storeProblems.take(3).joinToString("; ")}"
+        }
+        return "Wrote ${out.name} (${out.length()} bytes) · ${v.summary()}$damage\n${out.absolutePath}"
     }
 
     override fun onDestroy() {

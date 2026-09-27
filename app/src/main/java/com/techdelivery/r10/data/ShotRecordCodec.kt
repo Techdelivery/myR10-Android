@@ -49,9 +49,6 @@ internal object ShotRecordCodec {
                 .copy(clubLabel = record.clubLabel.ifBlank { null })
         }.getOrNull()
     }
-
-    /** The `shot_id` a record claims, or null when it is not a shot record. */
-    fun shotIdOf(framed: ByteArray): Int? = framed.toStoredShot()?.takeIf { it.hasMetrics() }?.metrics?.shotId
 }
 
 /** Parse a framed record as a shot, or null when it is not one. */

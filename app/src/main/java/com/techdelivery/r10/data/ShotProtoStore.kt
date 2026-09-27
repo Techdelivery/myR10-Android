@@ -118,9 +118,17 @@ class ShotProtoStore(
      * Rewrites the file: the store holds the device's bytes, so changing a label
      * means re-emitting that one record. Returns true when the shot existed. A
      * missing id is a no-op, not an error.
+     *
+     * Returns **false without writing** when the file is damaged (see
+     * [readRecordsUnlocked]). A rewrite writes back only the records that were
+     * readable, so running one over a torn tail would silently delete everything
+     * after the tear — turning one damaged record into a lost session. [validate]
+     * names the damage and the export surfaces it.
      */
     suspend fun updateClub(shotId: Int, club: GolfClub?): Boolean = mutex.withLock {
-        val records = readRecordsUnlocked()
+        val scan = readRecordsUnlocked()
+        if (scan.damaged) return@withLock false
+        val records = scan.records
         var changed = false
         val out = ArrayList<ByteArray>(records.size)
         for (r in records) {
@@ -146,9 +154,15 @@ class ShotProtoStore(
      * The UI confirms before calling this. The dedup index is rebuilt from the
      * surviving records, so a device that re-pushes a deleted shot writes it again
      * instead of being suppressed by a stale key.
+     *
+     * Returns **false without writing** when the file is damaged, for the same
+     * reason as [updateClub]: a rewrite must never be the thing that drops records
+     * past a tear.
      */
     suspend fun deleteShot(shotId: Int): Boolean = mutex.withLock {
-        val records = readRecordsUnlocked()
+        val scan = readRecordsUnlocked()
+        if (scan.damaged) return@withLock false
+        val records = scan.records
         val out = records.filter { r -> r.toShot()?.shotId != shotId }
         if (out.size == records.size) return@withLock false
         writeAllUnlocked(out)
@@ -182,7 +196,8 @@ class ShotProtoStore(
         if (!file.exists() || file.length() == 0L) {
             return@withLock ShotStoreValidation(false, 0, listOf("no shot history yet"))
         }
-        val records = readRecordsUnlocked(collectProblems = problems)
+        val scan = readRecordsUnlocked(collectProblems = problems)
+        val records = scan.records
         val header = records.firstOrNull()?.toHeader()
         if (header == null) {
             problems += "record 1 is not a header record"
@@ -226,27 +241,46 @@ class ShotProtoStore(
      * dropped by [ByteArray.toShot] returning null for it, so this does not depend
      * on the header being first — only on it being unshot-like.
      */
-    private fun readShotsUnlocked(): List<Shot> = readRecordsUnlocked().mapNotNull { it.toShot() }
+    private fun readShotsUnlocked(): List<Shot> = readRecordsUnlocked().records.mapNotNull { it.toShot() }
 
     /**
-     * Every record — the header included — as framed bytes.
+     * Every record — the header included — as framed bytes, and whether the file
+     * holds damage a rewrite must not paper over.
      *
      * A record that cannot be framed or read is reported (when asked) and the walk
      * stops there: past an unreadable length prefix the offsets are no longer
      * trustworthy, and the bytes after it are not a store we can honestly read. The
      * records before that point are kept, because a torn tail must not cost the
      * session that came before it.
+     *
+     * `damaged` answers "may this file be rewritten?". It is set when the walk
+     * stopped early, when the record cap cut the file short, or when a record was
+     * neither a header nor a shot. [updateClub] and [deleteShot] rewrite by writing
+     * the readable records back verbatim, so in any of those states the rewrite
+     * would drop exactly the records the store exists to keep — and they refuse
+     * rather than do it. The damaged bytes are left on disk for [validate] to
+     * report and the user to export; carrying them along would mean inventing
+     * record boundaries, which is how one torn tail becomes a whole lost session.
      */
-    private fun readRecordsUnlocked(collectProblems: MutableList<String> = mutableListOf()): List<ByteArray> {
-        if (!file.exists() || file.length() == 0L) return emptyList()
-        val framed = DelimitedRecords.read(file.readBytes()) { index, message ->
+    private fun readRecordsUnlocked(collectProblems: MutableList<String> = mutableListOf()): RecordScan {
+        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), false)
+        val bytes = file.readBytes()
+        val framed = DelimitedRecords.read(bytes) { index, message ->
             collectProblems += "record ${index + 1}: $message"
         }
-        return framed.take(MAX_RECORDS).filterIndexed { index, record ->
+        // Bytes the walk could not account for are the tail it stopped before.
+        val stoppedEarly = framed.sumOf { it.size } < bytes.size
+        val capped = framed.size > MAX_RECORDS
+        if (capped) {
+            collectProblems += "file holds more than $MAX_RECORDS records; the rest were not read"
+        }
+        val within = framed.take(MAX_RECORDS)
+        val records = within.filterIndexed { index, record ->
             val ok = isRecord(record)
             if (!ok) collectProblems += "record ${index + 1}: not a header or a shot"
             ok
         }
+        return RecordScan(records, stoppedEarly || capped || records.size != within.size)
     }
 
     /**
@@ -313,6 +347,17 @@ class ShotProtoStore(
         }
     }
 }
+
+/**
+ * What one read of the file yielded: the records it could account for, and whether
+ * the file holds damage that makes a whole-file rewrite unsafe.
+ */
+private class RecordScan(
+    /** Framed bytes, header included, oldest first. */
+    val records: List<ByteArray>,
+    /** True when rewriting these records would drop records the read could not see. */
+    val damaged: Boolean,
+)
 
 /**
  * Health of the shot log (ROADMAP R4's question, asked of the store rather than of

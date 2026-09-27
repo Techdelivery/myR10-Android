@@ -188,6 +188,25 @@ class ShotCsvFormatTest {
         assertTrue("the supported widths must be named: ${v.problems}", "fields" in v.problems.single())
     }
 
+    /**
+     * The other side of the same count: a row *wider* than this schema. Read with a
+     * split limit it looks current-version, with the extra field hiding inside
+     * `club_label` — so it decodes and validates clean while a newer build's column
+     * is silently dropped. It is a file this build cannot fully interpret, which is
+     * damage, not a clean file.
+     */
+    @Test
+    fun aRowWiderThanTheSchemaIsReported() {
+        val wide = ShotCsvFormat.encode(full) + ",9I,extra"
+        val v = ShotCsvFormat.validateText("${ShotCsvFormat.HEADER}\n$wide")
+        assertEquals(1, v.dataRows)
+        assertEquals(0, v.parsed)
+        val line2 = v.problems.single()
+        assertTrue("the row must be named by line: $line2", "line 2" in line2)
+        assertTrue("the width must be named: $line2", "fields" in line2)
+        assertNull(ShotCsvFormat.decode(wide))
+    }
+
     /** A non-hex byte in `raw_metrics_hex` is a data-integrity error, not a guess. */
     @Test
     fun badHexInRawMetricsIsReported() {
