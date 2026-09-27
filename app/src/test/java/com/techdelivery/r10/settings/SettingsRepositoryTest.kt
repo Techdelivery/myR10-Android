@@ -4,6 +4,8 @@ import com.techdelivery.r10.club.GolfClub
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Files
 
@@ -74,11 +76,27 @@ class SettingsRepositoryTest {
         assertEquals("a label that is not a known club never becomes the stamp", null, s.currentClub)
     }
 
+    /** A bag saved by the pre-abbreviation build must still read as owned. */
+    @Test
+    fun aLegacyOwnedSetIsNormalizedOnRead() = runBlocking {
+        val repo = newRepo()
+        repo.setClubOwned(GolfClub.IRON_SEVEN.id, false)
+        // Write the old long form directly, as the previous build would have.
+        val store = SettingsDataStore.produceStore(
+            java.io.File(java.nio.file.Files.createTempDirectory("legacy").toFile(), "t.preferences_pb"),
+        )
+        val legacy = SettingsRepository(store)
+        legacy.setClubOwned("7 Iron", true)
+        val s = legacy.settings.first()
+        assertTrue(GolfClub.IRON_SEVEN.id in s.ownedClubs)
+        assertFalse("the long name must not linger in the bag", "7 Iron" in s.ownedClubs)
+    }
+
     @Test
     fun currentClubRoundTripsAndClears() = runBlocking {
         val repo = newRepo()
-        repo.setCurrentClub(GolfClub.SEVEN_IRON.id)
-        assertEquals(GolfClub.SEVEN_IRON.id, repo.settings.first().currentClub)
+        repo.setCurrentClub(GolfClub.IRON_SEVEN.id)
+        assertEquals(GolfClub.IRON_SEVEN.id, repo.settings.first().currentClub)
         repo.setCurrentClub(null)
         assertEquals(null, repo.settings.first().currentClub)
     }

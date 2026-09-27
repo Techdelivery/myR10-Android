@@ -56,7 +56,7 @@ class ShotClubStoreTest {
 
     @Test
     fun aClubLabelRoundTrips() {
-        val tagged = shot(1).copy(clubLabel = GolfClub.SEVEN_IRON.id)
+        val tagged = shot(1).copy(clubLabel = GolfClub.IRON_SEVEN.id)
         assertEquals(tagged, ShotCsvFormat.decode(ShotCsvFormat.encode(tagged)))
     }
 
@@ -88,7 +88,7 @@ class ShotClubStoreTest {
         assertTrue(store.updateClub(2, GolfClub.DRIVER))
 
         val all = store.loadAll()
-        assertEquals(listOf(null, "Driver", null), all.map { it.clubLabel })
+        assertEquals(listOf(null, GolfClub.DRIVER.id, null), all.map { it.clubLabel })
         assertTrue("all shots still present", all.size == 3)
         assertTrue("file still valid after a club edit", store.validate().isClean)
     }
@@ -182,7 +182,7 @@ class ShotClubStoreTest {
         store.appendAll(listOf(shot(1), shot(2)))
         store.updateClub(1, GolfClub.FIVE_WOOD)
         store.deleteShot(2)
-        assertEquals("only the real file remains", listOf(f.name), f.parentFile.list()!!.toList())
+        assertEquals("only the real file remains", listOf(f.name), f.parentFile?.list()?.toList())
     }
 
     // --- v1 compatibility and migration (DESIGN §8) ---
@@ -248,8 +248,8 @@ class ShotClubStoreTest {
     @Test
     fun aClubCanBeSetOnAnUnmigratedV1File() = runTest {
         val store = ShotCsvStore(v1File(listOf(shot(1))))
-        assertTrue(store.updateClub(1, GolfClub.NINE_IRON))
-        assertEquals(GolfClub.NINE_IRON.id, store.loadAll().single().clubLabel)
+        assertTrue(store.updateClub(1, GolfClub.IRON_NINE))
+        assertEquals(GolfClub.IRON_NINE.id, store.loadAll().single().clubLabel)
         assertTrue(store.validate().isClean)
     }
 

@@ -101,6 +101,30 @@ how much they get in the way of using the app at the range.
   - **One canonical club list, in one place.** A single `Club` list ordered driver
     → putter, defined once and read by both the Settings bag editor and the
     Shots-tab picker. Never hardcode the set in two places.
+  - **Wider coverage, abbreviated labels (from the first on-device pass
+    2026-09-27; built).** The initial list missed clubs that are actually in a bag:
+    **2 iron, 3 iron, 4 wood, 6 wood, 7 wood, 9 wood**. The list now covers the
+    full fairway-wood ladder, the short irons, the half irons (`9.5I`…`6.5I`, the
+    low-lofted approach clubs), hybrids (`2H`…`5H`, the rescue clubs), the wedges
+    and the putter.
+    - **Labels are the golf abbreviation**: `D`, `3W`, `4I`, `GW`, `P`. Bag order
+      is the point — a column of 5-character names is noise in the picker, the list
+      row and the CSV, and nobody reads "Pitching Wedge" faster than "PW". The
+      abbreviation is the persisted `club_label`, so it is also the migration
+      surface (below).
+    - **The letters must not collide across categories.** A hybrid between a 3-iron
+      and a 4-iron is `3H`, never `3I` — reusing a form already on disk would make
+      two different clubs indistinguishable in the CSV forever. Irons take `I`,
+      hybrids `H`, woods `W`, wedges are spelled out.
+    - **Long names stay resolvable, forever.** `GolfClub.fromId` accepts the old
+      long labels ("7 Iron", "Sand Wedge") as aliases, and `ownedClubs` written in
+      the old form is normalized on read, so a bag saved by the previous build
+      still shows ticked. Otherwise the first build of this feature would
+      invalidate the labels it wrote last week — the same rule as the v1 CSV: a
+      file this app wrote earlier must keep loading.
+    - Verify: every club in your bag appears in the grid and in the picker; the row
+      reads "7I · 155 mph"; a `club_label` written by the previous build still
+      resolves to the right club instead of becoming an unknown label.
   - **Settings → "Clubs I own".** Checkbox grid over the full canonical list,
     multi-select. Default: all clubs owned, so a fresh install always has a
     usable picker. Stored in `AppSettings` (DataStore) and deliberately **not
