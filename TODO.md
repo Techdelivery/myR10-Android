@@ -10,6 +10,11 @@ Confirmed decisions (user, 2026-09-24): `applicationId = com.techdelivery.r10` �
 
 Rule: a step is not ticked until its **Verify** command passes. Never tick on "looks right".
 
+Scope note: this file ends at Phase K (M0–M3 + hardware acceptance) and is
+frozen as the historical record. New feature work is tracked in `ROADMAP.md`
+(R1–R5), and the "Out of scope this pass" list at the end of this file is the
+canonical backlog of later milestones.
+
 ---
 
 ## Phase A — Environment
