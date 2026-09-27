@@ -512,19 +512,32 @@ Room entities:
 append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
 above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
 release matching the pinned Kotlin 2.4.x compiler, and routing Room through kapt
-was rejected because the build container was capped at 2 GiB and the extra
-annotation-processing round tipped the build over. The persisted shape is flat,
+was rejected on memory grounds (see "Memory-restricted workspaces" below).
+The persisted shape is flat,
 numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
 no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
 nothing else reads the file. Dedup across sessions must keep the same guarantee the
 `deviceShotId` unique index was meant to give — the in-memory dedup is per
 connection only, so a Room migration should enforce the unique key on insert.
 
-**Build-cap correction (2026-09-26).** The original Room rejection cited a 2 GiB
-container cap. That cap is no longer in effect — `gradle.properties` currently sets
-`-Xmx1g -XX:MaxMetaspaceSize=512m`. The only remaining reason to stay on CSV is
-that it is lossless for this shape and already *is* the export format. Room stays a
-deliberate, unforced choice; decide it on purpose, not by drift.
+**Memory-restricted workspaces (2026-09-26).** The original Room rejection cited
+a hard 2 GiB container cap, which made the build's memory budget look like a fixed
+property of the project. It is not: the budget comes from `gradle.properties`
+(`org.gradle.jvmargs`) and from whatever limit the host or CI runner imposes, so
+the same checkout can build on a large workstation and fail on a small one. Treat
+Room as a deliberate choice, not a blocked one, and decide it deliberately:
+
+- If the host is memory-constrained (container, CI runner, laptop), check the
+  budget before blaming the toolchain: raise `org.gradle.jvmargs` if the host
+  allows it, disable the Gradle daemon and configure-on-demand for one-off
+  builds, and only then consider dropping to kapt or adding KSP.
+- If the budget is fixed and genuinely too small, say so explicitly here, with the
+  measured failure (heap OOM during which task), so the next reader does not
+  re-derive it on a machine that has plenty of memory.
+- Either way, do not let this drift: CSV is lossless for the current persisted
+  shape and already doubles as the export format, so there is no forcing function
+  pulling toward Room. Revisit it as an explicit decision, not as a side effect of
+  upgrading the toolchain.
 
 **CSV validation (2026-09-26, ROADMAP R4).** The export path is no longer "copy
 the file and report the byte count". `ShotCsvStore.validateText` checks the header

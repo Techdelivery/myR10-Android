@@ -164,10 +164,11 @@ Carried over from `TODO.md` Phase K.
   must not be done blind — this code is field-verified.
 - [ ] **`TabRow` deprecation** in `MainActivity` (PrimaryTabRow/SecondaryTabRow).
 - [ ] **Room still not used.** DESIGN §8 names Room; CSV is a recorded deviation
-  (no KSP release for the pinned Kotlin, and the old 2 GiB build cap). The cap is
-  gone now, so Room is *possible* — but the CSV store is lossless here and doubles
-  as the export, so there is no forcing function. Decide deliberately, not by
-  drift.
+  (no KSP release for the pinned Kotlin, plus a build-memory budget that varies
+  by workstation — see the memory-restricted-workspaces note in DESIGN §8). The
+  CSV store is lossless here and doubles as the export, so there is no forcing
+  function. Decide deliberately, not by drift, and do not treat any one machine's
+  memory limit as a project constraint.
 
 ---
 
