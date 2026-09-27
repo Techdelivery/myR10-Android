@@ -40,6 +40,11 @@ internal object DelimitedRecords {
      * and guessing where the next record begins is how one bad byte turns into a
      * whole file of garbage. Everything before it is returned: a torn tail must not
      * cost the records that came before it.
+     *
+     * A length is compared against the bytes that are actually left **before** it is
+     * narrowed to an `Int`. A corrupt prefix can claim any value up to 2^64, and
+     * `toInt()` on one of those wraps negative — which would sail past a bounds
+     * check and throw out of `copyOfRange` instead of being reported as damage.
      */
     fun read(bytes: ByteArray, onProblem: (index: Int, message: String) -> Unit = { _, _ -> }): List<ByteArray> {
         val records = ArrayList<ByteArray>()
@@ -52,15 +57,16 @@ internal object DelimitedRecords {
                 return records
             }
             val start = pos + length.size
-            val end = start + length.value.toInt()
-            if (end > bytes.size) {
+            val available = (bytes.size - start).toLong()
+            if (length.value > available) {
                 onProblem(
                     index,
                     "truncated record at byte $pos: needs ${length.value} bytes, " +
-                        "${bytes.size - start} available",
+                        "$available available",
                 )
                 return records
             }
+            val end = start + length.value.toInt()
             records.add(bytes.copyOfRange(pos, end))
             pos = end
             index++
@@ -68,14 +74,18 @@ internal object DelimitedRecords {
         return records
     }
 
-    /** The message body of a framed record, or null if the frame is malformed. */
+    /**
+     * The message body of a framed record, or null if the frame is malformed.
+     *
+     * Malformed includes a length the remaining bytes cannot satisfy — see [read]
+     * for why the comparison happens before the narrowing to `Int`.
+     */
     fun body(framed: ByteArray): ByteArray? {
         val length = readVarint(framed, 0) ?: return null
         if (length.value <= 0) return null
         val start = length.size
-        val end = start + length.value.toInt()
-        if (end > framed.size) return null
-        return framed.copyOfRange(start, end)
+        if (length.value > (framed.size - start).toLong()) return null
+        return framed.copyOfRange(start, start + length.value.toInt())
     }
 
     private fun varintSize(value: Int): Int {

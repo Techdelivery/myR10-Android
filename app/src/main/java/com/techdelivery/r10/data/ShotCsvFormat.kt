@@ -11,7 +11,7 @@ import java.io.File
 /**
  * The shot CSV *format*: schema, encode/decode, and validation (DESIGN §8).
  *
- * Split out of [ShotCsvStore] because none of it touches the filesystem. The store
+ * Split out of [ShotProtoStore] because none of it touches the filesystem. The store
  * owns the file, the mutex, the dedup index and the atomic rewrite; this owns the
  * bytes' meaning. Both are needed to make sense of a row, and keeping them apart is
  * what lets the store stay about durability and the format about compatibility.
@@ -79,13 +79,6 @@ object ShotCsvFormat {
     private const val HEX_VALID = "0123456789abcdefABCDEF"
 
     /**
-     * How many recent dedup keys to keep in memory for cross-session duplicate
-     * rejection. Sized well above any realistic reconnect-replay burst while
-     * keeping the set bounded (~2 KB/shot of raw payload hex).
-     */
-    const val RECENT_KEY_WINDOW = 2_000
-
-    /**
      * Encode a shot at the current schema version: the version, the 21 v1
      * columns, then the user-entered club label.
      */
@@ -126,25 +119,20 @@ object ShotCsvFormat {
     }
 
     /**
-     * Re-emit a v1 row at the current version, optionally with a club label.
-     * Used by `updateClub` on a not-yet-migrated file so the annotation is
-     * possible before (or without) an explicit `migrate()`.
-     */
-    fun upgradeRowToV2(line: String, clubLabel: String): String? {
-        val f = line.split(',', limit = V1_COLS)
-        if (f.size != V1_COLS) return line
-        return "$SCHEMA_VERSION,$line,$clubLabel"
-    }
-
-    /**
      * Which schema a raw row was written with, from its **shape**: a 22-field
      * row is current-version, a 21-field row is v1. Deliberately does not trust
      * the version cell — a row with a bogus version should be reported by
      * `checkRow` with a useful message, not rejected as the wrong shape.
+     *
+     * The field count is the **true** one. Splitting with a limit would read a
+     * row wider than this schema as current-version, with the overflow hiding
+     * inside `club_label`: the row would decode, and `validateText` would call it
+     * clean, which is a newer build's extra column silently dropped from the
+     * user's history rather than reported.
      */
     private fun rowVersion(line: String): Int? {
-        val f = line.split(',', limit = SCHEMA_VERSION_COLS)
-        return when (f.size) {
+        val fields = line.count { it == ',' } + 1
+        return when (fields) {
             SCHEMA_VERSION_COLS -> SCHEMA_VERSION
             V1_COLS -> 1
             else -> null

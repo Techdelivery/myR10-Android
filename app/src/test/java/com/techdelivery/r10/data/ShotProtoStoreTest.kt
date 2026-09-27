@@ -5,9 +5,9 @@ import com.techdelivery.r10.club.GolfClub
 import com.techdelivery.r10.protocol.shot.MetricConverter
 import com.techdelivery.r10.protocol.shot.Shot
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -68,6 +68,18 @@ class ShotProtoStoreTest {
     }
 
     private fun file() = tmp.newFile()
+
+    /**
+     * A store whose tail is torn, the way a kill mid-append leaves it: the header
+     * and the early records are intact, the last one is cut mid-body.
+     */
+    private suspend fun tornFile(): File {
+        val f = file()
+        ShotProtoStore(f).appendAll(listOf(shot(1), shot(2), shot(3)))
+        val bytes = f.readBytes()
+        f.writeBytes(bytes.copyOf(bytes.size - 12))
+        return f
+    }
 
     // --- basics ---
 
@@ -267,21 +279,86 @@ class ShotProtoStoreTest {
     fun garbageInTheMiddleIsReportedAndTheRestLoads() = runTest {
         val f = file()
         val store = ShotProtoStore(f)
-        store.appendAll(listOf(shot(1), shot(2)))
-        val clean = f.readBytes()
-        // Corrupt a byte in the first record's payload region.
-        val damaged = clean.copyOf()
-        damaged[4] = (damaged[4].toInt() xor 0xFF).toByte()
+        store.appendAll(listOf(shot(1), shot(2), shot(3)))
+        // Overwrite the length prefix of the frame holding shot 2 with one that
+        // claims 2^31 bytes. Narrowed to an Int that is *negative*, so a bounds
+        // check written as `start + length` passes and the slice throws — the
+        // damage has to be caught as a length, not left to arithmetic.
+        val bytes = f.readBytes()
+        val damaged = bytes.copyOf()
+        // The header is the first frame, so the third frame is the second shot; a
+        // frame's offset is the sum of the frames before it, not its own size.
+        val frames = DelimitedRecords.read(bytes)
+        val prefixAt = frames[0].size + frames[1].size
+        byteArrayOf(0x80.toByte(), 0x80.toByte(), 0x80.toByte(), 0x80.toByte(), 0x08)
+            .copyInto(damaged, prefixAt)
         f.writeBytes(damaged)
 
         val reloaded = ShotProtoStore(f)
-        assertNotNull("validate must not throw on damage", reloaded.validate())
+        val v = reloaded.validate()
+        assertFalse("the damage must be reported, not hidden", v.isClean)
+        assertTrue("${v.problems}", v.problems.any { "truncated" in it })
+        assertEquals(
+            "the records before the damage must still load",
+            listOf(1),
+            reloaded.loadAll().map { it.shotId },
+        )
+    }
+
+    // --- a rewrite must never be the thing that loses a torn session ---
+
+    /**
+     * The rewrite paths write back only the records they could read, so running one
+     * over a damaged file would delete everything past the tear. They must refuse.
+     */
+    @Test
+    fun aClubTagOnADamagedStoreIsRefusedAndTheFileIsLeftIntact() = runTest {
+        val f = tornFile()
+        val before = f.readBytes()
+        val store = ShotProtoStore(f)
+
+        assertFalse("a torn store must refuse the rewrite", store.updateClub(1, GolfClub.DRIVER))
+
+        assertArrayEquals("the damaged file must be untouched", before, f.readBytes())
+        assertEquals(listOf(1, 2), store.loadAll().map { it.shotId })
+    }
+
+    @Test
+    fun aDeleteOnADamagedStoreIsRefusedAndTheFileIsLeftIntact() = runTest {
+        val f = tornFile()
+        val before = f.readBytes()
+        val store = ShotProtoStore(f)
+
+        assertFalse("a torn store must refuse the rewrite", store.deleteShot(1))
+
+        assertArrayEquals("the damaged file must be untouched", before, f.readBytes())
+        assertEquals(listOf(1, 2), store.loadAll().map { it.shotId })
     }
 
     @Test
     fun anEmptyStoreReportsRatherThanPasses() = runTest {
         val v = ShotProtoStore(file()).validate()
         assertFalse(v.isClean)
+    }
+
+    // --- dedup across sessions ---
+
+    /**
+     * The index is a cache of the file, reseeded on first use. A restart is the
+     * only thing that exercises that reseed, and every other test here shares one
+     * store instance whose index its own append filled — so without this one a
+     * broken reseed would add a duplicate row on every launch and no test would
+     * notice.
+     */
+    @Test
+    fun aRelaunchedStoreDoesNotReAddAShotItAlreadyHolds() = runTest {
+        val f = file()
+        val s = shot(1)
+        assertTrue(ShotProtoStore(f).append(s))
+
+        val relaunched = ShotProtoStore(f)
+        assertFalse("the same payload after a restart", relaunched.append(s))
+        assertEquals(1, relaunched.loadAll().size)
     }
 
     // --- CSV export (DESIGN §11) ---
@@ -319,5 +396,25 @@ class ShotProtoStoreTest {
         val store = ShotProtoStore(file())
         val out = store.exportCsv(tmp.root, "empty")
         assertTrue(ShotCsvFormat.validateFile(out).isClean)
+    }
+
+    /**
+     * The CSV is a derived copy, so it is well-formed by construction: validating
+     * the file alone would report a healthy export while the damaged record was
+     * dropped on the way out. `MainActivity.exportCsv` asks the store too, and this
+     * is the damage it has to report.
+     */
+    @Test
+    fun exportingATornStoreReportsTheDamageTheCopyCannotShow() = runTest {
+        val store = ShotProtoStore(tornFile())
+
+        val out = store.exportCsv(tmp.root, "torn")
+
+        assertTrue("the user still gets the file", out.exists())
+        assertTrue("the copy itself is well-formed", ShotCsvFormat.validateFile(out).isClean)
+        assertFalse(
+            "the store's own damage must not read as a clean export",
+            store.validate().isClean,
+        )
     }
 }
