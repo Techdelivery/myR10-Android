@@ -4,8 +4,8 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-27 — R5 and R6 implemented and test-covered; both still need a
-hardware pass. R1–R4 merged (PRs #5–#7).
+Last updated: 2026-09-27 — R5, R6 and R7 implemented and test-covered; all three
+still need a hardware pass. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -192,6 +192,30 @@ how much they get in the way of using the app at the range.
     delete a shot, then have the device re-push it → it is written again (the
     dedup index was rebuilt, not left stale).
 
+- [~] **R7. Store shots as protobuf instead of CSV.** *(built 2026-09-27, unverified
+  on hardware)* The CSV was a derived, human-readable shadow of data the app already
+  held losslessly: every `Shot` carries the R10's own `Metrics` bytes. So the store is
+  now those bytes.
+  - **Framing:** length-delimited records in one file (`shots.bin`) — protobuf's own
+    stream encoding, a varint length per record. Chosen over a single `repeated`
+    message, which is also pure proto but would rewrite the whole file per shot and
+    make one bad byte cost the entire session.
+  - **Header record** carrying `store_format_version`, then one `StoredShot` per
+    shot: the device's `Metrics` plus `received_at_ms` and `club_label`, the only two
+    facts the app owns. App-owned messages, not part of the device protocol.
+  - **No CSV→proto migration.** Clearing storage was available, so the cut is clean
+    instead of carrying a back-compat layer for a file the user chose to discard.
+  - **CSV survives as the export**, produced from the store and still validated by
+    the R4 rules — a readable file is the deliverable; it is just no longer where the
+    data lives.
+  - **Deleted with it:** `ShotCsvStore`, `ShotCsvRewriter`, the `schema_version`
+    column, `HEADER_V1`, `migrate()` and the per-version row checks. Added:
+    `ShotRecordCodec`, `DelimitedRecords`, `ShotStoreValidation`.
+  - Verify: hit shots, kill and relaunch → history intact; export → the same values
+    as before in mph/rpm/degrees; a club tag survives; delete still works; and
+    `shots.bin` opens with `protoc --decode_raw` (the check that the format is really
+    plain protobuf and not app-private framing).
+
 ---
 
 ## Next — hardware acceptance still open
@@ -270,3 +294,4 @@ CSV via the system share sheet.
 4. CRC mismatch → log + drop. Deliberate hardening.
 5. Any on-hardware fix to framing constants needs hex-log evidence, a
    golden-expectation update, and a `DESIGN.md` correction if the design was wrong.
+

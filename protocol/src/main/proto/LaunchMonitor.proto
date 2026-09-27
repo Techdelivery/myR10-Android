@@ -242,3 +242,29 @@ message SwingMetrics {
   optional uint32 follow_through_end_time = 4;
   optional uint32 end_recording_time = 5;
 }
+
+// ---------------------------------------------------------------------------
+// App-owned persistence records (ROADMAP R7). NOT part of the R10 protocol: the
+// device never sends these. They are kept in the same file as the wire messages
+// only because the codegen is shared, and are field-compatible with nothing else.
+// ---------------------------------------------------------------------------
+
+// First record of shots.bin. A header record, rather than a flag or a file name,
+// so a reader can tell what it is holding before it trusts a single shot.
+message ShotLogHeader {
+  optional uint32 store_format_version = 1;
+}
+
+// One shot, as the app stores it: what the device sent (metrics), plus the two
+// facts only this app knows — when the shot arrived, and which club the user hit.
+//
+// The metrics are kept as the device's own message rather than the derived mph /
+// rpm / degree values the CSV held. That makes the store lossless by construction
+// and the display values recomputed on load, so no formatting rule can ever lose
+// precision. It also means the schema needs no versioning beyond this header:
+// a field added later simply reads as unset.
+message StoredShot {
+  optional int64 received_at_ms = 1;
+  optional string club_label = 2;
+  optional Metrics metrics = 3;
+}

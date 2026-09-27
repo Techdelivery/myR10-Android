@@ -512,11 +512,45 @@ Planned additions (ROADMAP R5): `ownedClubs` (the set of clubs the user owns,
 drawn from the canonical club list) and `currentClub` (the last-picked club, used
 to stamp arriving shots). Neither is exported with the CSV.
 
-**Persistence implementation note (2026-09-25).** The shipped store is an
-append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
-above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
-release matching the pinned Kotlin 2.4.x compiler, and routing Room through kapt
-was rejected on memory grounds (see "Memory-restricted workspaces" below).
+**Persistence: protobuf records, CSV as a derived export (ROADMAP R7, 2026-09-27).**
+The store is **not** Room and **not** a CSV file. It is the R10's own protobuf:
+`filesDir/shots.bin` holds length-delimited records (protobuf's own stream framing —
+a varint length per record, which is what `parseDelimitedFrom` reads), opening with a
+`ShotLogHeader` record carrying `store_format_version`, then one `StoredShot` per
+shot. `StoredShot` is an **app-owned** message, not part of the device protocol: it
+wraps the untouched `Metrics` message plus the only two facts the app owns —
+`received_at_ms` and the user-picked `club_label`.
+
+Three consequences, all of them the point:
+
+- **Lossless by construction.** The device's bytes are stored verbatim, and every
+  displayed value is recomputed on load by `MetricConverter` — the same conversion
+  that ran when the shot arrived. No float ever passes through text, so there is no
+  formatting rule that can lose precision, and no torn row that can drop a field.
+- **No schema machinery.** Protobuf's `optional` already means "unset", so a field
+  added later reads as absent. The CSV-only `schema_version` column, `HEADER_V1`,
+  `migrate()` and per-version row checks are all gone. `store_format_version` remains
+  in the header for the rare *destructive* change, so a future reader can refuse a
+  file it cannot interpret instead of guessing.
+- **Damage is local.** A record that cannot be framed is reported with its index and
+  skipped; reading stops there, because past an unreadable length prefix the offsets
+  are no longer trustworthy. A torn tail costs the tail, not the session.
+
+Framing was chosen over a single `repeated` message (also pure proto) because a
+`repeated` log must be rewritten for every new shot — giving up the one-fsync append
+that makes a shot durable in a single write — and because one bad byte would make
+the whole file unparseable instead of costing the records around it.
+
+**CSV is now an export, not a store.** `ShotCsvFormat` still encodes, decodes and
+validates the same 23-column layout with the same R4 rules, because a readable file
+is the deliverable; it is produced on the way out by `ShotProtoStore.exportCsv` and
+validated by the Export button. History is not migrated from the old CSV — clearing
+storage was available, so the cut is clean rather than carrying a back-compat layer
+for a file the user chose to discard.
+
+**Why not Room, restated (2026-09-26).** KSP has no release matching the pinned
+Kotlin 2.4.x compiler, and the kapt route was rejected on memory grounds that depend
+on the host rather than on the project (see "Memory-restricted workspaces" below).
 The persisted shape is flat,
 numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
 no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
@@ -543,8 +577,8 @@ Room as a deliberate choice, not a blocked one, and decide it deliberately:
   pulling toward Room. Revisit it as an explicit decision, not as a side effect of
   upgrading the toolchain.
 
-**CSV validation (2026-09-26, ROADMAP R4).** The export path is no longer "copy
-the file and report the byte count". `ShotCsvStore.validateText` checks the header
+**CSV validation (2026-09-26, ROADMAP R4).** The export is no longer "copy the file
+and report the byte count". `ShotCsvFormat.validateText` checks the header
 against `COL_NAMES`, then every row: column count, integer and numeric fields,
 `shot_type` as a known enum name, and `raw_metrics_hex` even-length and hex-only.
 Problems are reported per line (`line 42: …`), capped at 5 with a remainder count,
