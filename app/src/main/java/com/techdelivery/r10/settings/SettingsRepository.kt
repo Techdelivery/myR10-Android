@@ -30,7 +30,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             debugLogging = p[KEY_DEBUG_LOGGING] ?: false,
             reconnectIntervalS = p[KEY_RECONNECT_INTERVAL_S] ?: 5,
             deviceName = p[KEY_DEVICE_NAME] ?: "Approach R10",
-            ownedClubs = p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS,
+            // Normalize on read: a bag saved by an earlier build holds long names
+            // ("7 Iron") that are still perfectly valid clubs. Without this the
+            // Settings grid would show them all unticked and the user would have to
+            // re-tick a bag that never changed.
+            ownedClubs = (p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS)
+                .mapNotNullTo(linkedSetOf()) { GolfClub.fromId(it)?.id },
             currentClub = p[KEY_CURRENT_CLUB],
         )
     }
@@ -56,6 +61,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val clamped = if (v.isNaN()) 1.0 else v.coerceIn(AppSettings.AIR_DENSITY)
         dataStore.edit { it[KEY_AIR_DENSITY] = clamped }
     }
+
+    /**
+     * The stored bag, normalized to current abbreviations.
+     *
+     * Read-modify-write inside `edit` needs the same normalization as the read path,
+     * or a bag written by an earlier build would keep its legacy names forever and
+     * unticking one club would write a mix of both forms.
+     */
+    private fun currentOwned(p: androidx.datastore.preferences.core.MutablePreferences): Set<String> =
+        (p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS)
+            .mapNotNullTo(linkedSetOf()) { GolfClub.fromId(it)?.id }
 
     private suspend fun putClamped(key: Preferences.Key<Int>, v: Int, range: IntRange) {
         val clamped = v.coerceIn(range)
@@ -84,10 +100,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
      * nothing" is a real answer. The picker handles the fallback.
      */
     suspend fun setClubOwned(id: String, owned: Boolean) {
-        if (GolfClub.fromId(id) == null) return
+        val club = GolfClub.fromId(id) ?: return
         dataStore.edit { p ->
-            val current = p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS
-            p[KEY_OWNED_CLUBS] = if (owned) current + id else current - id
+            val current = currentOwned(p)
+            p[KEY_OWNED_CLUBS] = if (owned) current + club.id else current - club.id
         }
     }
 
