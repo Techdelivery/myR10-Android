@@ -54,6 +54,16 @@ data class Shot(
     val club: ClubDisplay? = null,
     val swing: SwingDisplay? = null,
     val rawMetrics: ByteArray = ByteArray(0),
+    /**
+     * Which club the user swung (ROADMAP R5). The device cannot report this, so it
+     * is a **user annotation**, deliberately separate from [club] (the device's own
+     * `ClubDisplay` metrics). Null means "not tagged yet".
+     *
+     * Stored as a raw string rather than an enum: the canonical list lives in the
+     * app module, this model lives in `:protocol`, and a label on disk must not
+     * become unreadable if the list is reordered or an entry is renamed.
+     */
+    val clubLabel: String? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -64,6 +74,7 @@ data class Shot(
             ball == other.ball &&
             club == other.club &&
             swing == other.swing &&
+            clubLabel == other.clubLabel &&
             rawMetrics.contentEquals(other.rawMetrics)
     }
 
@@ -74,6 +85,7 @@ data class Shot(
         r = 31 * r + (ball?.hashCode() ?: 0)
         r = 31 * r + (club?.hashCode() ?: 0)
         r = 31 * r + (swing?.hashCode() ?: 0)
+        r = 31 * r + (clubLabel?.hashCode() ?: 0)
         r = 31 * r + rawMetrics.contentHashCode()
         return r
     }

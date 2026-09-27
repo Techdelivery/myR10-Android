@@ -1,5 +1,7 @@
 package com.techdelivery.r10.settings
 
+import com.techdelivery.r10.club.GolfClub
+
 /**
  * App settings (DESIGN §8). Defaults match the documented DataStore keys.
  */
@@ -14,8 +16,24 @@ data class AppSettings(
     val debugLogging: Boolean = false,
     val reconnectIntervalS: Int = 5,
     val deviceName: String = "Approach R10",
+    /**
+     * Clubs the user owns (ROADMAP R5). Holds canonical club ids, not enum names.
+     *
+     * Defaults to the whole bag so a fresh install has a usable picker. An
+     * explicitly empty set is a real state — "I own nothing" — and the Shots-tab
+     * picker falls back to the full list rather than offering nothing.
+     */
+    val ownedClubs: Set<String> = DEFAULT_OWNED_CLUBS,
+    /**
+     * Last club the user picked (ROADMAP R5). Stamps arriving shots so a session
+     * at the range does not need a tap per ball. Null means nothing picked yet.
+     */
+    val currentClub: String? = null,
 ) {
     companion object {
+        /** The whole bag: the default owned set, so a new install can tag shots. */
+        val DEFAULT_OWNED_CLUBS: Set<String> = GolfClub.ALL_IDS
+
         /**
          * Sane envelopes around the DESIGN §8 defaults. Every setter clamps to
          * these, so a runaway stepper cannot push an out-of-range value at the

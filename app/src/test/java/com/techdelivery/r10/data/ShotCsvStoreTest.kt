@@ -42,7 +42,7 @@ class ShotCsvStoreTest {
 
     @Test
     fun encodeDecodeRoundTripsFullShot() {
-        val back = ShotCsvStore.decode(ShotCsvStore.encode(full))!!
+        val back = ShotCsvFormat.decode(ShotCsvFormat.encode(full))!!
         assertEquals(full.shotId, back.shotId)
         assertEquals(full.shotType, back.shotType)
         assertEquals(full.receivedAtMs, back.receivedAtMs)
@@ -54,7 +54,7 @@ class ShotCsvStoreTest {
 
     @Test
     fun encodeDecodeRoundTripsMinimalShot() {
-        val back = ShotCsvStore.decode(ShotCsvStore.encode(minimal))!!
+        val back = ShotCsvFormat.decode(ShotCsvFormat.encode(minimal))!!
         assertEquals(minimal, back)
         assertNull(back.ball)
         assertNull(back.club)
@@ -63,10 +63,10 @@ class ShotCsvStoreTest {
 
     @Test
     fun corruptRowsAreSkippedNotFatal() {
-        assertNull(ShotCsvStore.decode("1,2,3"))
-        assertNull(ShotCsvStore.decode("not,a,valid,row"))
-        assertNull(ShotCsvStore.decode("x,NORMAL,5,,,,,,,,,,,,,,,,,,,"))
-        assertNull(ShotCsvStore.decode("1,BOGUS,5,,,,,,,,,,,,,,,,,,,"))
+        assertNull(ShotCsvFormat.decode("1,2,3"))
+        assertNull(ShotCsvFormat.decode("not,a,valid,row"))
+        assertNull(ShotCsvFormat.decode("x,NORMAL,5,,,,,,,,,,,,,,,,,,,"))
+        assertNull(ShotCsvFormat.decode("1,BOGUS,5,,,,,,,,,,,,,,,,,,,"))
     }
 
     @Test
@@ -76,7 +76,7 @@ class ShotCsvStoreTest {
         store.append(minimal)
         store.append(full)
         val lines = file.readLines().filter { it.isNotBlank() }
-        assertEquals(ShotCsvStore.HEADER, lines.first())
+        assertEquals(ShotCsvFormat.HEADER, lines.first())
         assertEquals(3, lines.size) // header + 2 rows
         val loaded = store.loadAll()
         assertEquals(listOf(7, 42), loaded.map { it.shotId })
@@ -115,11 +115,11 @@ class ShotCsvStoreTest {
     @Test
     fun hexHelpersRoundTripAllByteValues() {
         val all = ByteArray(256) { (it - 128).toByte() }
-        val hex = ShotCsvStore.toHex(all)
+        val hex = ShotCsvFormat.toHex(all)
         assertEquals(512, hex.length)
         assertTrue(hex.uppercase() == hex)
-        assertEquals(all.toList(), ShotCsvStore.fromHex(hex).toList())
-        assertEquals(ByteArray(0).toList(), ShotCsvStore.fromHex("abc").toList()) // odd length -> empty
+        assertEquals(all.toList(), ShotCsvFormat.fromHex(hex).toList())
+        assertEquals(ByteArray(0).toList(), ShotCsvFormat.fromHex("abc").toList()) // odd length -> empty
     }
 
     /**
@@ -204,8 +204,8 @@ class ShotCsvStoreTest {
 
         val lines = file.readLines().filter { it.isNotBlank() }
         assertEquals(4, lines.size)
-        assertEquals(ShotCsvStore.HEADER, lines.first())
-        lines.drop(1).forEach { assertNotNull("torn line: $it", ShotCsvStore.decode(it)) }
+        assertEquals(ShotCsvFormat.HEADER, lines.first())
+        lines.drop(1).forEach { assertNotNull("torn line: $it", ShotCsvFormat.decode(it)) }
         assertEquals(3, store.loadAll().size)
     }
 
@@ -231,8 +231,8 @@ class ShotCsvStoreTest {
     fun aMissingHeaderIsReportedNotSkipped() {
         // A lone data row with no header: the validator treats line 1 as the
         // (wrong) header, so it is flagged, not counted as a data row.
-        val text = "${ShotCsvStore.encode(full)}\n"
-        val v = ShotCsvStore.validateText(text)
+        val text = "${ShotCsvFormat.encode(full)}\n"
+        val v = ShotCsvFormat.validateText(text)
         assertFalse(v.headerOk)
         assertEquals(0, v.dataRows)
         assertEquals(0, v.parsed)
@@ -245,12 +245,12 @@ class ShotCsvStoreTest {
      */
     @Test
     fun aTornRowIsReportedWithItsLineNumber() {
-        val good = ShotCsvStore.encode(full)
+        val good = ShotCsvFormat.encode(full)
         // Drop the last three fields: a plausible mid-write truncation.
         val torn = good.split(",").dropLast(3).joinToString(",")
-        val text = listOf(ShotCsvStore.HEADER, good, torn, good).joinToString("\n")
+        val text = listOf(ShotCsvFormat.HEADER, good, torn, good).joinToString("\n")
 
-        val v = ShotCsvStore.validateText(text)
+        val v = ShotCsvFormat.validateText(text)
         assertTrue(v.headerOk)
         assertEquals(3, v.dataRows)
         assertEquals(2, v.parsed)
@@ -260,13 +260,25 @@ class ShotCsvStoreTest {
         assertTrue("column-count problem expected: $line3", "fields" in line3)
     }
 
+    /**
+     * Replace one field of an encoded row **by column name**.
+     *
+     * The R4 tests used to corrupt a row by index, which silently started testing
+     * the wrong column when the schema changed (the leading `schema_version` column
+     * shifted every index by one). Name the column and the test keeps meaning what
+     * it says.
+     */
+    private fun withColumn(encoded: String, column: String, value: String): String {
+        val idx = ShotCsvFormat.COL_NAMES.indexOf(column)
+        require(idx >= 0) { "unknown column $column" }
+        return encoded.split(',').mapIndexed { i, v -> if (i == idx) value else v }.joinToString(",")
+    }
+
     /** A non-hex byte in raw_metrics_hex is a data-integrity error, not a guess. */
     @Test
     fun badHexInRawMetricsIsReported() {
-        val good = ShotCsvStore.encode(full)
-        val f = good.split(",", limit = 21)
-        val bad = f.mapIndexed { i, v -> if (i == 20) "ZZ" else v }.joinToString(",")
-        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$bad")
+        val bad = withColumn(ShotCsvFormat.encode(full), "raw_metrics_hex", "ZZ")
+        val v = ShotCsvFormat.validateText("${ShotCsvFormat.HEADER}\n$bad")
         assertEquals(1, v.problems.size)
         assertTrue("expected raw_metrics_hex named: ${v.problems[0]}", "raw_metrics_hex" in v.problems[0])
         assertTrue("expected non-hex named: ${v.problems[0]}", "non-hex" in v.problems[0])
@@ -275,17 +287,15 @@ class ShotCsvStoreTest {
     /** Odd-length hex is the signature of a row cut in the middle of a byte. */
     @Test
     fun oddLengthHexIsFlaggedAsTruncated() {
-        val good = ShotCsvStore.encode(full)
-        val f = good.split(",", limit = 21)
-        val bad = f.mapIndexed { i, v -> if (i == 20) "0A1" else v }.joinToString(",")
-        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$bad")
+        val bad = withColumn(ShotCsvFormat.encode(full), "raw_metrics_hex", "0A1")
+        val v = ShotCsvFormat.validateText("${ShotCsvFormat.HEADER}\n$bad")
         assertTrue("expected truncated named: ${v.problems[0]}", "truncated" in v.problems[0])
     }
 
     /** An empty file is a named error, not a silent success with 0 rows. */
     @Test
     fun anEmptyFileIsReported() {
-        val v = ShotCsvStore.validateText("")
+        val v = ShotCsvFormat.validateText("")
         assertFalse(v.headerOk)
         assertEquals(0, v.parsed)
         assertTrue(v.problems.any { "empty" in it })
@@ -297,7 +307,7 @@ class ShotCsvStoreTest {
         val store = ShotCsvStore(tmp.newFile())
         store.appendAll(listOf(full, minimal))
         val out = store.exportSnapshot(tmp.root, "test")
-        val v = store.validateFile(out)
+        val v = ShotCsvFormat.validateFile(out)
         assertTrue(v.isClean)
         assertEquals(2, v.parsed)
     }
@@ -305,7 +315,7 @@ class ShotCsvStoreTest {
     /** A file that does not exist is reported, not thrown on. */
     @Test
     fun validateFileOnAMissingFileReportsIt() {
-        val v = ShotCsvStore(tmp.newFile()).validateFile(File(tmp.root, "never-written.csv"))
+        val v = ShotCsvFormat.validateFile(File(tmp.root, "never-written.csv"))
         assertFalse(v.isClean)
         assertTrue(v.problems.any { it.startsWith("file does not exist") })
     }
@@ -316,9 +326,9 @@ class ShotCsvStoreTest {
      */
     @Test
     fun theSummaryNamesCountsAndFirstProblems() {
-        val good = ShotCsvStore.encode(full)
-        val bad = good.split(",", limit = 21).mapIndexed { i, v -> if (i == 4) "not-a-number" else v }.joinToString(",")
-        val v = ShotCsvStore.validateText("${ShotCsvStore.HEADER}\n$good\n$bad")
+        val good = ShotCsvFormat.encode(full)
+        val bad = withColumn(good, "launch_angle_deg", "not-a-number")
+        val v = ShotCsvFormat.validateText("${ShotCsvFormat.HEADER}\n$good\n$bad")
         val s = v.summary()
         assertTrue("summary should name the count: $s", "1/2 rows OK" in s)
         assertTrue("summary should name the bad column: $s", s.contains("launch_angle_deg"))
@@ -383,7 +393,7 @@ class ShotCsvStoreTest {
                 },
                 rawMetrics = ByteArray(rnd.nextInt(40)).also { rnd.nextBytes(it) },
             )
-            val back = ShotCsvStore.decode(ShotCsvStore.encode(shot))
+            val back = ShotCsvFormat.decode(ShotCsvFormat.encode(shot))
             assertEquals("round-trip failed:\n$shot\n!=\n$back", shot, back)
         }
     }

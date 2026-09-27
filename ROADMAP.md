@@ -4,8 +4,8 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-27 — R1–R4 merged (PRs #5–#7, validated as far as tests
-go); R5 design settled and recorded in DESIGN §8, not yet built.
+Last updated: 2026-09-27 — R5 and R6 implemented and test-covered; both still need a
+hardware pass. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -90,12 +90,14 @@ how much they get in the way of using the app at the range.
   - Verify: `ShotCsvStoreTest` — clean file passes, injected torn row reported
     with its line number, wrong column count reported, bad hex reported.
 
-- [ ] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).**
+- [~] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).** *(implemented 2026-09-27, unverified on hardware)*
   The R10 reports club *metrics* (`ClubDisplay`: club speed, face/path/attack
   angle) but never *which club* you swung. Let the user tag a shot with the club
-  they used, persist it, and show it with the shot. **Design settled 2026-09-26;
-  the reasoning is written into DESIGN §8, so this section is the summary, not
-  the source of truth.**
+  they used, persist it, and show it with the shot. **Built 2026-09-27** —
+  `club/GolfClub` (the canonical list), `ownedClubs` + `currentClub` in
+  `SettingsRepository`, `ShotCsvStore.updateClub`, the `ShotDetailCard` club
+  editor, and the arrival stamp in `R10ForegroundService`. The reasoning is in
+  DESIGN §8; this section is the summary, not the source of truth.
   - **One canonical club list, in one place.** A single `Club` list ordered driver
     → putter, defined once and read by both the Settings bag editor and the
     Shots-tab picker. Never hardcode the set in two places.
@@ -139,7 +141,7 @@ how much they get in the way of using the app at the range.
     `club_label` present and R4 validation still clean; **an old 21-column CSV
     still loads and still validates.**
 
-- [ ] **R6. Delete a shot.**
+- [~] **R6. Delete a shot.** *(implemented 2026-09-27, unverified on hardware)*
   A mis-hit practice swing, a bad session, or a row the user does not want in
   their history all need the same thing: remove it. This falls out of the R5
   decision that the store is mutable — once `updateClub` exists, deletion is the

@@ -187,4 +187,44 @@ class DeviceStateHolderTest {
         assertEquals(listOf(3, 2, 1), DeviceStateHolder.shots.value.map { it.shotId })
         assertEquals(3, DeviceStateHolder.shotCount.value)
     }
+
+    // --- ROADMAP R5 / R6: UI-side mirrors of a store edit ---
+
+    @Test
+    fun setShotClubRetagsInPlaceAndKeepsOrder() {
+        DeviceStateHolder.addShot(shot(1))
+        DeviceStateHolder.addShot(shot(2))
+
+        DeviceStateHolder.setShotClub(1, "7 Iron")
+
+        assertEquals(listOf(2, 1), DeviceStateHolder.shots.value.map { it.shotId })
+        assertEquals("7 Iron", DeviceStateHolder.shots.value.last().clubLabel)
+        assertNull(DeviceStateHolder.shots.value.first().clubLabel)
+    }
+
+    @Test
+    fun setShotClubWithNullClearsTheTag() {
+        DeviceStateHolder.addShot(shot(1).copy(clubLabel = "Putter"))
+        DeviceStateHolder.setShotClub(1, null)
+        assertNull(DeviceStateHolder.shots.value.single().clubLabel)
+    }
+
+    @Test
+    fun setShotClubOnAnAbsentShotChangesNothing() {
+        DeviceStateHolder.addShot(shot(1))
+        DeviceStateHolder.setShotClub(99, "Driver")
+        assertEquals(1, DeviceStateHolder.shots.value.size)
+    }
+
+    @Test
+    fun removeShotDropsTheRowButNotTheSessionCount() {
+        DeviceStateHolder.addShot(shot(1))
+        DeviceStateHolder.addShot(shot(2))
+
+        DeviceStateHolder.removeShot(1)
+
+        assertEquals(listOf(2), DeviceStateHolder.shots.value.map { it.shotId })
+        // The count is what the R10 sent this session, not a row count.
+        assertEquals(2, DeviceStateHolder.shotCount.value)
+    }
 }

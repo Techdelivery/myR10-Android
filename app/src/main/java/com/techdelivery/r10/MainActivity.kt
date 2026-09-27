@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +33,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techdelivery.r10.club.GolfClub
+import com.techdelivery.r10.data.ShotCsvFormat
 import com.techdelivery.r10.data.ShotCsvStore
 import com.techdelivery.r10.settings.AppSettings
 import com.techdelivery.r10.settings.SettingsRepository
@@ -55,6 +58,10 @@ private val TABS = listOf("Device", "Shots", "Settings")
 private const val SHOTS_TAB = 1
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val TAG = "R10UI"
+    }
 
     private var running by mutableStateOf(false)
     private var permissionDenied by mutableStateOf(false)
@@ -84,6 +91,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val settings by repo.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
                     var tab by remember { mutableIntStateOf(0) }
+                    val store = remember { (application as R10App).shotStore }
 
                     // ROADMAP R1: the screen sleeping mid-session loses the shot
                     // you just hit. Hold it awake on the Shots tab only, so the
@@ -121,7 +129,12 @@ class MainActivity : ComponentActivity() {
                         when (tab) {
                             0 -> DeviceScreen(showHexLog = settings.debugLogging, modifier = Modifier.fillMaxSize())
 
-                            1 -> ShotsScreen(Modifier.fillMaxSize())
+                            1 -> ShotsScreen(
+                                ownedClubs = settings.ownedClubs,
+                                onSetClub = { shotId, club -> setShotClub(repo, store, shotId, club) },
+                                onDeleteShot = { shotId -> deleteShot(store, shotId) },
+                                modifier = Modifier.fillMaxSize(),
+                            )
 
                             else -> SettingsScreen(
                                 repo = repo,
@@ -138,9 +151,42 @@ class MainActivity : ComponentActivity() {
     /** M3: show persisted shot history even before this session connects. */
     private fun loadHistory(store: ShotCsvStore) {
         uiScope.launch {
+            // DESIGN §8: schema migration is explicit, never implicit inside decode,
+            // and it runs once here rather than on every read. Reading a file must
+            // not rewrite it.
+            val migrated = runCatching { store.migrate() }.getOrDefault(false)
+            if (migrated) Log.i(TAG, "shot history migrated to schema v${ShotCsvFormat.SCHEMA_VERSION}")
             val history = runCatching { store.loadAll() }.getOrDefault(emptyList())
             // Merge, never assign: a shot can land while the file is being read.
             DeviceStateHolder.adoptHistory(history)
+        }
+    }
+
+    /**
+     * R5: write the club annotation, then mirror it into the live list. The store
+     * owns the file; the holder is only what the UI reads.
+     *
+     * The pick also becomes the arrival stamp for subsequent shots, which is what
+     * saves a tap per ball at the range — so it is written even when the visible
+     * shot already carried that label.
+     */
+    private fun setShotClub(repo: SettingsRepository, store: ShotCsvStore, shotId: Int, club: GolfClub?) {
+        uiScope.launch {
+            val written = runCatching { store.updateClub(shotId, club) }
+            if (written.getOrDefault(false)) DeviceStateHolder.setShotClub(shotId, club?.id)
+            if (club != null) runCatching { repo.setCurrentClub(club.id) }
+        }
+    }
+
+    /**
+     * R6: delete the row, then drop it from the live list. A failed delete leaves
+     * the UI alone — showing a shot as gone while it is still on disk (and still in
+     * the next export) is worse than an error.
+     */
+    private fun deleteShot(store: ShotCsvStore, shotId: Int) {
+        uiScope.launch {
+            val deleted = runCatching { store.deleteShot(shotId) }.getOrDefault(false)
+            if (deleted) DeviceStateHolder.removeShot(shotId)
         }
     }
 
@@ -151,7 +197,7 @@ class MainActivity : ComponentActivity() {
         // Validate what was just written instead of trusting the copy: `decode`
         // skips malformed rows, so a torn file used to export as a success with
         // rows silently missing (ROADMAP R4).
-        val v = store.validateFile(out)
+        val v = ShotCsvFormat.validateFile(out)
         return "Wrote ${out.name} (${out.length()} bytes) · ${v.summary()}\n${out.absolutePath}"
     }
 

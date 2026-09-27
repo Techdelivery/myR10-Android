@@ -566,6 +566,15 @@ file. Its operations are:
   does not want in their history. Deleting is a user-visible data loss, so the UI
   must confirm it and there is no undo — the export snapshot is the only way back.
 - `exportSnapshot(dir, stamp)` — current behaviour.
+- `migrate()` — the explicit schema upgrade described below.
+
+**Where the code lives (as built).** Four units, split by job rather than by file
+size: `ShotCsvStore` owns the file, the mutex and the durability rules;
+`ShotCsvFormat` owns the schema, encode/decode and validation and touches no file;
+`ShotDedupIndex` owns the bounded LRU of stored-payload keys; `ShotCsvRewriter`
+owns the atomic rewrite (temp file, fsync, rename) and the per-line fold. The split
+exists so the store stays about durability, the format about compatibility, and a
+rewrite can be reasoned about without holding a lock in your head.
 
 Every mutating operation is one rewrite: read all rows, apply the change, write a
 temp file and rename it over the original, so a process kill mid-write leaves the

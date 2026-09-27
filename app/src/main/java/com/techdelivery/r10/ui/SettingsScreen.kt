@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.techdelivery.r10.club.GolfClub
 import com.techdelivery.r10.settings.AppSettings
 import com.techdelivery.r10.settings.SettingsRepository
 import com.techdelivery.r10.settings.asDoubleRange
@@ -35,6 +37,18 @@ import java.util.Locale
 
 /** Feet per metre — used to echo the tee distance in metric next to the imperial input. */
 private const val FT_PER_M = 3.281f
+
+/** Clubs per row in the "Clubs I own" grid. */
+private const val CLUBS_PER_ROW = 2
+
+/** One club in the owned-bag grid. */
+@Composable
+private fun ClubCheckbox(club: GolfClub, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Checkbox(checked = checked, onCheckedChange = onChange)
+        Text(club.id, style = MaterialTheme.typography.bodyMedium)
+    }
+}
 
 /**
  * DESIGN §9 tab 3 — every §8 settings key, persisted straight to DataStore.
@@ -159,6 +173,28 @@ fun SettingsScreen(repo: SettingsRepository, onExportCsv: suspend () -> String, 
                     "tee_range sent to device = $teeRangeMeters m",
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+
+        Text("Clubs I own (ROADMAP R5)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Tags the club picker on the Shots tab. Defaults to a full bag; " +
+                        "unticking everything makes the picker offer every club instead.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                GolfClub.ALL.chunked(CLUBS_PER_ROW).forEach { rowClubs ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowClubs.forEach { club ->
+                            ClubCheckbox(
+                                club = club,
+                                checked = club.id in settings.ownedClubs,
+                                onChange = { scope.launch { repo.setClubOwned(club.id, it) } },
+                            )
+                        }
+                    }
+                }
             }
         }
 
