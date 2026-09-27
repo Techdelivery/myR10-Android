@@ -4,8 +4,8 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-26 — R1–R4 merged (PRs #5–#7); R5 is the next
-feature to build.
+Last updated: 2026-09-27 — R1–R4 merged (PRs #5–#7, validated as far as tests
+go); R5 design settled and recorded in DESIGN §8, not yet built.
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -34,7 +34,8 @@ R1–R4 came from the user driving the real app and merged 2026-09-26
 (PR #5 keep-screen-on, #6 shots-tab-ux, #7 csv-validation). **R1–R3 are still
 unvalidated on hardware** — no `dumpsys power` reading, no tipped-unit session,
 no tap-selection session has been recorded, and no unit test covers them. R4 is
-test-covered (`ShotCsvStoreTest`). R5 is the next feature to build. Ordered by
+test-covered (`ShotCsvStoreTest`). R5 is the next feature to build, and R6 is a
+consequence of R5's store decision rather than a separate idea. Ordered by
 how much they get in the way of using the app at the range.
 
 - [~] **R1. Keep the screen on while the Shots tab is active.** *(code merged,
@@ -89,32 +90,81 @@ how much they get in the way of using the app at the range.
   - Verify: `ShotCsvStoreTest` — clean file passes, injected torn row reported
     with its line number, wrong column count reported, bad hex reported.
 
-- [ ] **R5. Assign a club to a shot (Shots tab → CSV → detail).**
+- [ ] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).**
   The R10 reports club *metrics* (`ClubDisplay`: club speed, face/path/attack
   angle) but never *which club* you swung. Let the user tag a shot with the club
-  they used, persist it, and show it with the shot.
+  they used, persist it, and show it with the shot. **Design settled 2026-09-26;
+  the reasoning is written into DESIGN §8, so this section is the summary, not
+  the source of truth.**
+  - **One canonical club list, in one place.** A single `Club` list ordered driver
+    → putter, defined once and read by both the Settings bag editor and the
+    Shots-tab picker. Never hardcode the set in two places.
+  - **Settings → "Clubs I own".** Checkbox grid over the full canonical list,
+    multi-select. Default: all clubs owned, so a fresh install always has a
+    usable picker. Stored in `AppSettings` (DataStore) and deliberately **not
+    exported** — the CSV is device measurements plus annotations, not bag
+    inventory.
   - **User-entered label, not device data.** The device cannot supply the club
-    identity, so treat it as an annotation on an otherwise device-owned shot —
-    keep it separate from `ClubDisplay`. (If a club-type field turns up in the
-    proto, use it as the default selection, not the source of truth.)
-  - **Selection UX:** hang the club picker off the **selected** shot (R3 already
-    gives selection). Start with a fixed golf set — Driver, 3W/5W, 3–9 iron,
-    PW/GW/SW/LW, putter — defined in one place so it can become configurable
-    later. A "current club" that stamps incoming shots is a nice-to-have on top.
-  - **Persistence is the hard part.** The CSV store is append-only, so "change a
-    shot's club" is not an in-place edit. Choose deliberately between (a) a store
-    update that rewrites the row, (b) a `shot_id → club` sidecar, or (c) a
-    current-club stamp at arrival time — and write the choice down. Do not let the
-    store drift half-mutable.
-  - **Schema change:** a new `club_label` column bumps the column count R4
-    validates against. Existing CSVs without it must still load — bump a schema
-    version or make `decode`/`validate` tolerate the missing column, so a
-    previously-exported file never becomes "invalid".
-  - **Display:** show it in `ShotDetailCard` and compactly in the list row, so a
-    tagged shot reads "7-iron · 155 mph …" instead of burying it.
-  - Verify: select a shot → pick "7-iron" → it shows in the detail card; kill +
-    relaunch → the tag survives; export → `club_label` is present and the file
-    still validates; an old CSV without the column still loads.
+    identity, so keep `club_label` separate from `ClubDisplay`. (If a club-type
+    field turns up in the proto, use it as the default selection, not the source
+    of truth.)
+  - **Selection UX:** the club picker hangs off the **selected** shot (R3).
+    Choices are the canonical list filtered to the clubs the user owns. If the
+    owned set is empty, fall back to the full list — an unlabelable shot is worse
+    than an unowned club. Compactly in the list row, so a tagged shot reads
+    "7-iron · 155 mph …"; prominently in the detail card, where it is also
+    editable and clearable.
+  - **Current-club stamp on arrival: yes.** The last-picked club auto-tags each
+    new shot, so a session at the range does not need a picker tap per ball. The
+    stamp is always visible and always correctable in the detail card; the R10
+    refusing to record while tilted is not a reason to also require a tap.
+  - **Persistence (decided): a row rewrite inside the store, not a sidecar.**
+    `ShotCsvStore` is mutable and stays the only writer of `shots.csv`, under its
+    existing mutex: `append`, `updateClub` (replace the row by `shot_id`), and
+    `exportSnapshot`. A rewrite is read-all, apply the change, write temp + rename,
+    so a kill mid-rewrite leaves the previous file intact, and the dedup index is
+    rebuilt from the surviving rows. The UI never touches the file, so the store
+    cannot drift half-mutable. A sidecar `shot_id → club` map was rejected: it
+    makes the CSV a lossy export and gives two sources of truth for one fact.
+  - **Schema evolution (decided): a `schema_version` leading column**, with
+    `CURRENT_SCHEMA_VERSION`, a retained `HEADER_V1` (21 columns), `decode` /
+    `validateText` accepting every known version, and migration as an explicit
+    `migrate()` under the mutex — never implicit inside `decode`, so reading a
+    file never rewrites it. Full rules in DESIGN §8.
+  - Verify: Settings bag toggles and survives relaunch; select a shot → pick
+    "7-iron" → it shows in the detail card and the row; hit a shot without
+    touching the picker → it inherits the current club; change a tag on an older
+    shot → row rewrites, other rows untouched, file still validates; kill the app
+    mid-session → the file is not truncated; export → `schema_version` and
+    `club_label` present and R4 validation still clean; **an old 21-column CSV
+    still loads and still validates.**
+
+- [ ] **R6. Delete a shot.**
+  A mis-hit practice swing, a bad session, or a row the user does not want in
+  their history all need the same thing: remove it. This falls out of the R5
+  decision that the store is mutable — once `updateClub` exists, deletion is the
+  same rewrite with a different transformation, and leaving it out would make
+  editing the file by hand the only way to drop a shot.
+  - **Store:** `deleteShot(shotId)` in `ShotCsvStore`, under the same mutex and
+    the same temp-file-rename rewrite as `updateClub`, rebuilding the dedup index
+    from the surviving rows. A missing `shot_id` is a no-op, not an error.
+  - **UI:** delete from the shot detail card on the Shots tab, scoped to the
+    **selected** shot, so it can never delete the wrong row by accident. Clearing
+    the club tag stays a separate, non-destructive action.
+  - **Confirmation is required** — data loss with no undo. The dialog must name
+    the shot (`#id`, time, ball speed) so the user can see which row is about to
+    go. A single "Delete" tap on a list row is not acceptable.
+  - **Session state:** after a delete the selection is dropped (that shot is
+    gone) and the detail card falls back to the newest shot, reusing the R3
+    fallback rather than showing an empty card.
+  - **Already-exported files are unaffected** — an export is a copy, so deleting
+    a shot later does not rewrite CSVs the user already took off the device.
+  - Verify: delete a middle shot → gone, rows either side intact and still in
+    order, file still validates, detail falls back to the newest; delete the
+    newest → next newest becomes the fallback; kill the app mid-rewrite → file not
+    truncated, the shot either fully present or fully gone, never half-written;
+    delete a shot, then have the device re-push it → it is written again (the
+    dedup index was rebuilt, not left stale).
 
 ---
 

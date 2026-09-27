@@ -508,6 +508,10 @@ Room entities:
   humidity (1), altitude (0), airDensity (1), teeDistanceFt (7), debugLogging
   (false), reconnectIntervalS (5).
 
+Planned additions (ROADMAP R5): `ownedClubs` (the set of clubs the user owns,
+drawn from the canonical club list) and `currentClub` (the last-picked club, used
+to stamp arriving shots). Neither is exported with the CSV.
+
 **Persistence implementation note (2026-09-25).** The shipped store is an
 append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
 above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
@@ -548,12 +552,52 @@ and the Export button shows the summary. This matters because `decode`
 deliberately returns null for a malformed row — without an explicit pass, a torn
 file exports as a success with rows silently missing.
 
-**Schema changes must stay additive-tolerant (planned ROADMAP R5).** A new column
-(e.g. `club_label`) bumps the count that `COLS` and `validateText` check against.
-Two rules follow from R4 and should hold for any such change: carry a schema
-version, or tolerate the missing trailing column in `decode`/`validate`, so a
-previously exported file never becomes "invalid"; and remember the store is
-append-only, so editing an existing row is not a free in-place write.
+**The store is mutable, but only from inside it (decided 2026-09-26, ROADMAP R5).**
+Tagging a shot with a club means editing a row that already exists, and a shot
+can be deleted outright, so the store is not append-only and is not going to be.
+The rule that keeps this from drifting half-mutable: `ShotCsvStore` stays the only
+writer of `shots.csv`, under its existing mutex, and the UI never touches the
+file. Its operations are:
+
+- `append(shot)` / `appendAll(shots)` — current behaviour.
+- `updateClub(shotId, club)` — rewrite one row.
+- `deleteShot(shotId)` — remove one row. Needed independently of the club tag: a
+  mis-hit practice swing, a row from a bad session, or a shot the user simply
+  does not want in their history. Deleting is a user-visible data loss, so the UI
+  must confirm it and there is no undo — the export snapshot is the only way back.
+- `exportSnapshot(dir, stamp)` — current behaviour.
+
+Every mutating operation is one rewrite: read all rows, apply the change, write a
+temp file and rename it over the original, so a process kill mid-write leaves the
+previous file intact rather than a truncated history. Each rewrite also rebuilds
+the in-memory dedup index from the surviving rows, because the index is a cache of
+what the file contains — deleting a row must not leave a key that suppresses a
+re-pushed shot later. `clear()` (delete everything) already existed and keeps its
+own faster path.
+
+**Schema versioning with explicit evolution (planned ROADMAP R5).** `club_label`
+adds a column, so the file carries a version instead of a column count that
+guesses itself:
+
+- The version is a leading `schema_version` **column** on every row, not a comment
+  line. A comment would be silently dropped by the R4 header check and by any
+  external reader; a column travels with the data.
+- `CURRENT_SCHEMA_VERSION` is a constant; `encode` always writes it. `HEADER_V1`
+  (21 columns) is kept alongside the current header so the old shape is described
+  in code rather than remembered.
+- `decode` and `validateText` accept every known version and report which one they
+  saw. A v1 file loads, validates, and exports without ever becoming "invalid" —
+  that is the rule R4 established, and it holds across the version change.
+- Migration is an explicit `migrate()` in the store, run under the mutex on app
+  start or before the first export. It is never implicit inside `decode`; reading
+  a file must not rewrite it.
+- `checkRow` validates `club_label` per version: present and a known club name for
+  current rows, tolerated as absent for v1 rows.
+
+**Club ownership is app settings, not shot data (planned ROADMAP R5).** The set
+of clubs the user owns lives in `AppSettings` (DataStore) and is deliberately not
+exported: the CSV stays device measurements plus annotations, and a bag
+inventory is personal setup, not part of a shot record.
 
 **Dedup key resolution (2026-09-25).** `deviceShotId` cannot be that key as
 written. The R10 restarts its `shot_id` sequence on every power cycle, so a
@@ -590,8 +634,18 @@ Single activity, three tabs:
      `TiltReading` in `DeviceStateHolder` (a formatted string is fine for display
      and useless for logic). When the device is level, the same numbers render as
      a quiet one-line readout rather than a banner.
+   - **Club tag (planned ROADMAP R5).** The device supplies club *metrics*, never
+     the club *identity*, so the club is a user annotation. The picker hangs off
+     the selected shot, offers the clubs the user owns in Settings, and the
+     last-picked club stamps each arriving shot so a session does not need a tap
+     per ball. The tag is always visible and always correctable. See §8 for the
+     store and schema rules behind it.
 3. **Settings** — all settings keys above; debug logging toggle that reveals a
    hex log pane (raw chunk in, framed, decoded, proto message lines).
+   - **"Clubs I own" (planned ROADMAP R5).** Checkbox grid over the canonical club
+     list (driver → putter), multi-select, stored in `AppSettings` and not
+     exported. It filters the Shots-tab club picker, which falls back to the full
+     list when the owned set is empty.
 
 **Screen-awake policy (ROADMAP R1).** The Shots tab sets `keepScreenOn` on the
 window: the screen sleeping mid-session loses the shot you just hit. Every other
