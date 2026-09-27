@@ -34,7 +34,8 @@ import java.io.RandomAccessFile
  *
  * A record is a shot or the header. Damaged records are identified and reported,
  * the rest are kept: losing a session to one torn tail is not acceptable when the
- * damage is local.
+ * damage is local. A torn tail is also repaired before the next append, so a kill
+ * mid-append cannot strand every shot recorded after it.
  *
  * Dedup is [ShotDedupIndex] on the raw `Metrics` bytes plus the shot id — the same
  * key the CSV store used, for the same reason (the R10 restarts its id sequence on
@@ -82,9 +83,10 @@ class ShotProtoStore(
      */
     suspend fun append(shot: Shot): Boolean = mutex.withLock {
         ensureIndexedUnlocked()
+        repairTailUnlocked()
         val key = dedupKey(shot)
         if (key != null && dedup.contains(key)) return@withLock false
-        val record = encodeRecord(shot)
+        val record = ShotRecordCodec.encode(shot)
         // Header + record in one durable write, so a shot is never stored in a file
         // with no header (which a reader would have to guess at).
         val needsHeader = !file.exists() || file.length() == 0L
@@ -96,11 +98,12 @@ class ShotProtoStore(
     /** Bulk append, skipping anything already stored. One durable write for the lot. */
     suspend fun appendAll(shots: List<Shot>) = mutex.withLock {
         ensureIndexedUnlocked()
+        repairTailUnlocked()
         val pending = ArrayList<ByteArray>(shots.size)
         shots.forEach { shot ->
             val key = dedupKey(shot)
             if (key != null && dedup.contains(key)) return@forEach
-            pending.add(encodeRecord(shot))
+            pending.add(ShotRecordCodec.encode(shot))
             if (key != null) dedup.add(key)
         }
         if (pending.isEmpty()) return@withLock
@@ -119,13 +122,18 @@ class ShotProtoStore(
      * means re-emitting that one record. Returns true when the shot existed. A
      * missing id is a no-op, not an error.
      *
+     * **[shotId] alone is not identity.** The R10 restarts its `shot_id` sequence on
+     * every power cycle — the same reason the dedup key is `shot_id || payload` — so
+     * the file can hold yesterday's shot 1 and today's shot 1 at once. They are
+     * told apart by arrival time, which is the pair the UI already selects on.
+     *
      * Returns **false without writing** when the file is damaged (see
      * [readRecordsUnlocked]). A rewrite writes back only the records that were
      * readable, so running one over a torn tail would silently delete everything
      * after the tear — turning one damaged record into a lost session. [validate]
      * names the damage and the export surfaces it.
      */
-    suspend fun updateClub(shotId: Int, club: GolfClub?): Boolean = mutex.withLock {
+    suspend fun updateClub(shotId: Int, receivedAtMs: Long, club: GolfClub?): Boolean = mutex.withLock {
         val scan = readRecordsUnlocked()
         if (scan.damaged) return@withLock false
         val records = scan.records
@@ -136,10 +144,10 @@ class ShotProtoStore(
                 out.add(r)
                 continue
             }
-            if (shot.shotId != shotId) {
+            if (!shot.matches(shotId, receivedAtMs)) {
                 out.add(r)
             } else {
-                out.add(encodeRecord(shot.copy(clubLabel = club?.id)))
+                out.add(ShotRecordCodec.encode(shot.copy(clubLabel = club?.id)))
                 changed = true
             }
         }
@@ -151,7 +159,8 @@ class ShotProtoStore(
      * Delete one stored shot.
      *
      * Irreversible in-app: an export is a copy, and that copy is the only way back.
-     * The UI confirms before calling this. The dedup index is rebuilt from the
+     * The UI confirms before calling this. Keyed on the [updateClub] pair — the id
+     * alone would delete every session's shot 1. The dedup index is rebuilt from the
      * surviving records, so a device that re-pushes a deleted shot writes it again
      * instead of being suppressed by a stale key.
      *
@@ -159,11 +168,11 @@ class ShotProtoStore(
      * reason as [updateClub]: a rewrite must never be the thing that drops records
      * past a tear.
      */
-    suspend fun deleteShot(shotId: Int): Boolean = mutex.withLock {
+    suspend fun deleteShot(shotId: Int, receivedAtMs: Long): Boolean = mutex.withLock {
         val scan = readRecordsUnlocked()
         if (scan.damaged) return@withLock false
         val records = scan.records
-        val out = records.filter { r -> r.toShot()?.shotId != shotId }
+        val out = records.filter { r -> r.toShot()?.matches(shotId, receivedAtMs) != true }
         if (out.size == records.size) return@withLock false
         writeAllUnlocked(out)
         dedup.seedFrom(out.mapNotNull { it.toShot() }, ::dedupKey)
@@ -237,6 +246,30 @@ class ShotProtoStore(
     }
 
     /**
+     * Put a torn file back on a record boundary before appending to it.
+     *
+     * A torn record leaves bytes after the last readable record that no reader will
+     * ever look at — [DelimitedRecords.read] stops at the tear. Appending to that
+     * position would write a shot the app can never read, export, or validate, while
+     * `append` still reported success, and every later shot would pile up behind the
+     * same tear. So the tail is dropped first and the append lands readable.
+     *
+     * **Repair, not refusal.** Rewriting [RecordScan.intactPrefix] keeps every record
+     * the read could account for, byte for byte, through the same atomic path as a
+     * mutation; only the bytes past the tear go. Refusing instead would leave a store
+     * that has lost a tail permanently unable to record a shot, which is a worse
+     * failure than a reported one. The damage is still reported by [validate] while
+     * it lasts; a file whose very first record is unreadable has no intact prefix to
+     * keep, and the append then starts a fresh log with a new header.
+     */
+    private fun repairTailUnlocked() {
+        if (!file.exists() || file.length() == 0L) return
+        val scan = readRecordsUnlocked()
+        if (!scan.damaged) return
+        writeAllUnlocked(listOf(scan.intactPrefix))
+    }
+
+    /**
      * Every shot in the file, oldest first. The header record is not a shot and is
      * dropped by [ByteArray.toShot] returning null for it, so this does not depend
      * on the header being first — only on it being unshot-like.
@@ -258,18 +291,18 @@ class ShotProtoStore(
      * neither a header nor a shot. [updateClub] and [deleteShot] rewrite by writing
      * the readable records back verbatim, so in any of those states the rewrite
      * would drop exactly the records the store exists to keep — and they refuse
-     * rather than do it. The damaged bytes are left on disk for [validate] to
-     * report and the user to export; carrying them along would mean inventing
+     * rather than do it. Carrying a damaged tail along instead would mean inventing
      * record boundaries, which is how one torn tail becomes a whole lost session.
      */
     private fun readRecordsUnlocked(collectProblems: MutableList<String> = mutableListOf()): RecordScan {
-        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), false)
+        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), ByteArray(0), false)
         val bytes = file.readBytes()
         val framed = DelimitedRecords.read(bytes) { index, message ->
             collectProblems += "record ${index + 1}: $message"
         }
         // Bytes the walk could not account for are the tail it stopped before.
-        val stoppedEarly = framed.sumOf { it.size } < bytes.size
+        val covered = framed.sumOf { it.size }
+        val stoppedEarly = covered < bytes.size
         val capped = framed.size > MAX_RECORDS
         if (capped) {
             collectProblems += "file holds more than $MAX_RECORDS records; the rest were not read"
@@ -280,7 +313,11 @@ class ShotProtoStore(
             if (!ok) collectProblems += "record ${index + 1}: not a header or a shot"
             ok
         }
-        return RecordScan(records, stoppedEarly || capped || records.size != within.size)
+        return RecordScan(
+            records = records,
+            intactPrefix = bytes.copyOf(covered),
+            damaged = stoppedEarly || capped || records.size != within.size,
+        )
     }
 
     /**
@@ -312,6 +349,14 @@ class ShotProtoStore(
      *
      * [records] are **framed** bytes read back from the file, so writing them
      * verbatim cannot drop a field this build does not know.
+     *
+     * **The original is never deleted.** An earlier version deleted the destination
+     * and retried the rename when the first one failed, which meant a second failure
+     * destroyed the history the rewrite was preserving — the worst possible outcome
+     * of an operation whose whole job is not to lose anything. Rename replaces the
+     * destination on the filesystems this app ships on; where it cannot, the write
+     * fails loudly and the previous file, plus the untouched temp file, are both
+     * still on disk for the next attempt.
      */
     private fun writeAllUnlocked(records: List<ByteArray>) {
         file.parentFile?.mkdirs()
@@ -323,19 +368,11 @@ class ShotProtoStore(
             stream.fd.sync()
         }
         if (!tmp.renameTo(file)) {
-            // Rename can fail when the destination exists on some filesystems, so
-            // fall back to delete-then-rename before giving up.
-            file.delete()
-            if (!tmp.renameTo(file)) {
-                tmp.delete()
-                throw IOException("could not replace ${file.absolutePath}")
-            }
+            throw IOException("could not replace ${file.absolutePath}")
         }
     }
 
     private fun headerBytes(): ByteArray = ShotRecordCodec.header(STORE_FORMAT_VERSION)
-
-    private fun encodeRecord(shot: Shot): ByteArray = ShotRecordCodec.encode(shot)
 
     /** One durable append, so a shot is either whole on disk or absent. */
     private fun appendDurable(bytes: ByteArray) {
@@ -349,12 +386,30 @@ class ShotProtoStore(
 }
 
 /**
+ * A shot's identity in the store: the device's id **plus** when it arrived.
+ *
+ * Not the id alone. The R10 restarts `shot_id` at every power cycle — the reason
+ * the dedup key is `shot_id || payload` — so the file can hold yesterday's shot 1
+ * and today's shot 1 at once, and a mutation keyed on the id alone would edit or
+ * destroy both. This is the pair the UI selects on (`ShotsScreen.shotKey`).
+ */
+private fun Shot.matches(shotId: Int, receivedAtMs: Long): Boolean =
+    this.shotId == shotId && this.receivedAtMs == receivedAtMs
+
+/**
  * What one read of the file yielded: the records it could account for, and whether
  * the file holds damage that makes a whole-file rewrite unsafe.
  */
 private class RecordScan(
-    /** Framed bytes, header included, oldest first. */
+    /** Framed bytes, header included, oldest first; unreadable records dropped. */
     val records: List<ByteArray>,
+    /**
+     * Exactly the bytes the read could account for — the intact prefix, byte for
+     * byte, including a record that framed correctly but parsed as neither a header
+     * nor a shot. Repairing writes *these*, so a repair cannot lose a byte the
+     * reader could still place, which filtering to [records] would.
+     */
+    val intactPrefix: ByteArray,
     /** True when rewriting these records would drop records the read could not see. */
     val damaged: Boolean,
 )

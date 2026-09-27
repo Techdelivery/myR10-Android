@@ -37,16 +37,20 @@ class ShotProtoStoreTest {
      * Building the display half by hand would make the tests assert against numbers
      * the device never sent — and the store would (correctly) return the derived
      * ones instead.
+     *
+     * [salt] varies the payload while leaving [id] alone, which is how a test gets
+     * two records the store genuinely allows: the dedup key is `shot_id || payload`,
+     * because the R10 restarts its id sequence on every power cycle.
      */
-    private fun shot(id: Int, at: Long = 1_700_000_000_000L + id): Shot {
-        val raw = metrics(id)
+    private fun shot(id: Int, at: Long = 1_700_000_000_000L + id, salt: Int = 0): Shot {
+        val raw = metrics(id, salt)
         return MetricConverter.shot(R10Protos.Metrics.parseFrom(raw), at)
     }
 
     /** A real `Metrics` payload, so the store round-trips the device's own bytes. */
-    private fun metrics(id: Int): ByteArray {
+    private fun metrics(id: Int, salt: Int = 0): ByteArray {
         val ball = R10Protos.BallMetrics.newBuilder()
-            .setBallSpeed(88.0f + id)
+            .setBallSpeed(88.0f + id + salt)
             .setLaunchAngle(11.5f)
             .setLaunchDirection(-2.5f)
             .setSpinAxis(-88.0f)
@@ -167,7 +171,7 @@ class ShotProtoStoreTest {
         store.appendAll(listOf(shot(1), shot(2), shot(3)))
         val payloads = store.loadAll().associate { it.shotId to it.rawMetrics.toList() }
 
-        assertTrue(store.updateClub(2, GolfClub.DRIVER))
+        assertTrue(store.updateClub(2, shot(2).receivedAtMs, GolfClub.DRIVER))
 
         val all = store.loadAll()
         assertEquals(listOf(null, GolfClub.DRIVER.id, null), all.map { it.clubLabel })
@@ -178,9 +182,10 @@ class ShotProtoStoreTest {
     @Test
     fun clearingTheClubIsNotDeletingTheShot() = runTest {
         val store = ShotProtoStore(file())
-        store.append(shot(1))
-        assertTrue(store.updateClub(1, GolfClub.PUTTER))
-        assertTrue(store.updateClub(1, null))
+        val s = shot(1)
+        assertTrue(store.append(s))
+        assertTrue(store.updateClub(1, s.receivedAtMs, GolfClub.PUTTER))
+        assertTrue(store.updateClub(1, s.receivedAtMs, null))
         assertEquals(1, store.loadAll().size)
         assertNull(store.loadAll().single().clubLabel)
     }
@@ -189,7 +194,7 @@ class ShotProtoStoreTest {
     fun updatingAnAbsentShotIsANoop() = runTest {
         val store = ShotProtoStore(file())
         store.append(shot(1))
-        assertFalse(store.updateClub(99, GolfClub.DRIVER))
+        assertFalse(store.updateClub(99, shot(1).receivedAtMs, GolfClub.DRIVER))
         assertEquals(1, store.loadAll().size)
     }
 
@@ -207,15 +212,16 @@ class ShotProtoStoreTest {
     fun deleteRemovesOnlyThatRowAndKeepsOrder() = runTest {
         val store = ShotProtoStore(file())
         store.appendAll(listOf(shot(1), shot(2), shot(3)))
-        assertTrue(store.deleteShot(2))
+        assertTrue(store.deleteShot(2, shot(2).receivedAtMs))
         assertEquals(listOf(1, 3), store.loadAll().map { it.shotId })
     }
 
     @Test
     fun deletingTheOnlyShotLeavesAnEmptyButValidStore() = runTest {
         val store = ShotProtoStore(file())
-        store.append(shot(1))
-        assertTrue(store.deleteShot(1))
+        val s = shot(1)
+        assertTrue(store.append(s))
+        assertTrue(store.deleteShot(1, s.receivedAtMs))
         assertTrue(store.loadAll().isEmpty())
         val v = store.validate()
         assertTrue("a header-only store is still valid: ${v.problems}", v.isClean)
@@ -225,7 +231,7 @@ class ShotProtoStoreTest {
     fun deletingAnAbsentShotIsANoop() = runTest {
         val store = ShotProtoStore(file())
         store.append(shot(1))
-        assertFalse(store.deleteShot(42))
+        assertFalse(store.deleteShot(42, shot(1).receivedAtMs))
         assertEquals(1, store.loadAll().size)
     }
 
@@ -240,7 +246,7 @@ class ShotProtoStoreTest {
         val s = shot(1)
         assertTrue(store.append(s))
         assertFalse(store.append(s))
-        assertTrue(store.deleteShot(1))
+        assertTrue(store.deleteShot(1, s.receivedAtMs))
         assertTrue("re-push after delete must write again", store.append(s))
         assertEquals(1, store.loadAll().size)
     }
@@ -250,9 +256,63 @@ class ShotProtoStoreTest {
         val f = file()
         val store = ShotProtoStore(f)
         store.appendAll(listOf(shot(1), shot(2)))
-        store.updateClub(1, GolfClub.FIVE_WOOD)
-        store.deleteShot(2)
+        store.updateClub(1, shot(1).receivedAtMs, GolfClub.FIVE_WOOD)
+        store.deleteShot(2, shot(2).receivedAtMs)
         assertEquals(listOf(f.name), f.parentFile?.list()?.toList())
+    }
+
+    // --- identity is (shot_id, received_at), not shot_id alone ---
+
+    /**
+     * The R10 restarts `shot_id` at every power cycle — the reason the dedup key is
+     * `shot_id || payload` and the reason the file can hold yesterday's shot 1 and
+     * today's shot 1 at once. A mutation keyed on the id alone would edit or
+     * destroy both, and a delete has no undo.
+     */
+    @Test
+    fun aClubTagOnlyReachesTheSessionItNames() = runTest {
+        val store = ShotProtoStore(file())
+        // Same id, different payloads, so the dedup key genuinely permits both.
+        val yesterday = shot(1, at = 1_700_000_000_000L, salt = 0)
+        val today = shot(1, at = 1_800_000_000_000L, salt = 1)
+        assertTrue(store.append(yesterday))
+        assertTrue(store.append(today))
+
+        assertTrue(store.updateClub(1, today.receivedAtMs, GolfClub.DRIVER))
+
+        val all = store.loadAll()
+        assertEquals(listOf(1, 1), all.map { it.shotId })
+        assertEquals(
+            "yesterday's shot must keep its own (absent) tag",
+            listOf(null, GolfClub.DRIVER.id),
+            all.map { it.clubLabel },
+        )
+    }
+
+    @Test
+    fun deletingOneSessionsShotKeepsTheOther() = runTest {
+        val store = ShotProtoStore(file())
+        val yesterday = shot(1, at = 1_700_000_000_000L, salt = 0).copy(clubLabel = GolfClub.PUTTER.id)
+        val today = shot(1, at = 1_800_000_000_000L, salt = 1)
+        store.appendAll(listOf(yesterday, today))
+
+        assertTrue(store.deleteShot(1, today.receivedAtMs))
+
+        val left = store.loadAll()
+        assertEquals(1, left.size)
+        assertEquals(yesterday.receivedAtMs, left.single().receivedAtMs)
+        assertEquals("the survivor keeps its tag", GolfClub.PUTTER.id, left.single().clubLabel)
+    }
+
+    @Test
+    fun aMutationOnTheWrongArrivalTimeIsANoop() = runTest {
+        val store = ShotProtoStore(file())
+        store.appendAll(
+            listOf(shot(1, at = 1_700_000_000_000L, salt = 0), shot(1, at = 1_800_000_000_000L, salt = 1)),
+        )
+        assertFalse(store.deleteShot(1, 1_750_000_000_000L))
+        assertFalse(store.updateClub(1, 1_750_000_000_000L, GolfClub.PUTTER))
+        assertEquals(2, store.loadAll().size)
     }
 
     // --- damage is per record, not per file ---
@@ -317,7 +377,7 @@ class ShotProtoStoreTest {
         val before = f.readBytes()
         val store = ShotProtoStore(f)
 
-        assertFalse("a torn store must refuse the rewrite", store.updateClub(1, GolfClub.DRIVER))
+        assertFalse("a torn store must refuse the rewrite", store.updateClub(1, shot(1).receivedAtMs, GolfClub.DRIVER))
 
         assertArrayEquals("the damaged file must be untouched", before, f.readBytes())
         assertEquals(listOf(1, 2), store.loadAll().map { it.shotId })
@@ -329,7 +389,7 @@ class ShotProtoStoreTest {
         val before = f.readBytes()
         val store = ShotProtoStore(f)
 
-        assertFalse("a torn store must refuse the rewrite", store.deleteShot(1))
+        assertFalse("a torn store must refuse the rewrite", store.deleteShot(1, shot(1).receivedAtMs))
 
         assertArrayEquals("the damaged file must be untouched", before, f.readBytes())
         assertEquals(listOf(1, 2), store.loadAll().map { it.shotId })
@@ -339,6 +399,36 @@ class ShotProtoStoreTest {
     fun anEmptyStoreReportsRatherThanPasses() = runTest {
         val v = ShotProtoStore(file()).validate()
         assertFalse(v.isClean)
+    }
+
+    /**
+     * A torn tail leaves the file not ending on a record boundary, and the reader
+     * stops at the tear. Appending there would write a shot nothing can ever read —
+     * not `loadAll`, not the export, not `validate` — while `append` still reported
+     * success, and every shot after it would pile up behind the same tear. The tail
+     * is therefore repaired before the append, keeping every record the read could
+     * account for.
+     */
+    @Test
+    fun appendingAfterATornTailDoesNotStrandTheNewShot() = runTest {
+        val f = tornFile()
+        assertFalse("precondition: the file starts torn", ShotProtoStore(f).validate().isClean)
+        val store = ShotProtoStore(f)
+
+        assertTrue(store.append(shot(4)))
+
+        // Read back through a *fresh* store, so nothing can be served from a cache
+        // the append path happened to fill.
+        val reloaded = ShotProtoStore(f)
+        assertEquals(
+            "the torn tail must not swallow the new shot",
+            listOf(1, 2, 4),
+            reloaded.loadAll().map { it.shotId },
+        )
+        assertTrue("the repaired file validates clean: ${reloaded.validate().problems}", reloaded.validate().isClean)
+        // A second append lands readable too, so the store is not left wedged.
+        assertTrue(reloaded.append(shot(5)))
+        assertEquals(listOf(1, 2, 4, 5), ShotProtoStore(f).loadAll().map { it.shotId })
     }
 
     // --- dedup across sessions ---

@@ -59,10 +59,10 @@ fun ShotsScreen(
      * unowned club.
      */
     ownedClubs: Set<String>,
-    /** Persist a club annotation ([GolfClub] or null to clear) on the given shot id. */
-    onSetClub: (Int, GolfClub?) -> Unit,
+    /** Persist a club annotation ([GolfClub] or null to clear) on the shot with this id and arrival time. */
+    onSetClub: (Int, Long, GolfClub?) -> Unit,
     /** Delete the shot permanently. The caller confirms with the user first. */
-    onDeleteShot: (Int) -> Unit,
+    onDeleteShot: (Int, Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shots by DeviceStateHolder.shots.collectAsState()
@@ -146,7 +146,7 @@ fun ShotsScreen(
                         pendingDelete = null
                         // The selected shot is gone; fall back rather than show an empty card.
                         selectedKey = null
-                        onDeleteShot(shot.shotId)
+                        onDeleteShot(shot.shotId, shot.receivedAtMs)
                     },
                 ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
@@ -166,7 +166,7 @@ private fun pickerClubs(owned: Set<String>): List<GolfClub> =
 private class ShotActions(
     val onSelect: (String?) -> Unit,
     val onClearSelection: () -> Unit,
-    val onSetClub: (Int, GolfClub?) -> Unit,
+    val onSetClub: (Int, Long, GolfClub?) -> Unit,
     val onRequestDelete: (Shot) -> Unit,
 )
 
@@ -189,7 +189,7 @@ private fun ColumnScope.ShotsScreenBody(
             isSelected = it === selected,
             isLatest = it === newest,
             offeredClubs = pickerClubs(ownedClubs),
-            onSetClub = { club -> actions.onSetClub(it.shotId, club) },
+            onSetClub = { club -> actions.onSetClub(it.shotId, it.receivedAtMs, club) },
             onRequestDelete = actions.onRequestDelete,
         )
     }

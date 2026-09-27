@@ -153,7 +153,13 @@ how much they get in the way of using the app at the range.
     rebuilt from the surviving records. A rewrite also **refuses on a damaged
     file** (a torn tail, a record that is neither header nor shot): a whole-file
     rewrite writes back only the records it could read, so applying one would
-    delete everything past the tear. The export reports the damage instead. The UI never touches the file, so the store
+    delete everything past the tear. The export reports the damage instead. An
+    **append repairs** such a file first — dropping only the bytes past the tear
+    and keeping every record the read could account for — because a store that
+    refused to append would be permanently unable to record a shot. Both
+    mutations are keyed on **`(shot_id, received_at_ms)`**, never the id alone:
+    the R10 restarts its id sequence on every power cycle, so the file can hold
+    yesterday's shot 1 and today's shot 1 at once. The UI never touches the file, so the store
     cannot drift half-mutable. A sidecar `shot_id → club` map was rejected: it
     gives two sources of truth for one fact.
   - **Schema evolution (decided, then superseded by R7): a `schema_version` leading
@@ -177,9 +183,12 @@ how much they get in the way of using the app at the range.
   decision that the store is mutable — once `updateClub` exists, deletion is the
   same rewrite with a different transformation, and leaving it out would make
   editing the file by hand the only way to drop a shot.
-  - **Store:** `deleteShot(shotId)` in `ShotProtoStore`, under the same mutex and
-    the same temp-file-rename rewrite as `updateClub`, rebuilding the dedup index
-    from the surviving records. A missing `shot_id` is a no-op, not an error.
+  - **Store:** `deleteShot(shotId, receivedAtMs)` in `ShotProtoStore`, under the
+    same mutex and the same temp-file-rename rewrite as `updateClub`, rebuilding
+    the dedup index from the surviving records. Keyed on the **pair**, not the id:
+    a power cycle restarts the R10's id sequence, so two sessions can each hold a
+    shot 1 and deleting by id alone would take both. A missing
+    `shot_id` is a no-op, not an error.
   - **UI:** delete from the shot detail card on the Shots tab, scoped to the
     **selected** shot, so it can never delete the wrong row by accident. Clearing
     the club tag stays a separate, non-destructive action.
