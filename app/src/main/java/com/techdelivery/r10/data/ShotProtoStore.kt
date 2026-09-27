@@ -61,6 +61,23 @@ class ShotProtoStore(
     private val dedup = ShotDedupIndex(recentKeyWindow)
     private var indexed = false
 
+    /**
+     * File length last observed to end on a record boundary, or null when this
+     * store has not established one yet.
+     *
+     * The append path runs about once per second, and the tail check that guards
+     * it is a whole-file read. Uncached, every shot costs O(file size) on the one
+     * path DESIGN describes as a single framed write plus an fsync.
+     *
+     * **A match means "already known intact", never "assume intact".** The entry
+     * is written by this store alone, immediately after a durable append or an
+     * atomic rewrite, so it can only claim a boundary the store itself put there.
+     * Anything that changes the length — a kill mid-append, a file copied in
+     * behind its back — leaves a mismatch, and a mismatch falls back to the full
+     * scan. A stale or absent entry costs a scan, never correctness.
+     */
+    private var intactLength: Long? = null
+
     companion object {
         /**
          * Bumped only if a change makes older files unreadable. Protobuf itself
@@ -226,6 +243,7 @@ class ShotProtoStore(
         runCatching { file.delete() }
         dedup.clear()
         indexed = false
+        intactLength = null
     }
 
     // --- internals (mutex held) ---
@@ -261,11 +279,22 @@ class ShotProtoStore(
      * failure than a reported one. The damage is still reported by [validate] while
      * it lasts; a file whose very first record is unreadable has no intact prefix to
      * keep, and the append then starts a fresh log with a new header.
+     *
+     * The scan is skipped only when [intactLength] says this exact length was
+     * already found to end on a boundary — a cache of a result, never a licence to
+     * assume one. An unknown length, or any length this store did not write, is
+     * scanned in full.
      */
     private fun repairTailUnlocked() {
-        if (!file.exists() || file.length() == 0L) return
+        if (!file.exists()) return
+        val length = file.length()
+        if (length == 0L) return
+        if (intactLength == length) return
         val scan = readRecordsUnlocked()
-        if (!scan.damaged) return
+        if (!scan.damaged) {
+            intactLength = length
+            return
+        }
         writeAllUnlocked(listOf(scan.intactPrefix))
     }
 
@@ -370,6 +399,9 @@ class ShotProtoStore(
         if (!tmp.renameTo(file)) {
             throw IOException("could not replace ${file.absolutePath}")
         }
+        // The rewrite ends on a boundary by construction, so the next append does
+        // not have to read the file back to find that out.
+        intactLength = file.length()
     }
 
     private fun headerBytes(): ByteArray = ShotRecordCodec.header(STORE_FORMAT_VERSION)
@@ -382,6 +414,9 @@ class ShotProtoStore(
             raf.write(bytes)
             raf.fd.sync()
         }
+        // Reached only once the bytes are on disk, and only with whole framed
+        // records, so this length is known to end on a boundary.
+        intactLength = file.length()
     }
 }
 
