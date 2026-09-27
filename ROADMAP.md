@@ -4,7 +4,8 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-25, after the first real-shots session.
+Last updated: 2026-09-26 — R1–R4 shipped (PRs #5–#7 merged); R5 is the next
+feature to build.
 
 ---
 
@@ -22,19 +23,21 @@ displayed, persisted to CSV. **2 real shots recorded and reviewed by the user.**
 
 ---
 
-## Now — UI feedback from the first shots session (2026-09-25)
+## Now — UI features
 
-All three came from the user driving the real app. Ordered by how much they get in
-the way of using the app at the range.
+R1–R4 came from the user driving the real app and **shipped 2026-09-26**
+(PR #5 keep-screen-on, #6 shots-tab-ux, #7 csv-validation). R5 is the next
+feature to build. Ordered by how much they get in the way of using the app at
+the range.
 
-- [ ] **R1. Keep the screen on while the Shots tab is active.**
+- [x] **R1. Keep the screen on while the Shots tab is active.**
   The screen sleeps mid-session and you lose the shot you just hit. Set
   `keepScreenOn` on the window while tab == Shots, and release it on every other
   tab so the phone can still sleep in the pocket.
   - Verify: `adb shell dumpsys power | grep mWakefulness` stays `Awake` on the
     Shots tab with no charging; goes back to normal on Device/Settings.
 
-- [ ] **R2. Bad-pitch indication on the Shots tab.**
+- [x] **R2. Bad-pitch indication on the Shots tab.**
   The R10 refuses to shoot when it is not level, but that currently only shows up
   on the Device tab. The Shots tab is where you are looking when you hit, so the
   warning belongs there.
@@ -48,7 +51,7 @@ the way of using the app at the range.
   - Verify: tip the R10 up → banner appears on the Shots tab with the numbers;
     lay it flat → banner clears.
 
-- [ ] **R3. Tap a shot to select it and see its numbers.**
+- [x] **R3. Tap a shot to select it and see its numbers.**
   Right now only the newest shot has a detail card, so you cannot compare this
   shot against the previous one. Make the list rows clickable:
   - clear visual indication of which shot is selected (not just a colour tweak);
@@ -58,7 +61,7 @@ the way of using the app at the range.
   - Verify: select shot #1, hit shot #2 → selection stays on #1 and #2 appears in
     the list; tap #2 → detail switches; tap #1 again → back.
 
-- [ ] **R4. Validate the CSV.**
+- [x] **R4. Validate the CSV.**
   The export is currently trusted, not checked: `exportSnapshot` copies the file
   and reports the byte count, and `decode` silently skips malformed rows — so a
   torn or truncated file exports "successfully" with rows quietly missing. Add a
