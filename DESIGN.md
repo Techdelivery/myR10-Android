@@ -512,13 +512,35 @@ Room entities:
 append-only CSV (`filesDir/shots.csv`), not Room. Same logical `Shot` fields as
 above, plus the derived display columns and `raw_metrics_hex`. Reasons: KSP has no
 release matching the pinned Kotlin 2.4.x compiler, and routing Room through kapt
-was rejected because the build container is capped at 2 GiB and the extra
-annotation-processing round tips the build over. The persisted shape is flat,
+was rejected because the build container was capped at 2 GiB and the extra
+annotation-processing round tipped the build over. The persisted shape is flat,
 numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
 no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
 nothing else reads the file. Dedup across sessions must keep the same guarantee the
 `deviceShotId` unique index was meant to give — the in-memory dedup is per
 connection only, so a Room migration should enforce the unique key on insert.
+
+**Build-cap correction (2026-09-26).** The original Room rejection cited a 2 GiB
+container cap. That cap is no longer in effect — `gradle.properties` currently sets
+`-Xmx1g -XX:MaxMetaspaceSize=512m`. The only remaining reason to stay on CSV is
+that it is lossless for this shape and already *is* the export format. Room stays a
+deliberate, unforced choice; decide it on purpose, not by drift.
+
+**CSV validation (2026-09-26, ROADMAP R4).** The export path is no longer "copy
+the file and report the byte count". `ShotCsvStore.validateText` checks the header
+against `COL_NAMES`, then every row: column count, integer and numeric fields,
+`shot_type` as a known enum name, and `raw_metrics_hex` even-length and hex-only.
+Problems are reported per line (`line 42: …`), capped at 5 with a remainder count,
+and the Export button shows the summary. This matters because `decode`
+deliberately returns null for a malformed row — without an explicit pass, a torn
+file exports as a success with rows silently missing.
+
+**Schema changes must stay additive-tolerant (planned ROADMAP R5).** A new column
+(e.g. `club_label`) bumps the count that `COLS` and `validateText` check against.
+Two rules follow from R4 and should hold for any such change: carry a schema
+version, or tolerate the missing trailing column in `decode`/`validate`, so a
+previously exported file never becomes "invalid"; and remember the store is
+append-only, so editing an existing row is not a free in-place write.
 
 **Dedup key resolution (2026-09-25).** `deviceShotId` cannot be that key as
 written. The R10 restarts its `shot_id` sequence on every power cycle, so a
@@ -538,11 +560,31 @@ Single activity, three tabs:
    connecting → handshake → ready), model/firmware/serial/battery, current
    state chip (WAITING/RECORDING/…), tilt, error banners, reconnect button,
    pairing flow for unbonded devices.
-2. **Shots** — most recent shot detail card (big numbers: ball speed, carry-
-   relevant metrics, spin axis visual) + scrolling table of all shots with
-   ball/club/swing columns. Filter practice/normal.
+2. **Shots** — a level banner (see below), a detail card for the **selected** shot
+   (big numbers: ball speed, carry-relevant metrics, spin axis visual) + scrolling
+   table of all shots with ball/club/swing columns. Filter practice/normal. Tap a
+   row to select it; the card follows the selection and falls back to the newest
+   shot when nothing is selected, so a new shot never steals a deliberate
+   selection. Selection is marked by a `▶` marker plus bold text and a heavier
+   border, not by colour alone, so it survives a colour-blind palette or a
+   sunlight-washed screen.
+   - **Level banner (ROADMAP R2).** The R10 refuses to record while it is not
+     level, which used to be visible only on the Device tab — so a session
+     produced nothing and looked like a dead app. The banner is triggered by the
+     device's own `PLATFORM_TILTED` error, not by an app-invented threshold: the
+     unit knows its own tolerance, and a locally-guessed one can disagree with it
+     and be worse than nothing. Live pitch/roll is shown alongside, from a typed
+     `TiltReading` in `DeviceStateHolder` (a formatted string is fine for display
+     and useless for logic). When the device is level, the same numbers render as
+     a quiet one-line readout rather than a banner.
 3. **Settings** — all settings keys above; debug logging toggle that reveals a
    hex log pane (raw chunk in, framed, decoded, proto message lines).
+
+**Screen-awake policy (ROADMAP R1).** The Shots tab sets `keepScreenOn` on the
+window: the screen sleeping mid-session loses the shot you just hit. Every other
+tab releases it, so the phone can still sleep in the pocket. The window flag only
+applies while the window is focused, so backgrounding the app does not pin the
+screen either.
 
 Foreground notification: persistent, shows connection state + battery;
 tapping opens the app.

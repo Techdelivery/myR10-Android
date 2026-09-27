@@ -64,14 +64,16 @@ The app is **R10 Monitor** (`com.techdelivery.r10`).
 ## 3. Confirm the advertised name matches the setting  ⚠️
 
 The app **scans by advertised Bluetooth name**, defaulting to **`Approach R10`**
-(from settings). If your unit advertises a different name, the scan will find
-nothing.
+(from the Settings tab's device-name field, which persists to DataStore). If
+your unit advertises a different name, the scan will find nothing.
 
 - Check the real advertised name: in the phone's **Settings → Bluetooth**, or
   `adb shell` + a BLE scanner app, or nRF Connect.
-- If it differs from `Approach R10`, **tell me before the run** — there is no
-  settings screen yet (only the DataStore default), so I'll either change the
-  default or add a quick name field. Don't burn time on a scan that can't match.
+- If it differs from `Approach R10`, set it in the app: **Settings tab → device
+  name**, then Start the monitor. Don't burn time on a scan that can't match.
+- **This only applies to an unpaired R10.** A paired R10 stops advertising a
+  usable name (DESIGN §4) and is reached through the bonded-direct path, so a
+  name mismatch is not a cause of failure once you have paired once.
 
 ---
 
@@ -137,6 +139,42 @@ Tick these off from the screen + the hex file:
       Tilt, subscribe, ShotConfig) each followed by an `88 13 …` ack on RX.
 
 If all tick → **M1 passes.** Go to §8 to lock in the golden.
+
+---
+
+## 7A. Later-session checks (M2 / M3 / R1–R3)
+
+This guide's §1–§8 cover the first-pair M1/H2 run. Everything below is for a
+later session, when the unit is already paired and the golden file is
+committed. M2/M3 acceptance lives in `ROADMAP.md` (K1/K2); R1–R3 are merged
+code with **no hardware verification recorded yet**.
+
+- [ ] **Shots tab, screen stays on.** `adb shell dumpsys power | grep mWakefulness`
+      reads `Awake` on the Shots tab with the phone unplugged, and returns to
+      normal on the Device and Settings tabs. (ROADMAP R1.)
+- [ ] **Tilt banner on the Shots tab.** Tip the R10 up: the banner appears with
+      live pitch/roll. Lay it flat: the banner clears by itself. The trigger is
+      the device's own `PLATFORM_TILTED`, not an app threshold. (ROADMAP R2.)
+- [ ] **Shot selection.** Select shot #1, hit #2 — selection stays on #1 and #2
+      appears in the list. Tap #2: the detail card switches. Tap #1: it comes
+      back. (ROADMAP R3.)
+- [ ] **Export shows a validation result.** Settings → Export writes the file and
+      reports `N rows OK`, or `N/M rows OK · K problem(s): …` with line numbers.
+      (ROADMAP R4.)
+- [ ] **K2 — history survives a restart.** Kill the app, relaunch: shots still
+      listed. Then a forced disconnect (R10 out of range / Bluetooth off) and
+      confirm reconnect backs off instead of hot-looping.
+- [ ] **K3 — H4 residual, destructive.** Do this *last*: Settings → Bluetooth →
+      Forget `Approach R10`, power-cycle the R10, then run `ScanDumpActivity` and
+      confirm the `0xFE1F` advertisement form returns and the production
+      `ScanFilter` matches it. Unpairing drops the working connect path, so
+      re-pair afterwards.
+- [ ] **Phone state restored before handing back.** The Garmin Connect and
+      Garmin Golf apps are left `disabled-user` on this phone during an R10
+      session. Re-enable both:
+      `adb shell pm enable com.garmin.android.apps.connectmobile` and
+      `adb shell pm enable com.garmin.android.apps.golf`. Also undo
+      `svc power stayon true` if you set it.
 
 ---
 

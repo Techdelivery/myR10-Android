@@ -4,40 +4,49 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-26 — R1–R4 shipped (PRs #5–#7 merged); R5 is the next
+Last updated: 2026-09-26 — R1–R4 merged (PRs #5–#7); R5 is the next
 feature to build.
+
+Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
+hardware · `[ ]` pending.
 
 ---
 
 ## Where we are
 
 Working end-to-end on real hardware: pair → §7.1 setup → `READY` → shots decoded,
-displayed, persisted to CSV. **2 real shots recorded and reviewed by the user.**
+displayed, persisted to CSV. **2 real shots recorded and shown in the app**, but the
+numbers have not been sanity-checked against what you saw at the range (that is
+K1 below).
 
 | Milestone | Code | Hardware |
 |---|---|---|
 | M0 scaffold | done | gate closed (K4) |
 | M1 protocol + connect | done | verified (H2/H3/H4) |
-| M2 shot data | done | **partial** — error alerts verified live, shot values not yet eyeballed |
+| M2 shot data | done | **partial** — 2 real shots recorded and displayed; error alerts verified live; shot values not yet eyeballed (K1) |
 | M3 persistence/export/reconnect | done | **not yet exercised** |
 
 ---
 
 ## Now — UI features
 
-R1–R4 came from the user driving the real app and **shipped 2026-09-26**
-(PR #5 keep-screen-on, #6 shots-tab-ux, #7 csv-validation). R5 is the next
-feature to build. Ordered by how much they get in the way of using the app at
-the range.
+R1–R4 came from the user driving the real app and merged 2026-09-26
+(PR #5 keep-screen-on, #6 shots-tab-ux, #7 csv-validation). **R1–R3 are still
+unvalidated on hardware** — no `dumpsys power` reading, no tipped-unit session,
+no tap-selection session has been recorded, and no unit test covers them. R4 is
+test-covered (`ShotCsvStoreTest`). R5 is the next feature to build. Ordered by
+how much they get in the way of using the app at the range.
 
-- [x] **R1. Keep the screen on while the Shots tab is active.**
+- [~] **R1. Keep the screen on while the Shots tab is active.** *(code merged,
+  not yet verified on hardware)*
   The screen sleeps mid-session and you lose the shot you just hit. Set
   `keepScreenOn` on the window while tab == Shots, and release it on every other
   tab so the phone can still sleep in the pocket.
   - Verify: `adb shell dumpsys power | grep mWakefulness` stays `Awake` on the
     Shots tab with no charging; goes back to normal on Device/Settings.
 
-- [x] **R2. Bad-pitch indication on the Shots tab.**
+- [~] **R2. Bad-pitch indication on the Shots tab.** *(code merged, not yet
+  verified on hardware)*
   The R10 refuses to shoot when it is not level, but that currently only shows up
   on the Device tab. The Shots tab is where you are looking when you hit, so the
   warning belongs there.
@@ -51,7 +60,8 @@ the range.
   - Verify: tip the R10 up → banner appears on the Shots tab with the numbers;
     lay it flat → banner clears.
 
-- [x] **R3. Tap a shot to select it and see its numbers.**
+- [~] **R3. Tap a shot to select it and see its numbers.** *(code merged, not
+  yet verified on hardware)*
   Right now only the newest shot has a detail card, so you cannot compare this
   shot against the previous one. Make the list rows clickable:
   - clear visual indication of which shot is selected (not just a colour tweak);
@@ -61,7 +71,8 @@ the range.
   - Verify: select shot #1, hit shot #2 → selection stays on #1 and #2 appears in
     the list; tap #2 → detail switches; tap #1 again → back.
 
-- [x] **R4. Validate the CSV.**
+- [x] **R4. Validate the CSV.** *(merged + test-covered; the in-app export
+  message itself still wants one on-device run)*
   The export is currently trusted, not checked: `exportSnapshot` copies the file
   and reports the byte count, and `decode` silently skips malformed rows — so a
   torn or truncated file exports "successfully" with rows quietly missing. Add a
@@ -118,6 +129,10 @@ Carried over from `TODO.md` Phase K.
   unit-only).
   - Already proven live: `PLATFORM_TILTED — WARNING` end-to-end
     (B313 → AlertRouter → AlertMirror → UI).
+  - Also close out the merged-but-unvalidated UI work while the unit is out:
+    R1 `dumpsys power` stays `Awake` on the Shots tab and normal on the other
+    two; R2 tip the unit and the banner shows real pitch/roll, lay it flat and it
+    clears; R3 select shot #1, hit #2, selection stays on #1.
 - [ ] **K2. M3 acceptance.** Kill the app → relaunch → history still listed.
   Export CSV → opens with the same rows (R4 makes this checkable rather than
   hopeful). Forced disconnect → reconnect backs off, no hot loop.
@@ -140,7 +155,9 @@ Carried over from `TODO.md` Phase K.
   unreachable with real frames; documented, not fixed.
 - [ ] **No Robolectric.** Service wiring (L1 `autoWake`, the `historyError`
   mirror) is grep-verified only. Adding Robolectric is its own task.
-- [ ] **No detekt/ktlint.** A style gate would fail on pre-existing formatting.
+- [ ] **Detekt baseline still carries 6 pre-existing findings** (TODO K5), so
+  new code can add a finding without the gate naming the file. Order and risk for
+  clearing them is written down in TODO K5; the service sequencer is last.
 - [ ] **Deprecated BLE APIs.** `BleTransportImpl` uses the pre-API-33
   `writeCharacteristic`/`setValue` forms (9 warnings). They work; migrating to
   `GattCallback`-free `writeCharacteristic(bytes, type)` is a separate change and
@@ -156,10 +173,14 @@ Carried over from `TODO.md` Phase K.
 
 ## Later milestones
 
-Calibration UI beyond the connect-time toggle · carry/distance modelling ·
-unit-switching UI (mph/kph, yd/m) · multi-device support · log export beyond the
-hex pane + CSV · GATT service-cache refresh workaround (only if a real 133 loop
-shows up on hardware) · sharing the exported CSV via the system share sheet.
+Listed once, in `TODO.md` under "Out of scope this pass" — keep that list
+canonical; add new candidates there, not here.
+
+Candidates already raised: calibration UI beyond the connect-time toggle ·
+carry/distance modelling · unit-switching UI (mph/kph, yd/m) · multi-device
+support · log export beyond the hex pane + CSV · GATT service-cache refresh
+workaround (only if a real 133 loop shows up on hardware) · sharing the exported
+CSV via the system share sheet.
 
 ---
 
