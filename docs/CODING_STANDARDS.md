@@ -114,7 +114,6 @@ Current baselined debt (tracked as **K5** in [TODO.md](../TODO.md)):
 | `LongMethod`, `CyclomaticComplexMethod` | `R10ForegroundService.startDevice()` | The §7.1 setup sequencer. Long and branchy by nature; splitting it is a real refactor with reconnect-behaviour risk. |
 | `LongMethod` | `SettingsScreen` | A Compose screen rendering every §8 key. Splitting is cosmetic. |
 | `TooGenericExceptionCaught` | `BleTransportImpl`, `R10ForegroundService` | Deliberate broad catch at the BLE boundary — see **Errors** above. |
-| `ReturnCount` | `ShotCsvStore.decode()` | A row parser with a null-return per malformed field. |
 
 ## Android Lint policy
 

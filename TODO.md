@@ -307,8 +307,11 @@ Device: Approach R10 serial `<SERIAL>`, fw 4.50, battery 99% · Pixel 7, Android
     `0xFE1F` form and the production filter should match it. Do this **after**
     K1/K2, since unpairing drops the working connect path.
 
-- [ ] **K5. Pay down the style-gate baseline.** `config/detekt/app-baseline.xml` carries 6 pre-existing findings that the gate now tolerates but still reports on for any new code. Clear them in this order — each is easier the more often the file gets touched:
-  1. `ReturnCount` — `ShotCsvStore.decode()`: 5 returns in a row parser. Fold the field-level null returns into a single failure path.
+- [ ] **K5. Pay down the style-gate baseline.** `config/detekt/app-baseline.xml` carries 5 pre-existing findings that the gate now tolerates but still reports on for any new code. Clear them in this order — each is easier the more often the file gets touched:
+  1. ~~`ReturnCount` — `ShotCsvStore.decode()`~~ **Dropped 2026-09-27 (R7).** The
+     store is gone and the row parser with it: `ShotCsvFormat.decode` splits the
+     version match and delegates to `decodeRow`, so the field-level null returns are
+     already behind a single failure path. The baseline entry went with the class.
   2. `LongMethod` — `SettingsScreen` (137 lines): split per §8 settings group. Cosmetic, no behaviour risk.
   3. `LongMethod` + `CyclomaticComplexMethod` — `R10ForegroundService.startDevice()` (116 lines / CC 20): the §7.1 sequencer. Split only with the reconnect tests in hand; this is the one entry where a careless refactor could change reconnect behaviour.
   4. `TooGenericExceptionCaught` — `BleTransportImpl` / `R10ForegroundService`: leave as-is unless the BLE exception surface gets pinned down. These are deliberate boundary catches (see **Errors** in the standard); the baseline entry is the documentation.
