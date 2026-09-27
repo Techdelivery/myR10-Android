@@ -402,6 +402,88 @@ class ShotProtoStoreTest {
     }
 
     /**
+     * The UI tells two refusals apart by asking the store whether the file is
+     * damaged: `updateClub` returns false both when the shot is not there and when
+     * a rewrite would drop records past a tear, and only the second is worth an
+     * error banner. So a missing shot on a clean file must not read as damage.
+     */
+    @Test
+    fun onlyADamagedFileReportsAsDamagedAfterARefusedMutation() = runTest {
+        val clean = file()
+        val cleanStore = ShotProtoStore(clean)
+        cleanStore.append(shot(1))
+        assertFalse(
+            "precondition: an absent shot is refused",
+            cleanStore.updateClub(99, shot(1).receivedAtMs, GolfClub.DRIVER),
+        )
+        assertTrue("a missing shot is not damage", cleanStore.validate().isClean)
+
+        val tornStore = ShotProtoStore(tornFile())
+        assertFalse(tornStore.updateClub(1, shot(1).receivedAtMs, GolfClub.DRIVER))
+        assertFalse("a refused rewrite is damage the user must be told about", tornStore.validate().isClean)
+    }
+
+    // --- the append path's tail check must not read the whole file every shot ---
+
+    /**
+     * The tail check that guards an append is a whole-file read, and the append
+     * path runs about once per second: left uncached, every shot costs O(file
+     * size) on the one path DESIGN describes as a single framed write plus an
+     * fsync. A length this store last wrote intact answers the question without
+     * the read. These two tests pin the observable half of that contract — a clean
+     * append still leaves a clean, complete, append-only file, and a length the
+     * store did not write falls back to the full scan and is repaired.
+     */
+    @Test
+    fun repeatedAppendsKeepTheFileCleanAndComplete() = runTest {
+        val f = file()
+        val store = ShotProtoStore(f)
+        (1..5).forEach { assertTrue(store.append(shot(it))) }
+        val beforeLast = f.readBytes()
+
+        assertTrue("the append after five more must still write", store.append(shot(6)))
+
+        val after = f.readBytes()
+        assertArrayEquals(
+            "an append adds to the log; it must not rewrite what is already there",
+            beforeLast,
+            after.copyOf(beforeLast.size),
+        )
+        assertEquals(listOf(1, 2, 3, 4, 5, 6), store.loadAll().map { it.shotId })
+        // Read back through a fresh store, so nothing can be served from the
+        // length the append path cached.
+        val reloaded = ShotProtoStore(f)
+        assertEquals(6, reloaded.loadAll().size)
+        assertTrue("the file must still validate clean: ${reloaded.validate().problems}", reloaded.validate().isClean)
+    }
+
+    /**
+     * The cache is an optimisation, never a permission to assume. A length this
+     * store did not write — here, a file truncated behind its back — must miss the
+     * cache and be scanned, and the shot appended after the tear must still be
+     * readable.
+     */
+    @Test
+    fun aFileTruncatedBehindTheStoreIsStillRepairedBeforeTheNextAppend() = runTest {
+        val f = file()
+        val store = ShotProtoStore(f)
+        store.appendAll(listOf(shot(1), shot(2), shot(3)))
+        // The cached length no longer describes the file, whatever the cache says.
+        val bytes = f.readBytes()
+        f.writeBytes(bytes.copyOf(bytes.size - 12))
+
+        assertTrue(store.append(shot(4)))
+
+        val reloaded = ShotProtoStore(f)
+        assertEquals(
+            "the torn tail must not swallow the new shot",
+            listOf(1, 2, 4),
+            reloaded.loadAll().map { it.shotId },
+        )
+        assertTrue("the repaired file validates clean: ${reloaded.validate().problems}", reloaded.validate().isClean)
+    }
+
+    /**
      * A torn tail leaves the file not ending on a record boundary, and the reader
      * stops at the tear. Appending there would write a shot nothing can ever read —
      * not `loadAll`, not the export, not `validate` — while `append` still reported

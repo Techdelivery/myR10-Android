@@ -56,6 +56,14 @@ private val TABS = listOf("Device", "Shots", "Settings")
 /** Index of the Shots tab in [TABS]; the tab that holds the screen awake. */
 private const val SHOTS_TAB = 1
 
+/**
+ * What the user is told when a club tag or a delete was refused because the shot
+ * history is damaged. Same shape as the persist sink's own errors: what failed,
+ * then what to do about it.
+ */
+private const val REFUSED_HISTORY_WRITE =
+    "could not save that change — shot history is damaged; export it before anything else"
+
 class MainActivity : ComponentActivity() {
 
     private var running by mutableStateOf(false)
@@ -158,7 +166,9 @@ class MainActivity : ComponentActivity() {
      *
      * The pick also becomes the arrival stamp for subsequent shots, which is what
      * saves a tap per ball at the range — so it is written even when the visible
-     * shot already carried that label.
+     * shot already carried that label. Both writes hang off the annotation having
+     * been stored: a stamp the user can see applied to every later shot must never
+     * outlive a change that was refused.
      */
     private fun setShotClub(
         repo: SettingsRepository,
@@ -169,8 +179,12 @@ class MainActivity : ComponentActivity() {
     ) {
         uiScope.launch {
             val written = runCatching { store.updateClub(shotId, receivedAtMs, club) }
-            if (written.getOrDefault(false)) DeviceStateHolder.setShotClub(shotId, receivedAtMs, club?.id)
-            if (club != null) runCatching { repo.setCurrentClub(club.id) }
+            if (written.getOrDefault(false)) {
+                DeviceStateHolder.setShotClub(shotId, receivedAtMs, club?.id)
+                if (club != null) runCatching { repo.setCurrentClub(club.id) }
+            } else {
+                reportRefusedHistoryWrite(store)
+            }
         }
     }
 
@@ -182,8 +196,23 @@ class MainActivity : ComponentActivity() {
     private fun deleteShot(store: ShotProtoStore, shotId: Int, receivedAtMs: Long) {
         uiScope.launch {
             val deleted = runCatching { store.deleteShot(shotId, receivedAtMs) }.getOrDefault(false)
-            if (deleted) DeviceStateHolder.removeShot(shotId, receivedAtMs)
+            if (deleted) DeviceStateHolder.removeShot(shotId, receivedAtMs) else reportRefusedHistoryWrite(store)
         }
+    }
+
+    /**
+     * A refused write is a no-op, and a no-op the user cannot see reads as a broken
+     * app: they pick a club or confirm a delete and nothing happens. The Shots tab
+     * already renders [DeviceStateHolder.historyError], so the refusal goes there.
+     *
+     * The store refuses a rewrite only when the file holds damage one would paper
+     * over — but it also returns false for a shot that is not there, which is a
+     * no-op and not a fault. So the file is asked whether it really is damaged
+     * before anything is put on screen claiming it is.
+     */
+    private suspend fun reportRefusedHistoryWrite(store: ShotProtoStore) {
+        val damaged = runCatching { store.validate() }.getOrNull()?.isClean == false
+        if (damaged) DeviceStateHolder.historyError.value = REFUSED_HISTORY_WRITE
     }
 
     private suspend fun exportCsv(store: ShotProtoStore): String {

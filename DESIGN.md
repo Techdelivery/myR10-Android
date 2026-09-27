@@ -618,8 +618,12 @@ half-mutable: `ShotProtoStore` stays the only writer of `shots.bin`, under its
 mutex, and the UI never touches the file. Its operations are:
 
 - `append(shot)` / `appendAll(shots)` — one durable append per write.
-- `updateClub(shotId, club)` — rewrite the file with that one record changed.
-- `deleteShot(shotId)` — rewrite the file without that record. Needed
+- `updateClub(shotId, receivedAtMs, club)` — rewrite the file with that one
+  record changed. The pair is the record's identity, not the id alone: the R10
+  restarts its `shot_id` sequence on every power cycle, and the UI already keys
+  rows on the pair.
+- `deleteShot(shotId, receivedAtMs)` — rewrite the file without that record
+  (same pair, same reason). Needed
   independently of the club tag: a mis-hit practice swing, a record from a bad
   session, or a shot the user simply does not want in their history. Deleting is a
   user-visible data loss, so the UI must confirm it and there is no undo — a CSV
