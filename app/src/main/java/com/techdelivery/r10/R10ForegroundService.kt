@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -109,6 +110,11 @@ class R10ForegroundService : Service() {
         deviceJob = scope.launch {
             try {
                 val settings = (application as R10App).settingsRepository.settings.first()
+                // Keep a live copy: the club stamp (ROADMAP R5) has to reflect a
+                // `currentClub` the user changes mid-session, and a one-shot `first()`
+                // would freeze the value from connect time.
+                val liveSettings = MutableStateFlow(settings)
+                launch { (application as R10App).settingsRepository.settings.collect { liveSettings.value = it } }
                 Log.i(
                     TAG,
                     "settings loaded: name='${settings.deviceName}' tee=${settings.teeDistanceFt}ft calib=${settings.calibrateTiltOnConnect}",
@@ -178,8 +184,17 @@ class R10ForegroundService : Service() {
                     // ProtocolEngine._events, then the BLE inbound reader. Disk work
                     // belongs to the sink's IO writer, not here.
                     device.shots.collect { shot ->
-                        DeviceStateHolder.addShot(shot)
-                        sink.submit(shot)
+                        // ROADMAP R5: stamp the last-picked club on arrival so a
+                        // session does not need a tap per ball. Only when the shot
+                        // arrives untagged, and never over a device-reported value.
+                        val stamp = liveSettings.value.currentClub
+                        val tagged = if (stamp != null && shot.clubLabel == null) {
+                            shot.copy(clubLabel = stamp)
+                        } else {
+                            shot
+                        }
+                        DeviceStateHolder.addShot(tagged)
+                        sink.submit(tagged)
                     }
                 }
 

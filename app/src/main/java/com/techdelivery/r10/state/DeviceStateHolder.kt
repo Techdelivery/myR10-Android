@@ -111,6 +111,30 @@ object DeviceStateHolder {
     }
 
     /**
+     * Re-tag a shot already in the live list (ROADMAP R5).
+     *
+     * The store is the source of truth; this mirrors the write so the Shots tab
+     * shows the new club without a reload. A club is not part of the shot's
+     * identity, so the row is replaced in place and its position is preserved.
+     */
+    fun setShotClub(shotId: Int, clubLabel: String?) = synchronized(shotsLock) {
+        shots.value = shots.value.map { shot ->
+            if (shot.shotId == shotId) shot.copy(clubLabel = clubLabel) else shot
+        }
+    }
+
+    /**
+     * Drop a deleted shot from the live list (ROADMAP R6).
+     *
+     * [shotCount] is deliberately **not** decremented: it is a session counter of
+     * shots the device sent, and the notification shows it as such. Decrementing
+     * would make the count disagree with the R10's own record.
+     */
+    fun removeShot(shotId: Int) = synchronized(shotsLock) {
+        shots.value = shots.value.filter { it.shotId != shotId }
+    }
+
+    /**
      * Adopt persisted history into the live list without clobbering live shots.
      *
      * [loaded] is oldest-first, as stored on disk. The old code checked emptiness

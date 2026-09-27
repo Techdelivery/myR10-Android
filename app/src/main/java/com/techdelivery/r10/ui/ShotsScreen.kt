@@ -4,15 +4,20 @@ import LaunchMonitor.Proto.R10Protos
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.techdelivery.r10.club.GolfClub
 import com.techdelivery.r10.protocol.alert.DeviceAlert
 import com.techdelivery.r10.protocol.shot.Shot
 import com.techdelivery.r10.state.DeviceStateHolder
@@ -46,13 +52,26 @@ private enum class ShotFilter { ALL, PRACTICE, NORMAL }
  * because the Shots tab is where you are looking when you hit — not the Device tab.
  */
 @Composable
-fun ShotsScreen(modifier: Modifier = Modifier) {
+fun ShotsScreen(
+    /**
+     * Clubs the user owns (ROADMAP R5). The picker offers these; an empty set falls
+     * back to the full canonical list, because an unlabelable shot is worse than an
+     * unowned club.
+     */
+    ownedClubs: Set<String>,
+    /** Persist a club annotation ([GolfClub] or null to clear) on the given shot id. */
+    onSetClub: (Int, GolfClub?) -> Unit,
+    /** Delete the shot permanently. The caller confirms with the user first. */
+    onDeleteShot: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val shots by DeviceStateHolder.shots.collectAsState()
     val historyError by DeviceStateHolder.historyError.collectAsState()
     val activeError by DeviceStateHolder.activeError.collectAsState()
     val tiltReading by DeviceStateHolder.tiltReading.collectAsState()
     var filter by remember { mutableStateOf(ShotFilter.ALL) }
     var selectedKey by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<Shot?>(null) }
 
     val visible = when (filter) {
         ShotFilter.ALL -> shots
@@ -89,34 +108,107 @@ fun ShotsScreen(modifier: Modifier = Modifier) {
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
-            return@Column
+        } else {
+            ShotsScreenBody(
+                visible = visible,
+                selected = selected,
+                newest = newest,
+                ownedClubs = ownedClubs,
+                actions = ShotActions(
+                    onSelect = { key -> selectedKey = if (key == selectedKey) null else key },
+                    onClearSelection = { selectedKey = null },
+                    onSetClub = onSetClub,
+                    onRequestDelete = { pendingDelete = it },
+                ),
+            )
         }
+    }
 
-        shown?.let { ShotDetailCard(it, isSelected = it === selected, isLatest = it === newest) }
-
-        if (selected != null && selected !== newest) {
-            TextButton(onClick = { selectedKey = null }) { Text("Show latest shot") }
-        }
-
-        Text(
-            "${visible.size} shot${if (visible.size == 1) "" else "s"} (newest first) · tap a shot to inspect it",
-            style = MaterialTheme.typography.labelLarge,
-        )
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(visible, key = { shotKey(it) }) { shot ->
-                ShotRow(
-                    shot = shot,
-                    selected = shot === selected,
-                    onClick = {
-                        // Toggle: tapping the selected row clears the selection and
-                        // goes back to following the newest shot.
-                        selectedKey = if (shot === selected) null else shotKey(shot)
+    // ROADMAP R6: deletion is data loss with no undo, so it is confirmed by name
+    // rather than fired from a row tap. Only the selected shot can be reached here.
+    pendingDelete?.let { shot ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete shot #${shot.shotId}?") },
+            text = {
+                Text(
+                    buildString {
+                        append(timeFormat.format(Date(shot.receivedAtMs)))
+                        shot.ball?.let { append(" · ${fmt(it.ballSpeedMph, 1)} mph") }
+                        shot.clubLabel?.let { append(" · $it") }
+                        append("\n\nThis cannot be undone. An exported CSV is the only way back.")
                     },
                 )
-            }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDelete = null
+                        // The selected shot is gone; fall back rather than show an empty card.
+                        selectedKey = null
+                        onDeleteShot(shot.shotId)
+                    },
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+/** The clubs the picker offers: the owned set, or the whole bag when it is empty. */
+private fun pickerClubs(owned: Set<String>): List<GolfClub> =
+    GolfClub.ALL.filter { it.id in owned }.ifEmpty { GolfClub.ALL }
+
+/**
+ * The Shots-tab interactions, bundled so the layout composable takes one callback
+ * object instead of a growing parameter list.
+ */
+private class ShotActions(
+    val onSelect: (String?) -> Unit,
+    val onClearSelection: () -> Unit,
+    val onSetClub: (Int, GolfClub?) -> Unit,
+    val onRequestDelete: (Shot) -> Unit,
+)
+
+/**
+ * The detail card plus the scrolling list, split out of [ShotsScreen] so that
+ * function composes state and this one composes layout.
+ */
+@Composable
+private fun ColumnScope.ShotsScreenBody(
+    visible: List<Shot>,
+    selected: Shot?,
+    newest: Shot?,
+    ownedClubs: Set<String>,
+    actions: ShotActions,
+) {
+    val shown = selected ?: newest
+    shown?.let {
+        ShotDetailCard(
+            shot = it,
+            isSelected = it === selected,
+            isLatest = it === newest,
+            offeredClubs = pickerClubs(ownedClubs),
+            onSetClub = { club -> actions.onSetClub(it.shotId, club) },
+            onRequestDelete = actions.onRequestDelete,
+        )
+    }
+
+    if (selected != null && selected !== newest) {
+        TextButton(onClick = actions.onClearSelection) { Text("Show latest shot") }
+    }
+
+    Text(
+        "${visible.size} shot${if (visible.size == 1) "" else "s"} (newest first) · " +
+            "tap a shot to inspect it",
+        style = MaterialTheme.typography.labelLarge,
+    )
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth().weight(1f),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(visible, key = { shotKey(it) }) { shot ->
+            ShotRow(shot = shot, selected = shot === selected, onClick = { actions.onSelect(shotKey(shot)) })
         }
     }
 }
@@ -195,7 +287,14 @@ private fun TiltWarningCard(tilt: TiltReading?) {
 }
 
 @Composable
-private fun ShotDetailCard(shot: Shot, isSelected: Boolean, isLatest: Boolean) {
+private fun ShotDetailCard(
+    shot: Shot,
+    isSelected: Boolean,
+    isLatest: Boolean,
+    offeredClubs: List<GolfClub>,
+    onSetClub: (GolfClub?) -> Unit,
+    onRequestDelete: (Shot) -> Unit,
+) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -223,6 +322,14 @@ private fun ShotDetailCard(shot: Shot, isSelected: Boolean, isLatest: Boolean) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            // ROADMAP R5: the club is a user annotation, never device data, so it is
+            // editable here and only ever overwritten on purpose. Picking one also
+            // becomes the arrival stamp for the next shots.
+            ClubEditor(shot.clubLabel, offeredClubs, onSetClub)
+            TextButton(
+                onClick = { onRequestDelete(shot) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Delete this shot", color = MaterialTheme.colorScheme.error) }
             shot.ball?.let { b ->
                 BigStat("Ball speed", fmt(b.ballSpeedMph, 1), "mph")
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -251,6 +358,44 @@ private fun ShotDetailCard(shot: Shot, isSelected: Boolean, isLatest: Boolean) {
                     BigStat("Tempo", s.tempo?.let { fmt(it, 2) } ?: "—", "")
                     BigStat("Backswing", "${s.backswingDurationUs} µs", "")
                     BigStat("Downswing", "${s.downswingDurationUs} µs", "")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The club picker for the selected shot (ROADMAP R5).
+ *
+ * Only the owned clubs are offered, and "Clear" appears only when there is
+ * something to clear — clearing is a separate, non-destructive action from
+ * deleting the shot.
+ */
+@Composable
+private fun ClubEditor(clubLabel: String?, offeredClubs: List<GolfClub>, onSetClub: (GolfClub?) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Text("Club", style = MaterialTheme.typography.bodyMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (clubLabel != null) {
+                TextButton(onClick = { onSetClub(null) }) { Text("Clear") }
+            }
+            Box {
+                TextButton(onClick = { menuOpen = true }) { Text(clubLabel ?: "Pick a club") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    offeredClubs.forEach { club ->
+                        DropdownMenuItem(
+                            text = { Text(club.id) },
+                            onClick = {
+                                menuOpen = false
+                                onSetClub(club)
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -295,8 +440,14 @@ private fun ShotRow(shot: Shot, selected: Boolean, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            // The club leads the second line when it is known, so a tagged shot
+            // reads "7-iron · 155 mph" at a glance; the time stays either way.
             Text(
-                "#${shot.shotId}\n${timeFormat.format(Date(shot.receivedAtMs))}",
+                buildString {
+                    append("#${shot.shotId}\n")
+                    append(timeFormat.format(Date(shot.receivedAtMs)))
+                    shot.clubLabel?.let { append(" · ").append(it) }
+                },
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             )

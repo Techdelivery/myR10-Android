@@ -1,10 +1,19 @@
 package com.techdelivery.r10.data
 
-import LaunchMonitor.Proto.R10Protos
-import com.techdelivery.r10.protocol.shot.BallDisplay
-import com.techdelivery.r10.protocol.shot.ClubDisplay
+import com.techdelivery.r10.club.GolfClub
+import com.techdelivery.r10.data.ShotCsvFormat.COL_RAW_METRICS_V1
+import com.techdelivery.r10.data.ShotCsvFormat.COL_SHOT_ID
+import com.techdelivery.r10.data.ShotCsvFormat.HEADER
+import com.techdelivery.r10.data.ShotCsvFormat.HEADER_V1
+import com.techdelivery.r10.data.ShotCsvFormat.RECENT_KEY_WINDOW
+import com.techdelivery.r10.data.ShotCsvFormat.SCHEMA_VERSION_COLS
+import com.techdelivery.r10.data.ShotCsvFormat.V1_COLS
+import com.techdelivery.r10.data.ShotCsvFormat.decode
+import com.techdelivery.r10.data.ShotCsvFormat.encode
+import com.techdelivery.r10.data.ShotCsvFormat.toHex
+import com.techdelivery.r10.data.ShotCsvFormat.upgradeRowToV2
+import com.techdelivery.r10.data.ShotCsvFormat.validateText
 import com.techdelivery.r10.protocol.shot.Shot
-import com.techdelivery.r10.protocol.shot.SwingDisplay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -13,18 +22,28 @@ import java.io.RandomAccessFile
 /**
  * Shot-history persistence (DESIGN §8 `Shot` entity, DESIGN §11 M3).
  *
- * DESIGN names Room. This build uses an append-only CSV store instead, for two
- * reasons recorded in TODO.md:
+ * Owns the file, the lock and the durability rules. The three collaborators are
+ * deliberately narrow:
+ *  - [ShotCsvFormat] — schema, encode/decode, validation. No filesystem.
+ *  - [ShotDedupIndex] — the bounded LRU of "already stored" payload keys.
+ *  - [ShotCsvRewriter] — atomic whole-file rewrites (club edit, delete, migrate).
+ *
+ * Every mutation is `read → apply → temp file → rename`, so a process kill leaves
+ * either the previous file or the complete new one. The store is the only writer:
+ * the UI never touches the file, which is what keeps the mutability from spreading.
+ *
+ * DESIGN names Room. This build uses a CSV store instead, for two reasons recorded
+ * in DESIGN §8:
  *  - KSP has no release for the Kotlin version this project pins (2.4.x compiler),
- *    and wiring Room through kapt was rejected: this build container is capped at
- *    2 GiB and the extra annotation-processing round is what tips the build over.
+ *    and the kapt route was rejected on build-memory grounds that depend on the host
+ *    rather than on the project.
  *  - The persisted shape is flat, numeric, and app-owned, so CSV is lossless here —
  *    and it doubles as the M3 CSV export with no second serializer.
  *
- * Swapping in Room later means replacing this class only; nothing else reads the file.
+ * All fields are numbers, enum names, or hex, so no CSV quoting/escaping is needed —
+ * that is deliberate.
  *
- * Thread-safe: one [Mutex] guards the file. All fields are numbers, enum names, or
- * hex, so no CSV quoting/escaping is needed — that is deliberate.
+ * Thread-safe: one [Mutex] guards the file.
  */
 class ShotCsvStore(
     private val file: File,
@@ -42,8 +61,10 @@ class ShotCsvStore(
     private val mutex = Mutex()
 
     /** Recently-persisted dedup keys, for cross-session duplicate rejection. */
-    private val persistedKeys = HashSet<String>()
-    private val keyOrder = ArrayDeque<String>()
+    private val dedup = ShotDedupIndex(recentKeyWindow)
+
+    /** Atomic row-rewriting engine, shared by every mutation. */
+    private val rewriter = ShotCsvRewriter(file)
     private var indexed = false
 
     /**
@@ -63,13 +84,10 @@ class ShotCsvStore(
     suspend fun append(shot: Shot): Boolean = mutex.withLock {
         ensureIndexedUnlocked()
         val key = dedupKey(shot)
-        if (key != null && key in persistedKeys) {
-            touchUnlocked(key)
-            return@withLock false
-        }
+        if (key != null && dedup.contains(key)) return@withLock false
         val needsHeader = !file.exists() || file.length() == 0L
         appendDurable((if (needsHeader) "$HEADER\n" else "") + encode(shot) + "\n")
-        if (key != null) rememberUnlocked(key)
+        if (key != null) dedup.add(key)
         true
     }
 
@@ -80,14 +98,11 @@ class ShotCsvStore(
         var wrote = 0
         shots.forEach {
             val key = dedupKey(it)
-            if (key != null && key in persistedKeys) {
-                touchUnlocked(key)
-                return@forEach
-            }
+            if (key != null && dedup.contains(key)) return@forEach
             if (wrote == 0 && (!file.exists() || file.length() == 0L)) sb.append(HEADER).append('\n')
             sb.append(encode(it)).append('\n')
             wrote++
-            if (key != null) rememberUnlocked(key)
+            if (key != null) dedup.add(key)
         }
         if (wrote > 0) appendDurable(sb.toString())
     }
@@ -99,8 +114,7 @@ class ShotCsvStore(
         runCatching { file.delete() }
         // Reset the index and force a re-read: if the delete failed the surviving
         // rows must still be known to the dedup set.
-        persistedKeys.clear()
-        keyOrder.clear()
+        dedup.clear()
         indexed = false
     }
 
@@ -116,6 +130,98 @@ class ShotCsvStore(
     }
 
     /**
+     * Set or clear the club annotation on one stored shot (ROADMAP R5).
+     *
+     * Edits the row's `club_label` field in place and leaves every other byte of
+     * every other row untouched, so a row this build cannot decode (or a club label
+     * a later version adds) survives an edit it did not understand.
+     *
+     * Returns true when a row with that [shotId] existed. A missing id is a no-op,
+     * not an error: the UI and the file can legitimately disagree after a delete.
+     */
+    suspend fun updateClub(shotId: Int, club: GolfClub?): Boolean = mutex.withLock {
+        val target = club?.id.orEmpty()
+        val changed = rewriter.rewrite(transform = { line -> setClubLabel(line, shotId, target) })
+        // The index caches what the file contains. Left stale after a rewrite, a
+        // deleted row's key would suppress the device re-pushing that shot for the
+        // rest of the session — silent loss that looks like "the R10 stopped sending".
+        if (changed) rebuildIndexUnlocked()
+        changed
+    }
+
+    /**
+     * Delete one stored shot (ROADMAP R6).
+     *
+     * Irreversible in-app: an export is a copy, and that copy is the only way back.
+     * The UI confirms before calling this, naming the row it is about to lose.
+     *
+     * Returns true when a row was removed. The dedup index is rebuilt from the
+     * surviving rows, so a device that re-pushes a deleted shot writes it again
+     * instead of being silently suppressed by a stale key.
+     */
+    suspend fun deleteShot(shotId: Int): Boolean = mutex.withLock {
+        val changed = rewriter.rewrite(transform = { line -> if (shotIdOf(line) == shotId) null else line })
+        if (changed) rebuildIndexUnlocked()
+        changed
+    }
+
+    /**
+     * Upgrade a v1 file to the current schema (DESIGN §8, ROADMAP R5).
+     *
+     * Explicit rather than implicit inside `decode`: reading a file must never
+     * rewrite it. Returns true when a migration actually ran.
+     *
+     * Each row is re-emitted as current-version, so `club_label` starts empty —
+     * there is no way to know which club an old shot was hit with.
+     */
+    suspend fun migrate(): Boolean = mutex.withLock {
+        if (!file.exists() || file.length() == 0L) return@withLock false
+        val lines = file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+        val header = lines.firstOrNull() ?: return@withLock false
+        if (header == HEADER) return@withLock false
+        if (header != HEADER_V1) return@withLock false
+        // A row this build cannot decode is carried over verbatim rather than dropped:
+        // migration must never be the thing that loses a shot. A v1 row under the v2
+        // header is still readable — decode detects the shape.
+        rewriter.rewrite({ line -> decode(line)?.let { encode(it) } ?: line }, header = HEADER)
+        rebuildIndexUnlocked()
+        true
+    }
+
+    /**
+     * Replace [clubLabel] in the row for [shotId], leaving every other field byte
+     * identical. Unknown row shapes come back unchanged, not corrupted.
+     */
+    private fun setClubLabel(line: String, shotId: Int, clubLabel: String): String? {
+        if (shotIdOf(line) != shotId) return line
+        val f = line.split(',', limit = SCHEMA_VERSION_COLS)
+        return when {
+            f.size == SCHEMA_VERSION_COLS -> f.dropLast(1).plus(clubLabel).joinToString(",")
+            f.size == V1_COLS -> upgradeRowToV2(line, clubLabel)
+            else -> line
+        }
+    }
+
+    /**
+     * The `shot_id` of a raw row, whatever its schema version. Column 0 in v1, but
+     * column 1 at the current version because `schema_version` leads — getting this
+     * wrong would edit or delete *every* row instead of one.
+     */
+    private fun shotIdOf(line: String): Int? {
+        val f = line.split(',', limit = SCHEMA_VERSION_COLS)
+        return when {
+            f.size == SCHEMA_VERSION_COLS -> f[COL_SHOT_ID].trim().toIntOrNull()
+            f.size == V1_COLS -> f[0].trim().toIntOrNull()
+            else -> null
+        }
+    }
+
+    private fun rebuildIndexUnlocked() {
+        indexed = true
+        dedup.seedFrom(readUnlocked(), ::dedupKey)
+    }
+
+    /**
      * Validate the live store (ROADMAP R4).
      *
      * The export path used to trust the file: `exportSnapshot` copied it and
@@ -124,15 +230,6 @@ class ShotCsvStore(
      * Validation makes that visible instead.
      */
     suspend fun validate(): CsvValidation = mutex.withLock { validateText(snapshotText()) }
-
-    /**
-     * Validate an arbitrary CSV file (e.g. one just exported), without touching the store.
-     */
-    fun validateFile(file: File): CsvValidation = if (!file.exists()) {
-        CsvValidation(false, 0, 0, listOf("file does not exist: ${file.absolutePath}"))
-    } else {
-        validateText(file.readText())
-    }
 
     /**
      * Content key for cross-session dedup, or null when the shot carries no raw
@@ -144,27 +241,6 @@ class ShotCsvStore(
      */
     private fun dedupKey(shot: Shot): String? =
         shot.rawMetrics.takeIf { it.isNotEmpty() }?.let { "${shot.shotId}|${toHex(it)}" }
-
-    private fun rememberUnlocked(key: String) {
-        if (!persistedKeys.add(key)) return
-        keyOrder.addLast(key)
-        evictUnlocked()
-    }
-
-    /**
-     * Move a re-observed key to the most-recent end, so eviction is LRU rather
-     * than FIFO. Without this a key that keeps getting replayed could be evicted
-     * while long-dead ones stay.
-     */
-    private fun touchUnlocked(key: String) {
-        if (keyOrder.remove(key)) keyOrder.addLast(key)
-    }
-
-    private fun evictUnlocked() {
-        while (keyOrder.size > recentKeyWindow) {
-            persistedKeys.remove(keyOrder.removeFirst())
-        }
-    }
 
     /**
      * Append text durably, in one synchronous write.
@@ -186,8 +262,7 @@ class ShotCsvStore(
 
     private fun ensureIndexedUnlocked() {
         if (indexed) return
-        indexed = true
-        readUnlocked().forEach { shot -> dedupKey(shot)?.let { rememberUnlocked(it) } }
+        rebuildIndexUnlocked()
     }
 
     /** Non-locking snapshot — callers must already hold [mutex]. */
@@ -197,253 +272,8 @@ class ShotCsvStore(
         if (!file.exists()) return emptyList()
         return file.readLines()
             .map { it.trim() }
-            .filter { it.isNotEmpty() && it != HEADER }
+            .filter { it.isNotEmpty() && it != HEADER && it != HEADER_V1 }
             .mapNotNull { decode(it) }
-    }
-
-    companion object {
-        /** Column order, single source of truth for [HEADER] and for validation messages. */
-        val COL_NAMES: List<String> = listOf(
-            "shot_id", "shot_type", "received_at_ms",
-            "ball_speed_mph", "launch_angle_deg", "launch_direction_deg",
-            "spin_axis_deg", "total_spin_rpm", "side_spin_rpm", "back_spin_rpm",
-            "club_speed_mph", "face_angle_deg", "path_deg", "attack_angle_deg",
-            "backswing_start_us", "downswing_start_us", "impact_us",
-            "follow_through_end_us", "end_recording_us", "tempo",
-            "raw_metrics_hex",
-        )
-
-        val HEADER: String = COL_NAMES.joinToString(",")
-
-        private const val COLS = 21
-
-        /** Index of the trailing `raw_metrics_hex` column in [HEADER]. */
-        private const val COL_RAW_METRICS = 20
-
-        /** Hex encodes one byte as two characters. */
-        private const val HEX_CHARS_PER_BYTE = 2
-
-        /** Characters accepted in the `raw_metrics_hex` column (either case). */
-        private const val HEX_VALID = "0123456789abcdefABCDEF"
-
-        /**
-         * How many recent dedup keys to keep in memory for cross-session duplicate
-         * rejection. Sized well above any realistic reconnect-replay burst while
-         * keeping the set bounded (~2 KB/shot of raw payload hex).
-         */
-        const val RECENT_KEY_WINDOW = 2_000
-
-        fun encode(s: Shot): String {
-            val b = s.ball
-            val c = s.club
-            val w = s.swing
-            return listOf(
-                s.shotId.toString(),
-                s.shotType.name,
-                s.receivedAtMs.toString(),
-                b.orBlank { fmt(it.ballSpeedMph) },
-                b.orBlank { fmt(it.launchAngleDeg) },
-                b.orBlank { fmt(it.launchDirectionDeg) },
-                b.orBlank { fmt(it.spinAxisDeg) },
-                b.orBlank { fmt(it.totalSpinRpm) },
-                b.orBlank { fmt(it.sideSpinRpm) },
-                b.orBlank { fmt(it.backSpinRpm) },
-                c.orBlank { fmt(it.clubSpeedMph) },
-                c.orBlank { fmt(it.faceAngleDeg) },
-                c.orBlank { fmt(it.pathDeg) },
-                c.orBlank { fmt(it.attackAngleDeg) },
-                w.orBlank { it.backswingStartUs.toString() },
-                w.orBlank { it.downswingStartUs.toString() },
-                w.orBlank { it.impactUs.toString() },
-                w.orBlank { it.followThroughEndUs.toString() },
-                w.orBlank { it.endRecordingUs.toString() },
-                w?.tempo?.let { fmt(it) } ?: "",
-                toHex(s.rawMetrics),
-            ).joinToString(",")
-        }
-
-        /** Parse one CSV row. Returns null for a malformed row (caller skips it). */
-        fun decode(line: String): Shot? {
-            val f = line.split(',', limit = COLS)
-            if (f.size != COLS) return null
-            val shotId = f[0].toLongOrNull()?.toInt() ?: return null
-            val shotType = when (f[1]) {
-                "PRACTICE" -> R10Protos.Metrics.ShotType.PRACTICE
-                "NORMAL" -> R10Protos.Metrics.ShotType.NORMAL
-                else -> return null
-            }
-            val at = f[2].toLongOrNull() ?: return null
-
-            val hasBall = f[3].isNotEmpty()
-            val ball = if (hasBall) {
-                BallDisplay(
-                    ballSpeedMph = f[3].toDoubleOrZero(),
-                    launchAngleDeg = f[4].toDoubleOrZero(),
-                    launchDirectionDeg = f[5].toDoubleOrZero(),
-                    spinAxisDeg = f[6].toDoubleOrZero(),
-                    totalSpinRpm = f[7].toDoubleOrZero(),
-                    sideSpinRpm = f[8].toDoubleOrZero(),
-                    backSpinRpm = f[9].toDoubleOrZero(),
-                )
-            } else {
-                null
-            }
-
-            val hasClub = f[10].isNotEmpty()
-            val club = if (hasClub) {
-                ClubDisplay(
-                    clubSpeedMph = f[10].toDoubleOrZero(),
-                    faceAngleDeg = f[11].toDoubleOrZero(),
-                    pathDeg = f[12].toDoubleOrZero(),
-                    attackAngleDeg = f[13].toDoubleOrZero(),
-                )
-            } else {
-                null
-            }
-
-            val hasSwing = f[14].isNotEmpty()
-            val swing = if (hasSwing) {
-                SwingDisplay(
-                    backswingStartUs = f[14].toLongOrZero(),
-                    downswingStartUs = f[15].toLongOrZero(),
-                    impactUs = f[16].toLongOrZero(),
-                    followThroughEndUs = f[17].toLongOrZero(),
-                    endRecordingUs = f[18].toLongOrZero(),
-                    tempo = f[19].toDoubleOrNull(),
-                )
-            } else {
-                null
-            }
-
-            return Shot(
-                shotId = shotId,
-                shotType = shotType,
-                receivedAtMs = at,
-                ball = ball,
-                club = club,
-                swing = swing,
-                rawMetrics = fromHex(f[COL_RAW_METRICS]),
-            )
-        }
-
-        /**
-         * Validate CSV text: header, then every data row. Line numbers are 1-based
-         * against the original text so they match what an editor shows.
-         */
-        fun validateText(text: String): CsvValidation {
-            val problems = mutableListOf<String>()
-            var headerOk = false
-            var sawHeader = false
-            var dataRows = 0
-            var parsed = 0
-
-            text.split('\n').forEachIndexed { index, raw ->
-                val line = raw.trim()
-                if (line.isEmpty()) return@forEachIndexed
-                if (!sawHeader) {
-                    sawHeader = true
-                    headerOk = line == HEADER
-                    if (!headerOk) {
-                        problems += "line ${index + 1}: header mismatch (expected the $COLS-column header)"
-                    }
-                    return@forEachIndexed
-                }
-                dataRows++
-                val rowErrors = checkRow(line)
-                if (rowErrors.isEmpty() && decode(line) != null) {
-                    parsed++
-                } else {
-                    problems += rowErrors.ifEmpty { listOf("row does not decode") }
-                        .map { "line ${index + 1}: $it" }
-                }
-            }
-
-            if (!sawHeader) problems += "file is empty"
-            return CsvValidation(headerOk, dataRows, parsed, problems)
-        }
-
-        /**
-         * Row-level checks behind [decode]'s "skip it" behaviour. A bare "invalid
-         * file" is undiagnosable in a bug report; "bad hex in raw_metrics_hex" is
-         * actionable (ROADMAP R4).
-         */
-        private fun checkRow(line: String): List<String> {
-            val f = line.split(',', limit = COLS)
-            if (f.size != COLS) return listOf("expected $COLS fields, got ${f.size}")
-            val errs = mutableListOf<String>()
-            if (f[0].toLongOrNull() == null) errs += "${COL_NAMES[0]} '${f[0]}' is not an integer"
-            if (f[1] != "PRACTICE" && f[1] != "NORMAL") errs += "${COL_NAMES[1]} '${f[1]}' is not PRACTICE or NORMAL"
-            if (f[2].toLongOrNull() == null) errs += "${COL_NAMES[2]} '${f[2]}' is not an integer"
-
-            val doubleCols = intArrayOf(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 19)
-            for (i in doubleCols) {
-                if (f[i].isNotEmpty() && f[i].toDoubleOrNull() == null) {
-                    errs += "${COL_NAMES[i]} '${f[i]}' is not a number"
-                }
-            }
-            val longCols = intArrayOf(14, 15, 16, 17, 18)
-            for (i in longCols) {
-                if (f[i].isNotEmpty() && f[i].toLongOrNull() == null) {
-                    errs += "${COL_NAMES[i]} '${f[i]}' is not an integer"
-                }
-            }
-            hexError(f[COL_RAW_METRICS])?.let { errs += it }
-            return errs
-        }
-
-        /**
-         * Validate the `raw_metrics_hex` column: even length (a cut byte means a
-         * torn row) and hex-only. Returns the problem message, or null when the
-         * field is blank or well-formed.
-         */
-        private fun hexError(hex: String): String? {
-            if (hex.isEmpty()) return null
-            if (hex.length % HEX_CHARS_PER_BYTE != 0) {
-                return "${COL_NAMES[COL_RAW_METRICS]} has odd length ${hex.length} (truncated row?)"
-            }
-            if (hex.any { it !in HEX_VALID }) {
-                return "${COL_NAMES[COL_RAW_METRICS]} contains non-hex characters"
-            }
-            return null
-        }
-
-        private fun <T> T?.orBlank(render: (T) -> String): String = this?.let(render) ?: ""
-
-        /** Round-trip-safe decimal format: no scientific notation, no trailing zeros. */
-        private fun fmt(v: Double): String {
-            if (v == v.toLong().toDouble()) return v.toLong().toString()
-            return v.toString()
-        }
-
-        private fun String.toDoubleOrZero(): Double = toDoubleOrNull() ?: 0.0
-        private fun String.toLongOrZero(): Long = toLongOrNull() ?: 0L
-
-        private val HEX = "0123456789ABCDEF".toCharArray()
-        private const val HEX_RADIX = 16
-        private const val BITS_PER_NIBBLE = 4
-        private const val NIBBLE_MASK = 0x0F
-        private const val BYTE_MASK = 0xFF
-
-        fun toHex(bytes: ByteArray): String {
-            val out = StringBuilder(bytes.size * 2)
-            for (b in bytes) {
-                val v = b.toInt() and BYTE_MASK
-                out.append(HEX[v ushr BITS_PER_NIBBLE]).append(HEX[v and NIBBLE_MASK])
-            }
-            return out.toString()
-        }
-
-        fun fromHex(hex: String): ByteArray {
-            if (hex.isEmpty()) return ByteArray(0)
-            if (hex.length % 2 != 0) return ByteArray(0)
-            val out = ByteArray(hex.length / 2)
-            for (i in out.indices) {
-                val hi = Character.digit(hex[i * 2], HEX_RADIX) shl BITS_PER_NIBBLE
-                val lo = Character.digit(hex[i * 2 + 1], HEX_RADIX)
-                out[i] = (hi + lo).toByte()
-            }
-            return out
-        }
     }
 }
 

@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.techdelivery.r10.club.GolfClub
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -28,6 +30,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             debugLogging = p[KEY_DEBUG_LOGGING] ?: false,
             reconnectIntervalS = p[KEY_RECONNECT_INTERVAL_S] ?: 5,
             deviceName = p[KEY_DEVICE_NAME] ?: "Approach R10",
+            ownedClubs = p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS,
+            currentClub = p[KEY_CURRENT_CLUB],
         )
     }
 
@@ -69,6 +73,37 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_DEVICE_NAME] = name }
     }
 
+    /**
+     * Add or remove one club from the owned bag (ROADMAP R5).
+     *
+     * Read-modify-write inside `edit` rather than from the exposed flow: two taps
+     * in quick succession would otherwise both read the same stale set and the
+     * second would drop the first's change.
+     *
+     * An empty set is preserved, not defaulted back to the full bag — "I own
+     * nothing" is a real answer. The picker handles the fallback.
+     */
+    suspend fun setClubOwned(id: String, owned: Boolean) {
+        if (GolfClub.fromId(id) == null) return
+        dataStore.edit { p ->
+            val current = p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS
+            p[KEY_OWNED_CLUBS] = if (owned) current + id else current - id
+        }
+    }
+
+    /**
+     * Remember the last club the user picked, for the arrival stamp.
+     *
+     * Validated against the canonical list: this value ends up in the CSV, and a
+     * typo here would be written onto every subsequent shot.
+     */
+    suspend fun setCurrentClub(id: String?) {
+        val club = GolfClub.fromId(id)
+        dataStore.edit { p ->
+            if (club == null) p.remove(KEY_CURRENT_CLUB) else p[KEY_CURRENT_CLUB] = club.id
+        }
+    }
+
     companion object {
         private val KEY_AUTO_WAKE = booleanPreferencesKey("autoWake")
         private val KEY_CALIBRATE_TILT = booleanPreferencesKey("calibrateTiltOnConnect")
@@ -80,5 +115,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_DEBUG_LOGGING = booleanPreferencesKey("debugLogging")
         private val KEY_RECONNECT_INTERVAL_S = intPreferencesKey("reconnectIntervalS")
         private val KEY_DEVICE_NAME = stringPreferencesKey("deviceName")
+        private val KEY_OWNED_CLUBS = stringSetPreferencesKey("ownedClubs")
+        private val KEY_CURRENT_CLUB = stringPreferencesKey("currentClub")
     }
 }

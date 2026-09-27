@@ -1,5 +1,6 @@
 package com.techdelivery.r10.settings
 
+import com.techdelivery.r10.club.GolfClub
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -27,6 +28,59 @@ class SettingsRepositoryTest {
         assertEquals(false, s.debugLogging)
         assertEquals(5, s.reconnectIntervalS)
         assertEquals("Approach R10", s.deviceName)
+    }
+
+    // --- ROADMAP R5: the owned bag and the arrival stamp ---
+
+    @Test
+    fun ownedClubsDefaultToTheWholeBag() = runBlocking {
+        val s = newRepo().settings.first()
+        assertEquals(GolfClub.ALL_IDS, s.ownedClubs)
+        assertEquals(null, s.currentClub)
+    }
+
+    @Test
+    fun untickingClubsIsPersisted() = runBlocking {
+        val repo = newRepo()
+        repo.setClubOwned(GolfClub.PUTTER.id, false)
+        repo.setClubOwned(GolfClub.FIVE_WOOD.id, false)
+        val s = repo.settings.first()
+        assertEquals(GolfClub.ALL_IDS - setOf(GolfClub.PUTTER.id, GolfClub.FIVE_WOOD.id), s.ownedClubs)
+    }
+
+    @Test
+    fun untickThenTickIsAFullRoundTrip() = runBlocking {
+        val repo = newRepo()
+        repo.setClubOwned(GolfClub.PUTTER.id, false)
+        repo.setClubOwned(GolfClub.PUTTER.id, true)
+        assertEquals(GolfClub.ALL_IDS, repo.settings.first().ownedClubs)
+    }
+
+    /** "I own nothing" is a real answer and is preserved, not defaulted away. */
+    @Test
+    fun anEmptyOwnedSetIsPreserved() = runBlocking {
+        val repo = newRepo()
+        GolfClub.ALL.forEach { repo.setClubOwned(it.id, false) }
+        assertEquals(emptySet<String>(), repo.settings.first().ownedClubs)
+    }
+
+    @Test
+    fun anUnknownClubIdIsIgnored() = runBlocking {
+        val repo = newRepo()
+        repo.setClubOwned("Sand Wedge Deluxe", false)
+        repo.setCurrentClub("Sand Wedge Deluxe")
+        val s = repo.settings.first()
+        assertEquals(GolfClub.ALL_IDS, s.ownedClubs)
+        assertEquals("a label that is not a known club never becomes the stamp", null, s.currentClub)
+    }
+
+    @Test
+    fun currentClubRoundTripsAndClears() = runBlocking {
+        val repo = newRepo()
+        repo.setCurrentClub(GolfClub.SEVEN_IRON.id)
+        assertEquals(GolfClub.SEVEN_IRON.id, repo.settings.first().currentClub)
+        repo.setCurrentClub(null)
+        assertEquals(null, repo.settings.first().currentClub)
     }
 
     @Test
