@@ -36,7 +36,7 @@ complexity:
     functionThreshold: 7
     constructorThreshold: 8
   TooManyFunctions:
-    # SettingsRepository / ShotCsvStore / R10Device are facades: many small,
+    # SettingsRepository / ShotCsvFormat / R10Device are facades: many small,
     # single-purpose methods is the design, not a smell.
     thresholdInFiles: 25
     thresholdInClasses: 20

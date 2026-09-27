@@ -14,7 +14,6 @@
     <ID>CyclomaticComplexMethod:R10ForegroundService.kt$R10ForegroundService$@SuppressLint("MissingPermission") private fun startDevice()</ID>
     <ID>LongMethod:R10ForegroundService.kt$R10ForegroundService$@SuppressLint("MissingPermission") private fun startDevice()</ID>
     <ID>LongMethod:SettingsScreen.kt$@Composable fun SettingsScreen(repo: SettingsRepository, onExportCsv: suspend () -&gt; String, modifier: Modifier = Modifier)</ID>
-    <ID>ReturnCount:ShotCsvStore.kt$ShotCsvStore.Companion$fun decode(line: String): Shot?</ID>
     <ID>TooGenericExceptionCaught:BleTransportImpl.kt$BleTransportImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:R10ForegroundService.kt$R10ForegroundService$e: Exception</ID>
   </CurrentIssues>

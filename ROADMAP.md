@@ -150,7 +150,10 @@ how much they get in the way of using the app at the range.
     mutex: `append`, `updateClub` (re-emit that one record), and `exportCsv`.
     A rewrite is read-all, apply the change, write temp + rename,
     so a kill mid-rewrite leaves the previous file intact, and the dedup index is
-    rebuilt from the surviving records. The UI never touches the file, so the store
+    rebuilt from the surviving records. A rewrite also **refuses on a damaged
+    file** (a torn tail, a record that is neither header nor shot): a whole-file
+    rewrite writes back only the records it could read, so applying one would
+    delete everything past the tear. The export reports the damage instead. The UI never touches the file, so the store
     cannot drift half-mutable. A sidecar `shot_id → club` map was rejected: it
     gives two sources of truth for one fact.
   - **Schema evolution (decided, then superseded by R7): a `schema_version` leading
@@ -211,13 +214,20 @@ how much they get in the way of using the app at the range.
   - **CSV survives as the export**, produced from the store and still validated by
     the R4 rules — a readable file is the deliverable; it is just no longer where the
     data lives.
-  - **Deleted with it:** `ShotCsvStore`, `ShotCsvRewriter`, the `schema_version`
-    column, `HEADER_V1`, `migrate()` and the per-version row checks. Added:
+  - **Deleted with it:** `ShotCsvStore` and `ShotCsvRewriter` — the store no longer
+    keeps a CSV file, and with it the store-side `migrate()` (protobuf needs no
+    migration). **Kept, deliberately:** `schema_version`, `HEADER_V1` and the
+    per-version row checks all survive in `ShotCsvFormat`, because the **export**
+    format still carries them: an older exported file must still load and still
+    validate clean (R4's rule), and that is R5's verify list, not a leftover. Added:
     `ShotRecordCodec`, `DelimitedRecords`, `ShotStoreValidation`.
   - Verify: hit shots, kill and relaunch → history intact; export → the same values
     as before in mph/rpm/degrees; a club tag survives; delete still works; and
-    `shots.bin` opens with `protoc --decode_raw` (the check that the format is really
-    plain protobuf and not app-private framing).
+    **each varint-delimited record in `shots.bin` decodes under
+    `protoc --decode_raw`** (the check that the records are really plain protobuf
+    and not app-private framing — the command parses one message, so it is handed a
+    record *body*; it cannot read the varint length prefixes, so it cannot check
+    the framing of the file as a whole).
 
 ---
 

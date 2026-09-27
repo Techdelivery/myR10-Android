@@ -39,7 +39,7 @@ bytes. No networking functionality is included.
 | Target SDK | 34+ | Foreground service type `connectedDevice` required |
 | UI | Jetpack Compose | Single-activity, state-driven UI |
 | Protobuf | `com.google.protobuf` Gradle plugin + `protobuf-javalite` | Compile the R10 `.proto` schema |
-| Persistence | Room | Shot history |
+| Persistence | protobuf records in `shots.bin` (R7; CSV is a derived export) | Shot history, losslessly |
 | Settings | DataStore (Preferences) | App settings |
 | DI | Hilt (optional; plain singletons acceptable) | Keep it simple |
 | Tests | JUnit + kotlinx-coroutines-test | Protocol framing must be unit-tested |
@@ -495,22 +495,25 @@ Swing timing (microseconds):
 
 ## 8. Data Model & Persistence
 
-Room entities:
+Shot history is **not** stored in Room — the log is the protobuf record file
+described under "Persistence" below, and the settings are DataStore. What the
+shot record effectively holds (there is no table, so this is the shape, not a
+schema):
 
-- **Shot**: id (autogen), deviceShotId (dedup key component — NOT unique on its
-  own; see the implementation note below),
-  timestamp, shotType (practice/normal), ballSpeedMph, launchAngle,
-  launchDirection, spinAxisDeg, totalSpin, sideSpin, backSpin, clubSpeedMph,
-  faceAngle, path, attackAngle, rawMetrics (proto bytes, optional, for future
-  re-parsing).
+- **Shot** (one `StoredShot` record): the device's `Metrics` message, kept
+  verbatim, plus the two facts only this app knows — arrival time, and the club
+  label the user picked. `deviceShotId` (from those metrics) is part of the dedup
+  key — NOT identity on its own; see the implementation note below. Every
+  displayed value is recomputed from the stored bytes on load, so no float ever
+  passes through text and `rawMetrics` is re-parsable by construction.
 - **Setting keys** (DataStore): deviceName (default "Approach R10"), autoWake
   (default true), calibrateTiltOnConnect (default false), temperature (60),
   humidity (1), altitude (0), airDensity (1), teeDistanceFt (7), debugLogging
   (false), reconnectIntervalS (5).
 
-Planned additions (ROADMAP R5): `ownedClubs` (the set of clubs the user owns,
-drawn from the canonical club list) and `currentClub` (the last-picked club, used
-to stamp arriving shots). Neither is exported with the CSV.
+**App settings (ROADMAP R5, built):** `ownedClubs` (the set of clubs the user
+owns, drawn from the canonical club list) and `currentClub` (the last-picked club,
+used to stamp arriving shots). Neither is exported with the CSV.
 
 **Persistence: protobuf records, CSV as a derived export (ROADMAP R7, 2026-09-27).**
 The store is **not** Room and **not** a CSV file. It is the R10's own protobuf:
@@ -528,13 +531,18 @@ Three consequences, all of them the point:
   that ran when the shot arrived. No float ever passes through text, so there is no
   formatting rule that can lose precision, and no torn row that can drop a field.
 - **No schema machinery.** Protobuf's `optional` already means "unset", so a field
-  added later reads as absent. The CSV-only `schema_version` column, `HEADER_V1`,
-  `migrate()` and per-version row checks are all gone. `store_format_version` remains
-  in the header for the rare *destructive* change, so a future reader can refuse a
-  file it cannot interpret instead of guessing.
+  added later reads as absent. The **store** carries no version column: what R7
+  removed is the CSV's store-side `migrate()`, which protobuf does not need.
+  `store_format_version` remains in the header for the rare *destructive* change,
+  so a future reader can refuse a file it cannot interpret instead of guessing.
+  The **export** keeps `schema_version`, `HEADER_V1` and the per-version row
+  checks, so a CSV this app wrote earlier still loads and still validates clean.
 - **Damage is local.** A record that cannot be framed is reported with its index and
   skipped; reading stops there, because past an unreadable length prefix the offsets
-  are no longer trustworthy. A torn tail costs the tail, not the session.
+  are no longer trustworthy. A torn tail costs the tail, not the session. A
+  *rewrite* refuses to run on a damaged file for the same reason — it would write
+  back only the readable records, deleting the rest — and the export reports the
+  damage instead of claiming a clean copy.
 
 Framing was chosen over a single `repeated` message (also pure proto) because a
 `repeated` log must be rewritten for every new shot — giving up the one-fsync append
@@ -549,10 +557,13 @@ storage was available, so the cut is clean rather than carrying a back-compat la
 for a file the user chose to discard.
 
 One CSV-only rule survives the cut, because it is about the export rather than
-about the store: both headers are accepted, so a v1 CSV the user still has loads
-and validates clean (`ShotCsvFormatTest`). Nothing else of the versioning scheme
-came with it — the store has no `migrate()` and no per-version row check, and
-`decode` guesses a row's version from its shape alone.
+about the store: `schema_version` still leads the row, `HEADER_V1` is still
+accepted, and the per-version row checks are still applied per version — so both
+headers are accepted, a v1 CSV the user still has loads and validates clean, and a
+row carrying a version this build does not know is reported by line rather than
+guessed at (`ShotCsvFormatTest`). The store has no `migrate()`; the format's
+`decode` still reads a row's version from its shape alone, and never rewrites a
+file on the way in.
 
 **Why not Room, restated (2026-09-26).** KSP has no release matching the pinned
 Kotlin 2.4.x compiler, and the kapt route was rejected on memory grounds that depend
@@ -628,7 +639,7 @@ rebuilds the in-memory dedup index from the surviving records, because the index
 a cache of what the file contains — deleting a record must not leave a key that
 suppresses a re-pushed shot later. `clear()` keeps its own faster path.
 
-**Club ownership is app settings, not shot data (planned ROADMAP R5).** The set
+**Club ownership is app settings, not shot data (ROADMAP R5, built).** The set
 of clubs the user owns lives in `AppSettings` (DataStore) and is deliberately not
 exported: the export carries the device's measurements plus the one annotation
 attached to a shot, while a bag inventory is personal setup, not part of a shot
@@ -669,7 +680,7 @@ Single activity, three tabs:
      `TiltReading` in `DeviceStateHolder` (a formatted string is fine for display
      and useless for logic). When the device is level, the same numbers render as
      a quiet one-line readout rather than a banner.
-   - **Club tag (planned ROADMAP R5).** The device supplies club *metrics*, never
+   - **Club tag (ROADMAP R5).** The device supplies club *metrics*, never
      the club *identity*, so the club is a user annotation. The picker hangs off
      the selected shot, offers the clubs the user owns in Settings, and the
      last-picked club stamps each arriving shot so a session does not need a tap
@@ -677,7 +688,7 @@ Single activity, three tabs:
      store and schema rules behind it.
 3. **Settings** — all settings keys above; debug logging toggle that reveals a
    hex log pane (raw chunk in, framed, decoded, proto message lines).
-   - **"Clubs I own" (planned ROADMAP R5).** Checkbox grid over the canonical club
+   - **"Clubs I own" (ROADMAP R5).** Checkbox grid over the canonical club
      list (driver → putter), multi-select, stored in `AppSettings` and not
      exported. It filters the Shots-tab club picker, which falls back to the full
      list when the owned set is empty.
@@ -717,8 +728,8 @@ foreground service scaffold, permissions. App runs, does nothing BLE yet.
 
 **M3 — Polish**
 - Robust reconnect (GATT 133 handling, retry backoff, clear-cache fallback).
-- Room shot history, CSV export, practice/normal filter, notification updates,
-  log export for bug reports.
+- Shot history (the protobuf record store, R7), CSV export, practice/normal
+  filter, notification updates, log export for bug reports.
 
 ---
 
@@ -738,7 +749,11 @@ foreground service scaffold, permissions. App runs, does nothing BLE yet.
 
 ## Appendix A — LaunchMonitor.proto
 
-Complete schema, matching the firmware's proto exactly — transcribe verbatim.
+The device schema, matching the firmware's proto exactly — transcribed verbatim.
+Everything above the app-owned block at the end is firmware; that last block is
+**not**: `ShotLogHeader` and `StoredShot` were added in ROADMAP R7 and the R10
+never sends either. They live in the same file only because the codegen is shared
+(§8).
 Implementation note: `AlertNotification` field 1001 is named after its parent
 message; codegen produces an accessor with a trailing underscore (e.g.
 JavaLite/Kotlin `alertNotification_`). Use generated names as-is.
@@ -987,5 +1002,26 @@ message SwingMetrics {
   optional uint32 impact_time = 3;
   optional uint32 follow_through_end_time = 4;
   optional uint32 end_recording_time = 5;
+}
+
+// ---------------------------------------------------------------------------
+// App-owned persistence records (ROADMAP R7). NOT part of the R10 protocol: the
+// device never sends these, and they are field-compatible with nothing else.
+// Listed here so this appendix stays an honest picture of the file the app
+// actually compiles.
+// ---------------------------------------------------------------------------
+
+// First record of shots.bin. A header record, rather than a flag or a file name,
+// so a reader can tell what it is holding before it trusts a single shot.
+message ShotLogHeader {
+  optional uint32 store_format_version = 1;
+}
+
+// One shot, as the app stores it: what the device sent (metrics), plus the two
+// facts only this app knows — when the shot arrived, and which club the user hit.
+message StoredShot {
+  optional int64 received_at_ms = 1;
+  optional string club_label = 2;
+  optional Metrics metrics = 3;
 }
 ```
