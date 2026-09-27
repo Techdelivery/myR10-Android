@@ -548,13 +548,19 @@ validated by the Export button. History is not migrated from the old CSV — cle
 storage was available, so the cut is clean rather than carrying a back-compat layer
 for a file the user chose to discard.
 
+One CSV-only rule survives the cut, because it is about the export rather than
+about the store: both headers are accepted, so a v1 CSV the user still has loads
+and validates clean (`ShotCsvFormatTest`). Nothing else of the versioning scheme
+came with it — the store has no `migrate()` and no per-version row check, and
+`decode` guesses a row's version from its shape alone.
+
 **Why not Room, restated (2026-09-26).** KSP has no release matching the pinned
 Kotlin 2.4.x compiler, and the kapt route was rejected on memory grounds that depend
 on the host rather than on the project (see "Memory-restricted workspaces" below).
 The persisted shape is flat,
-numeric and app-owned, so CSV is lossless here and doubles as the CSV export with
-no second serializer. Replacing `ShotCsvStore` with a Room DAO is a drop-in change:
-nothing else reads the file. Dedup across sessions must keep the same guarantee the
+numeric and app-owned, so the store is lossless here and the CSV export is produced
+from it with no second source of truth. Replacing `ShotProtoStore` with a Room DAO
+is a drop-in change: nothing else reads the file. Dedup across sessions must keep the same guarantee the
 `deviceShotId` unique index was meant to give — the in-memory dedup is per
 connection only, so a Room migration should enforce the unique key on insert.
 
@@ -572,10 +578,10 @@ Room as a deliberate choice, not a blocked one, and decide it deliberately:
 - If the budget is fixed and genuinely too small, say so explicitly here, with the
   measured failure (heap OOM during which task), so the next reader does not
   re-derive it on a machine that has plenty of memory.
-- Either way, do not let this drift: CSV is lossless for the current persisted
-  shape and already doubles as the export format, so there is no forcing function
-  pulling toward Room. Revisit it as an explicit decision, not as a side effect of
-  upgrading the toolchain.
+- Either way, do not let this drift: the store holds the device's protobuf bytes, which
+  are lossless by construction, and the CSV export is produced from it rather than
+  persisted, so there is no forcing function pulling toward Room. Revisit it as an
+  explicit decision, not as a side effect of upgrading the toolchain.
 
 **CSV validation (2026-09-26, ROADMAP R4).** The export is no longer "copy the file
 and report the byte count". `ShotCsvFormat.validateText` checks the header
@@ -586,67 +592,53 @@ and the Export button shows the summary. This matters because `decode`
 deliberately returns null for a malformed row — without an explicit pass, a torn
 file exports as a success with rows silently missing.
 
-**The store is mutable, but only from inside it (decided 2026-09-26, ROADMAP R5).**
-Tagging a shot with a club means editing a row that already exists, and a shot
-can be deleted outright, so the store is not append-only and is not going to be.
-The rule that keeps this from drifting half-mutable: `ShotCsvStore` stays the only
-writer of `shots.csv`, under its existing mutex, and the UI never touches the
-file. Its operations are:
+**The store is mutable, but only from inside it (decided 2026-09-26, ROADMAP R5;
+restated for the protobuf store in R7).** Tagging a shot with a club means editing
+a record that already exists, and a shot can be deleted outright, so the store is
+not append-only and is not going to be. The rule that keeps this from drifting
+half-mutable: `ShotProtoStore` stays the only writer of `shots.bin`, under its
+mutex, and the UI never touches the file. Its operations are:
 
-- `append(shot)` / `appendAll(shots)` — current behaviour.
-- `updateClub(shotId, club)` — rewrite one row.
-- `deleteShot(shotId)` — remove one row. Needed independently of the club tag: a
-  mis-hit practice swing, a row from a bad session, or a shot the user simply
-  does not want in their history. Deleting is a user-visible data loss, so the UI
-  must confirm it and there is no undo — the export snapshot is the only way back.
-- `exportSnapshot(dir, stamp)` — current behaviour.
-- `migrate()` — the explicit schema upgrade described below.
+- `append(shot)` / `appendAll(shots)` — one durable append per write.
+- `updateClub(shotId, club)` — rewrite the file with that one record changed.
+- `deleteShot(shotId)` — rewrite the file without that record. Needed
+  independently of the club tag: a mis-hit practice swing, a record from a bad
+  session, or a shot the user simply does not want in their history. Deleting is a
+  user-visible data loss, so the UI must confirm it and there is no undo — a CSV
+  export the user already took is the only way back.
+- `exportCsv(dir, stamp)` — write a derived, human-readable copy.
+- `validate()` — header present, every record a header or a shot.
+- `clear()` — delete everything.
 
-**Where the code lives (as built).** Four units, split by job rather than by file
-size: `ShotCsvStore` owns the file, the mutex and the durability rules;
-`ShotCsvFormat` owns the schema, encode/decode and validation and touches no file;
-`ShotDedupIndex` owns the bounded LRU of stored-payload keys; `ShotCsvRewriter`
-owns the atomic rewrite (temp file, fsync, rename) and the per-line fold. The split
-exists so the store stays about durability, the format about compatibility, and a
-rewrite can be reasoned about without holding a lock in your head.
+**Where the code lives (as built).** Five units, split by job rather than by file
+size: `ShotProtoStore` owns the file, the mutex and the durability rules;
+`ShotRecordCodec` translates a `Shot` to and from its `StoredShot` record;
+`DelimitedRecords` owns the length-delimited framing; `ShotDedupIndex` owns the
+bounded LRU of stored-payload keys; `ShotCsvFormat` owns the export's encoding and
+validation and touches no file. The split exists so the store stays about
+durability, the format about compatibility, and a rewrite can be reasoned about
+without holding a lock in your head.
 
-Every mutating operation is one rewrite: read all rows, apply the change, write a
-temp file and rename it over the original, so a process kill mid-write leaves the
-previous file intact rather than a truncated history. Each rewrite also rebuilds
-the in-memory dedup index from the surviving rows, because the index is a cache of
-what the file contains — deleting a row must not leave a key that suppresses a
-re-pushed shot later. `clear()` (delete everything) already existed and keeps its
-own faster path.
-
-**Schema versioning with explicit evolution (planned ROADMAP R5).** `club_label`
-adds a column, so the file carries a version instead of a column count that
-guesses itself:
-
-- The version is a leading `schema_version` **column** on every row, not a comment
-  line. A comment would be silently dropped by the R4 header check and by any
-  external reader; a column travels with the data.
-- `CURRENT_SCHEMA_VERSION` is a constant; `encode` always writes it. `HEADER_V1`
-  (21 columns) is kept alongside the current header so the old shape is described
-  in code rather than remembered.
-- `decode` and `validateText` accept every known version and report which one they
-  saw. A v1 file loads, validates, and exports without ever becoming "invalid" —
-  that is the rule R4 established, and it holds across the version change.
-- Migration is an explicit `migrate()` in the store, run under the mutex on app
-  start or before the first export. It is never implicit inside `decode`; reading
-  a file must not rewrite it.
-- `checkRow` validates `club_label` per version: present and a known club name for
-  current rows, tolerated as absent for v1 rows.
+`append` is the cheap path: the framed bytes are appended and fsynced, so a shot is
+durable in one write. `updateClub` and `deleteShot` are rewrites — read all records,
+apply the change, write a temp file and rename it over the original, so a process
+kill mid-write leaves the previous file intact rather than a truncated history.
+Editing one record in an append-only log is the price of the format. A rewrite also
+rebuilds the in-memory dedup index from the surviving records, because the index is
+a cache of what the file contains — deleting a record must not leave a key that
+suppresses a re-pushed shot later. `clear()` keeps its own faster path.
 
 **Club ownership is app settings, not shot data (planned ROADMAP R5).** The set
 of clubs the user owns lives in `AppSettings` (DataStore) and is deliberately not
-exported: the CSV stays device measurements plus annotations, and a bag
-inventory is personal setup, not part of a shot record.
+exported: the export carries the device's measurements plus the one annotation
+attached to a shot, while a bag inventory is personal setup, not part of a shot
+record.
 
 **Dedup key resolution (2026-09-25).** `deviceShotId` cannot be that key as
 written. The R10 restarts its `shot_id` sequence on every power cycle, so a
 global unique constraint on `shot_id` would reject legitimate new shots after a
-reboot. The stable identity of a re-pushed shot is its bytes, so `ShotCsvStore`
-deduplicates on `shot_id || hex(raw_metrics)` over the most recent 2000 rows.
+reboot. The stable identity of a re-pushed shot is its bytes, so `ShotProtoStore`
+deduplicates on `shot_id || hex(raw_metrics)` over the most recent 2000 records.
 A Room migration should use the same composite key, not `deviceShotId` alone.
 Shots with no `raw_metrics` carry no key and are always written.
 

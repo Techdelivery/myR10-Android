@@ -34,7 +34,7 @@ R1–R4 came from the user driving the real app and merged 2026-09-26
 (PR #5 keep-screen-on, #6 shots-tab-ux, #7 csv-validation). **R1–R3 are still
 unvalidated on hardware** — no `dumpsys power` reading, no tipped-unit session,
 no tap-selection session has been recorded, and no unit test covers them. R4 is
-test-covered (`ShotCsvStoreTest`). R5 is the next feature to build, and R6 is a
+test-covered (`ShotCsvFormatTest`). R5 is the next feature to build, and R6 is a
 consequence of R5's store decision rather than a separate idea. Ordered by
 how much they get in the way of using the app at the range.
 
@@ -72,11 +72,12 @@ how much they get in the way of using the app at the range.
   - Verify: select shot #1, hit shot #2 → selection stays on #1 and #2 appears in
     the list; tap #2 → detail switches; tap #1 again → back.
 
-- [x] **R4. Validate the CSV.** *(merged + test-covered; the in-app export
-  message itself still wants one on-device run)*
-  The export is currently trusted, not checked: `exportSnapshot` copies the file
-  and reports the byte count, and `decode` silently skips malformed rows — so a
-  torn or truncated file exports "successfully" with rows quietly missing. Add a
+- [x] **R4. Validate the CSV.** *(merged + test-covered in `ShotCsvFormatTest`
+  since R7 moved the format out of the deleted store; the in-app export message
+  itself still wants one on-device run)*
+  The export used to be trusted, not checked: it copied the store's file out
+  and reported the byte count, and `decode` silently skips malformed rows — so a
+  torn or truncated file exported "successfully" with rows quietly missing. Add a
   real validation pass and surface it in-app.
   - Check: header present and exactly the expected columns; every row has the
     expected column count; numeric fields parse; `shot_type` is a known enum name;
@@ -87,7 +88,7 @@ how much they get in the way of using the app at the range.
     `N rows, M problems: …`.
   - Round-trip check: `decode(encode(shot)) == shot` over a fuzz set, so a
     formatting change cannot silently lose precision.
-  - Verify: `ShotCsvStoreTest` — clean file passes, injected torn row reported
+  - Verify: `ShotCsvFormatTest` — clean file passes, injected torn row reported
     with its line number, wrong column count reported, bad hex reported.
 
 - [~] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).** *(implemented 2026-09-27, unverified on hardware)*
@@ -95,7 +96,7 @@ how much they get in the way of using the app at the range.
   angle) but never *which club* you swung. Let the user tag a shot with the club
   they used, persist it, and show it with the shot. **Built 2026-09-27** —
   `club/GolfClub` (the canonical list), `ownedClubs` + `currentClub` in
-  `SettingsRepository`, `ShotCsvStore.updateClub`, the `ShotDetailCard` club
+  `SettingsRepository`, `ShotProtoStore.updateClub`, the `ShotDetailCard` club
   editor, and the arrival stamp in `R10ForegroundService`. The reasoning is in
   DESIGN §8; this section is the summary, not the source of truth.
   - **One canonical club list, in one place.** A single `Club` list ordered driver
@@ -144,19 +145,21 @@ how much they get in the way of using the app at the range.
     new shot, so a session at the range does not need a picker tap per ball. The
     stamp is always visible and always correctable in the detail card; the R10
     refusing to record while tilted is not a reason to also require a tap.
-  - **Persistence (decided): a row rewrite inside the store, not a sidecar.**
-    `ShotCsvStore` is mutable and stays the only writer of `shots.csv`, under its
-    existing mutex: `append`, `updateClub` (replace the row by `shot_id`), and
-    `exportSnapshot`. A rewrite is read-all, apply the change, write temp + rename,
+  - **Persistence (decided): a rewrite inside the store, not a sidecar.**
+    `ShotProtoStore` is mutable and stays the only writer of `shots.bin`, under its
+    mutex: `append`, `updateClub` (re-emit that one record), and `exportCsv`.
+    A rewrite is read-all, apply the change, write temp + rename,
     so a kill mid-rewrite leaves the previous file intact, and the dedup index is
-    rebuilt from the surviving rows. The UI never touches the file, so the store
+    rebuilt from the surviving records. The UI never touches the file, so the store
     cannot drift half-mutable. A sidecar `shot_id → club` map was rejected: it
-    makes the CSV a lossy export and gives two sources of truth for one fact.
-  - **Schema evolution (decided): a `schema_version` leading column**, with
-    `CURRENT_SCHEMA_VERSION`, a retained `HEADER_V1` (21 columns), `decode` /
-    `validateText` accepting every known version, and migration as an explicit
-    `migrate()` under the mutex — never implicit inside `decode`, so reading a
-    file never rewrites it. Full rules in DESIGN §8.
+    gives two sources of truth for one fact.
+  - **Schema evolution (decided, then superseded by R7): a `schema_version` leading
+    column**, with `ShotCsvFormat.SCHEMA_VERSION`, a retained `HEADER_V1` (21
+    columns), `decode` / `validateText` accepting every known version, and
+    migration as an explicit `migrate()` under the mutex — never implicit inside
+    `decode`, so reading a file never rewrites it. R7 kept the version column and
+    `HEADER_V1` in the export format and dropped the store-side migration
+    (protobuf needs none). Full rules in DESIGN §8.
   - Verify: Settings bag toggles and survives relaunch; select a shot → pick
     "7-iron" → it shows in the detail card and the row; hit a shot without
     touching the picker → it inherits the current club; change a tag on an older
@@ -171,9 +174,9 @@ how much they get in the way of using the app at the range.
   decision that the store is mutable — once `updateClub` exists, deletion is the
   same rewrite with a different transformation, and leaving it out would make
   editing the file by hand the only way to drop a shot.
-  - **Store:** `deleteShot(shotId)` in `ShotCsvStore`, under the same mutex and
+  - **Store:** `deleteShot(shotId)` in `ShotProtoStore`, under the same mutex and
     the same temp-file-rename rewrite as `updateClub`, rebuilding the dedup index
-    from the surviving rows. A missing `shot_id` is a no-op, not an error.
+    from the surviving records. A missing `shot_id` is a no-op, not an error.
   - **UI:** delete from the shot detail card on the Shots tab, scoped to the
     **selected** shot, so it can never delete the wrong row by accident. Clearing
     the club tag stays a separate, non-destructive action.
