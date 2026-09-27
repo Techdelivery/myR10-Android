@@ -407,3 +407,26 @@ object ShotCsvFormat {
         return out
     }
 }
+
+/**
+ * Result of a CSV validation pass (ROADMAP R4).
+ *
+ * Exists because `decode` deliberately skips malformed rows: without an explicit
+ * check, a torn file exports as a success with rows silently missing. The CSV is a
+ * derived view (ROADMAP R7), so this validates the export, not the store.
+ */
+data class CsvValidation(val headerOk: Boolean, val dataRows: Int, val parsed: Int, val problems: List<String>) {
+    val isClean: Boolean get() = headerOk && problems.isEmpty()
+
+    /** One-line human summary for the Export button / logs. */
+    fun summary(): String {
+        if (isClean) return "$parsed row${if (parsed == 1) "" else "s"} OK"
+        val shown = problems.take(MAX_REPORTED)
+        val more = if (problems.size > shown.size) " (+${problems.size - shown.size} more)" else ""
+        return "$parsed/$dataRows rows OK · ${problems.size} problem(s): ${shown.joinToString("; ")}$more"
+    }
+
+    private companion object {
+        const val MAX_REPORTED = 5
+    }
+}

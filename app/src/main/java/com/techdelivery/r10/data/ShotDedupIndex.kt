@@ -6,12 +6,12 @@ import com.techdelivery.r10.protocol.shot.Shot
  * Bounded LRU set of dedup keys for cross-session duplicate rejection
  * (DESIGN §8, ROADMAP R5).
  *
- * Extracted from [ShotCsvStore] because it is a different job with different rules:
- * the store owns durability, this owns remembering. Keeping them apart is what lets
- * the store rebuild the index from the file after a rewrite without reimplementing
- * eviction, and lets eviction be tested without a file.
+ * Kept separate from [ShotProtoStore] because it is a different job with different
+ * rules: the store owns durability, this owns remembering. Keeping them apart is
+ * what lets the store rebuild the index from the file after a rewrite without
+ * reimplementing eviction, and lets eviction be tested without a file.
  *
- * The key is the raw proto payload plus the shot id — see [ShotCsvStore]'s dedup note
+ * The key is the raw proto payload plus the shot id — see [ShotProtoStore]'s dedup note
  * for why `shot_id` alone is not identity across a power cycle.
  */
 internal class ShotDedupIndex(private val window: Int) {

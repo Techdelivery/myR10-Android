@@ -23,7 +23,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  *    `R10Device.shots`, then `ProtocolEngine._events`, then the BLE inbound reader.
  *  - Disk latency lives on [Dispatchers.IO], off the delivery path entirely.
  *
- * [appender] is injected rather than a concrete [ShotCsvStore] so tests can drive
+ * [appender] is injected rather than a concrete [ShotProtoStore] so tests can drive
  * success and failure without touching the filesystem.
  */
 class ShotPersistSink(

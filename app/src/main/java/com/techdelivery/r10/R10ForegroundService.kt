@@ -15,8 +15,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.techdelivery.r10.ble.BleTransportImpl
-import com.techdelivery.r10.data.ShotCsvStore
 import com.techdelivery.r10.data.ShotPersistSink
+import com.techdelivery.r10.data.ShotProtoStore
 import com.techdelivery.r10.protocol.DeviceSetupConfig
 import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
@@ -70,7 +70,7 @@ class R10ForegroundService : Service() {
      */
     private var persistSink: ShotPersistSink? = null
 
-    private fun ensurePersistSink(store: ShotCsvStore): ShotPersistSink =
+    private fun ensurePersistSink(store: ShotProtoStore): ShotPersistSink =
         persistSink?.takeIf { it.isRunning } ?: ShotPersistSink(store::append, scope, PERSIST_QUEUE_CAPACITY)
             .also {
                 persistSink = it

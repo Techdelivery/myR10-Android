@@ -1,7 +1,7 @@
 package com.techdelivery.r10
 
 import android.app.Application
-import com.techdelivery.r10.data.ShotCsvStore
+import com.techdelivery.r10.data.ShotProtoStore
 import com.techdelivery.r10.settings.SettingsDataStore
 import com.techdelivery.r10.settings.SettingsRepository
 import java.io.File
@@ -15,9 +15,10 @@ import java.io.File
  * "There are multiple DataStores active for the same file". Everything that
  * needs settings must go through this instance.
  *
- * [shotStore] is likewise a process-wide singleton: one writer per file.
+ * [shotStore] is likewise a process-wide singleton: one writer per file. It holds
+ * the R10's own protobuf records (ROADMAP R7); the CSV is produced on export.
  */
 class R10App : Application() {
     val settingsRepository: SettingsRepository by lazy { SettingsDataStore.get(this) }
-    val shotStore: ShotCsvStore by lazy { ShotCsvStore(File(filesDir, "shots.csv")) }
+    val shotStore: ShotProtoStore by lazy { ShotProtoStore(File(filesDir, "shots.bin")) }
 }
