@@ -1,5 +1,8 @@
 package com.techdelivery.r10.settings
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.techdelivery.r10.club.GolfClub
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -76,20 +79,50 @@ class SettingsRepositoryTest {
         assertEquals("a label that is not a known club never becomes the stamp", null, s.currentClub)
     }
 
-    /** A bag saved by the pre-abbreviation build must still read as owned. */
+    /**
+     * A bag and a stamp saved by the pre-abbreviation build hold long names
+     * ("7 Iron"). They are written straight into the DataStore here, **bypassing
+     * the repository's own setters** — those normalize on the way in, so going
+     * through them would store the abbreviation and never exercise the legacy read
+     * path this test exists for.
+     */
     @Test
-    fun aLegacyOwnedSetIsNormalizedOnRead() = runBlocking {
-        val repo = newRepo()
-        repo.setClubOwned(GolfClub.IRON_SEVEN.id, false)
-        // Write the old long form directly, as the previous build would have.
-        val store = SettingsDataStore.produceStore(
-            java.io.File(java.nio.file.Files.createTempDirectory("legacy").toFile(), "t.preferences_pb"),
-        )
-        val legacy = SettingsRepository(store)
-        legacy.setClubOwned("7 Iron", true)
-        val s = legacy.settings.first()
+    fun aLegacyOwnedSetAndStampAreNormalizedOnRead() = runBlocking {
+        val s = legacyRepo(stamp = "7 Iron", owned = arrayOf("7 Iron", "Pitching Wedge")).settings.first()
         assertTrue(GolfClub.IRON_SEVEN.id in s.ownedClubs)
+        assertTrue(GolfClub.PITCHING_WEDGE.id in s.ownedClubs)
         assertFalse("the long name must not linger in the bag", "7 Iron" in s.ownedClubs)
+        assertEquals(GolfClub.IRON_SEVEN.id, s.currentClub)
+    }
+
+    /**
+     * The same path for a value that is not a club at all — a label from a build
+     * that is gone, or a hand edit. It must read as null, because this value is
+     * stamped onto every arriving shot: an unresolved stamp would tag the whole
+     * session with a club the picker does not even offer.
+     */
+    @Test
+    fun anUnresolvableStampReadsAsNull() = runBlocking {
+        val s = legacyRepo(stamp = "Sand Wedge Deluxe", owned = arrayOf("7 Iron")).settings.first()
+        assertEquals(null, s.currentClub)
+        assertTrue(GolfClub.IRON_SEVEN.id in s.ownedClubs)
+    }
+
+    /**
+     * A repository over preferences written the way the pre-abbreviation build (or
+     * a text editor) would have left them: a bag and a stamp in the old long form.
+     */
+    private fun legacyRepo(stamp: String, vararg owned: String): SettingsRepository {
+        val dataStore = SettingsDataStore.produceStore(
+            java.io.File(Files.createTempDirectory("legacy").toFile(), "t.preferences_pb"),
+        )
+        runBlocking {
+            dataStore.edit { p ->
+                p[stringSetPreferencesKey("ownedClubs")] = owned.toSet()
+                p[stringPreferencesKey("currentClub")] = stamp
+            }
+        }
+        return SettingsRepository(dataStore)
     }
 
     @Test

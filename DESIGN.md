@@ -542,7 +542,14 @@ Three consequences, all of them the point:
   are no longer trustworthy. A torn tail costs the tail, not the session. A
   *rewrite* refuses to run on a damaged file for the same reason — it would write
   back only the readable records, deleting the rest — and the export reports the
-  damage instead of claiming a clean copy.
+  damage instead of claiming a clean copy. A torn tail is *repaired* before an
+  append, not refused: appending past a file that does not end on a record boundary
+  writes a shot where the reader never looks (never loaded, never exported, never
+  validated, with every later shot stranded behind the same tear while `append`
+  still reported success). The append rewrites the intact prefix first — byte for
+  byte, through the same atomic path — and drops only the bytes past the tear.
+  Refusing instead would leave a store that has lost a tail permanently unable to
+  record a shot.
 
 Framing was chosen over a single `repeated` message (also pure proto) because a
 `repeated` log must be rewritten for every new shot — giving up the one-fsync append

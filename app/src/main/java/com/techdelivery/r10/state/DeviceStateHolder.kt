@@ -116,22 +116,35 @@ object DeviceStateHolder {
      * The store is the source of truth; this mirrors the write so the Shots tab
      * shows the new club without a reload. A club is not part of the shot's
      * identity, so the row is replaced in place and its position is preserved.
+     *
+     * Matched on the same **pair** the store matches on — id *and* arrival time.
+     * The R10 restarts `shot_id` on every power cycle, so the live list can hold
+     * yesterday's shot 1 and today's shot 1, and tagging by id alone would
+     * overwrite both.
      */
-    fun setShotClub(shotId: Int, clubLabel: String?) = synchronized(shotsLock) {
+    fun setShotClub(shotId: Int, receivedAtMs: Long, clubLabel: String?) = synchronized(shotsLock) {
         shots.value = shots.value.map { shot ->
-            if (shot.shotId == shotId) shot.copy(clubLabel = clubLabel) else shot
+            if (shot.shotId == shotId && shot.receivedAtMs == receivedAtMs) {
+                shot.copy(clubLabel = clubLabel)
+            } else {
+                shot
+            }
         }
     }
 
     /**
      * Drop a deleted shot from the live list (ROADMAP R6).
      *
+     * Matched on the same **pair** the store deletes on — id *and* arrival time —
+     * for the same reason: two sessions can each hold a shot 1, and dropping by id
+     * alone would remove both rows from the list.
+     *
      * [shotCount] is deliberately **not** decremented: it is a session counter of
      * shots the device sent, and the notification shows it as such. Decrementing
      * would make the count disagree with the R10's own record.
      */
-    fun removeShot(shotId: Int) = synchronized(shotsLock) {
-        shots.value = shots.value.filter { it.shotId != shotId }
+    fun removeShot(shotId: Int, receivedAtMs: Long) = synchronized(shotsLock) {
+        shots.value = shots.value.filter { it.shotId != shotId || it.receivedAtMs != receivedAtMs }
     }
 
     /**

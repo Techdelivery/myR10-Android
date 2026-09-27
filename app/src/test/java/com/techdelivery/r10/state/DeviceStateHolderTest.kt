@@ -195,7 +195,7 @@ class DeviceStateHolderTest {
         DeviceStateHolder.addShot(shot(1))
         DeviceStateHolder.addShot(shot(2))
 
-        DeviceStateHolder.setShotClub(1, "7 Iron")
+        DeviceStateHolder.setShotClub(1, shot(1).receivedAtMs, "7 Iron")
 
         assertEquals(listOf(2, 1), DeviceStateHolder.shots.value.map { it.shotId })
         assertEquals("7 Iron", DeviceStateHolder.shots.value.last().clubLabel)
@@ -205,14 +205,14 @@ class DeviceStateHolderTest {
     @Test
     fun setShotClubWithNullClearsTheTag() {
         DeviceStateHolder.addShot(shot(1).copy(clubLabel = "Putter"))
-        DeviceStateHolder.setShotClub(1, null)
+        DeviceStateHolder.setShotClub(1, shot(1).receivedAtMs, null)
         assertNull(DeviceStateHolder.shots.value.single().clubLabel)
     }
 
     @Test
     fun setShotClubOnAnAbsentShotChangesNothing() {
         DeviceStateHolder.addShot(shot(1))
-        DeviceStateHolder.setShotClub(99, "Driver")
+        DeviceStateHolder.setShotClub(99, shot(1).receivedAtMs, "Driver")
         assertEquals(1, DeviceStateHolder.shots.value.size)
     }
 
@@ -221,10 +221,45 @@ class DeviceStateHolderTest {
         DeviceStateHolder.addShot(shot(1))
         DeviceStateHolder.addShot(shot(2))
 
-        DeviceStateHolder.removeShot(1)
+        DeviceStateHolder.removeShot(1, shot(1).receivedAtMs)
 
         assertEquals(listOf(2), DeviceStateHolder.shots.value.map { it.shotId })
         // The count is what the R10 sent this session, not a row count.
         assertEquals(2, DeviceStateHolder.shotCount.value)
+    }
+
+    // --- two sessions can each hold a shot 1 (the R10 restarts shot_id) ---
+
+    /**
+     * The live list mirrors the store's key, which is the pair. Matching on the id
+     * alone would re-tag or drop both of yesterday's shot 1 and today's shot 1 —
+     * and delete has no undo, so the wrong row vanishing is not recoverable in-app.
+     */
+    @Test
+    fun removeShotForOneSessionKeepsTheOther() {
+        val yesterday = shot(1).copy(receivedAtMs = 1_000L)
+        val today = shot(1).copy(receivedAtMs = 2_000L)
+        DeviceStateHolder.addShot(yesterday)
+        DeviceStateHolder.addShot(today)
+
+        DeviceStateHolder.removeShot(1, yesterday.receivedAtMs)
+
+        assertEquals(listOf(2_000L), DeviceStateHolder.shots.value.map { it.receivedAtMs })
+        assertEquals(2, DeviceStateHolder.shotCount.value)
+    }
+
+    @Test
+    fun setShotClubForOneSessionLeavesTheOtherAlone() {
+        val yesterday = shot(1).copy(receivedAtMs = 1_000L, clubLabel = "P")
+        val today = shot(1).copy(receivedAtMs = 2_000L)
+        DeviceStateHolder.addShot(yesterday)
+        DeviceStateHolder.addShot(today)
+
+        DeviceStateHolder.setShotClub(1, today.receivedAtMs, "D")
+
+        assertEquals(
+            listOf("P", "D"),
+            DeviceStateHolder.shots.value.sortedBy { it.receivedAtMs }.map { it.clubLabel },
+        )
     }
 }

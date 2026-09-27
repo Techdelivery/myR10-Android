@@ -36,7 +36,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             // re-tick a bag that never changed.
             ownedClubs = (p[KEY_OWNED_CLUBS] ?: AppSettings.DEFAULT_OWNED_CLUBS)
                 .mapNotNullTo(linkedSetOf()) { GolfClub.fromId(it)?.id },
-            currentClub = p[KEY_CURRENT_CLUB],
+            // Normalized on read for the same reason as the bag, and with more
+            // consequence: this value is stamped onto every arriving shot, so a
+            // value an earlier build (or a hand edit) left behind would tag the
+            // whole session with a club that is not in the list.
+            currentClub = p[KEY_CURRENT_CLUB]?.let { GolfClub.fromId(it)?.id },
         )
     }
 

@@ -126,8 +126,8 @@ class MainActivity : ComponentActivity() {
 
                             1 -> ShotsScreen(
                                 ownedClubs = settings.ownedClubs,
-                                onSetClub = { shotId, club -> setShotClub(repo, store, shotId, club) },
-                                onDeleteShot = { shotId -> deleteShot(store, shotId) },
+                                onSetClub = { shotId, at, club -> setShotClub(repo, store, shotId, at, club) },
+                                onDeleteShot = { shotId, at -> deleteShot(store, shotId, at) },
                                 modifier = Modifier.fillMaxSize(),
                             )
 
@@ -160,10 +160,16 @@ class MainActivity : ComponentActivity() {
      * saves a tap per ball at the range — so it is written even when the visible
      * shot already carried that label.
      */
-    private fun setShotClub(repo: SettingsRepository, store: ShotProtoStore, shotId: Int, club: GolfClub?) {
+    private fun setShotClub(
+        repo: SettingsRepository,
+        store: ShotProtoStore,
+        shotId: Int,
+        receivedAtMs: Long,
+        club: GolfClub?,
+    ) {
         uiScope.launch {
-            val written = runCatching { store.updateClub(shotId, club) }
-            if (written.getOrDefault(false)) DeviceStateHolder.setShotClub(shotId, club?.id)
+            val written = runCatching { store.updateClub(shotId, receivedAtMs, club) }
+            if (written.getOrDefault(false)) DeviceStateHolder.setShotClub(shotId, receivedAtMs, club?.id)
             if (club != null) runCatching { repo.setCurrentClub(club.id) }
         }
     }
@@ -173,10 +179,10 @@ class MainActivity : ComponentActivity() {
      * the UI alone — showing a shot as gone while it is still on disk (and still in
      * the next export) is worse than an error.
      */
-    private fun deleteShot(store: ShotProtoStore, shotId: Int) {
+    private fun deleteShot(store: ShotProtoStore, shotId: Int, receivedAtMs: Long) {
         uiScope.launch {
-            val deleted = runCatching { store.deleteShot(shotId) }.getOrDefault(false)
-            if (deleted) DeviceStateHolder.removeShot(shotId)
+            val deleted = runCatching { store.deleteShot(shotId, receivedAtMs) }.getOrDefault(false)
+            if (deleted) DeviceStateHolder.removeShot(shotId, receivedAtMs)
         }
     }
 
