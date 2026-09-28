@@ -35,6 +35,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techdelivery.r10.club.GolfClub
 import com.techdelivery.r10.data.ShotCsvFormat
 import com.techdelivery.r10.data.ShotProtoStore
+import com.techdelivery.r10.data.ShotWriteOp
+import com.techdelivery.r10.data.ShotWriteQueue
+import com.techdelivery.r10.data.WriteOutcome
 import com.techdelivery.r10.settings.AppSettings
 import com.techdelivery.r10.settings.SettingsRepository
 import com.techdelivery.r10.state.DeviceStateHolder
@@ -64,6 +67,10 @@ private const val SHOTS_TAB = 1
 private const val REFUSED_HISTORY_WRITE =
     "could not save that change — shot history is damaged; export it before anything else"
 
+/** Shown when the write queue will not run the change at all. */
+private const val REFUSED_WRITE_NOT_QUEUED =
+    "could not save that change — the shot writer is not running; restart the monitor and try again"
+
 class MainActivity : ComponentActivity() {
 
     private var running by mutableStateOf(false)
@@ -89,6 +96,7 @@ class MainActivity : ComponentActivity() {
         val repo: SettingsRepository = app.settingsRepository
         val store: ShotProtoStore = app.shotStore
         loadHistory(store)
+        val queue: ShotWriteQueue = app.shotWriteQueue
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -134,8 +142,8 @@ class MainActivity : ComponentActivity() {
 
                             1 -> ShotsScreen(
                                 ownedClubs = settings.ownedClubs,
-                                onSetClub = { shotId, at, club -> setShotClub(repo, store, shotId, at, club) },
-                                onDeleteShot = { shotId, at -> deleteShot(store, shotId, at) },
+                                onSetClub = { shotId, at, club -> setShotClub(repo, queue, shotId, at, club) },
+                                onDeleteShot = { shotId, at -> deleteShot(queue, shotId, at) },
                                 modifier = Modifier.fillMaxSize(),
                             )
 
@@ -161,29 +169,34 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * R5: write the club annotation, then mirror it into the live list. The store
-     * owns the file; the holder is only what the UI reads.
+     * R5: write the club annotation, then mirror it into the live list. The queue
+     * owns the file and reports what it actually did; the holder is only what the UI
+     * reads.
      *
      * The pick also becomes the arrival stamp for subsequent shots, which is what
      * saves a tap per ball at the range — so it is written even when the visible
      * shot already carried that label. Both writes hang off the annotation having
      * been stored: a stamp the user can see applied to every later shot must never
      * outlive a change that was refused.
+     *
+     * Going through the queue is what makes this work for a shot that is not on disk
+     * yet: the shot's own append is ahead of this edit in the same FIFO, so the edit
+     * lands on a row that exists instead of matching nothing (DESIGN §8).
      */
     private fun setShotClub(
         repo: SettingsRepository,
-        store: ShotProtoStore,
+        queue: ShotWriteQueue,
         shotId: Int,
         receivedAtMs: Long,
         club: GolfClub?,
     ) {
         uiScope.launch {
-            val written = runCatching { store.updateClub(shotId, receivedAtMs, club) }
-            if (written.getOrDefault(false)) {
+            val result = queue.apply(ShotWriteOp.SetClub(shotId, receivedAtMs, club))
+            if (result == WriteOutcome.WRITTEN) {
                 DeviceStateHolder.setShotClub(shotId, receivedAtMs, club?.id)
                 if (club != null) runCatching { repo.setCurrentClub(club.id) }
             } else {
-                reportRefusedHistoryWrite(store)
+                reportRefusedHistoryWrite(result)
             }
         }
     }
@@ -193,10 +206,14 @@ class MainActivity : ComponentActivity() {
      * the UI alone — showing a shot as gone while it is still on disk (and still in
      * the next export) is worse than an error.
      */
-    private fun deleteShot(store: ShotProtoStore, shotId: Int, receivedAtMs: Long) {
+    private fun deleteShot(queue: ShotWriteQueue, shotId: Int, receivedAtMs: Long) {
         uiScope.launch {
-            val deleted = runCatching { store.deleteShot(shotId, receivedAtMs) }.getOrDefault(false)
-            if (deleted) DeviceStateHolder.removeShot(shotId, receivedAtMs) else reportRefusedHistoryWrite(store)
+            val result = queue.apply(ShotWriteOp.DeleteShot(shotId, receivedAtMs))
+            if (result == WriteOutcome.WRITTEN) {
+                DeviceStateHolder.removeShot(shotId, receivedAtMs)
+            } else {
+                reportRefusedHistoryWrite(result)
+            }
         }
     }
 
@@ -205,14 +222,17 @@ class MainActivity : ComponentActivity() {
      * app: they pick a club or confirm a delete and nothing happens. The Shots tab
      * already renders [DeviceStateHolder.historyError], so the refusal goes there.
      *
-     * The store refuses a rewrite only when the file holds damage one would paper
-     * over — but it also returns false for a shot that is not there, which is a
-     * no-op and not a fault. So the file is asked whether it really is damaged
-     * before anything is put on screen claiming it is.
+     * Only a real fault is worth words. A shot that is simply not on disk is a no-op
+     * — with the queue ordering writes, the only way to see one is a stale id — and
+     * claiming the history is damaged when nothing is damaged is its own lie.
      */
-    private suspend fun reportRefusedHistoryWrite(store: ShotProtoStore) {
-        val damaged = runCatching { store.validate() }.getOrNull()?.isClean == false
-        if (damaged) DeviceStateHolder.historyError.value = REFUSED_HISTORY_WRITE
+    private fun reportRefusedHistoryWrite(result: WriteOutcome) {
+        val message = when (result) {
+            WriteOutcome.DAMAGED -> REFUSED_HISTORY_WRITE
+            WriteOutcome.REJECTED -> REFUSED_WRITE_NOT_QUEUED
+            else -> return
+        }
+        DeviceStateHolder.historyError.value = message
     }
 
     private suspend fun exportCsv(store: ShotProtoStore): String {

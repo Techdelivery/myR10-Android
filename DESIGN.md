@@ -641,6 +641,43 @@ validation and touches no file. The split exists so the store stays about
 durability, the format about compatibility, and a rewrite can be reasoned about
 without holding a lock in your head.
 
+**One writer: the queue owns ordering (decided 2026-09-28, ROADMAP parked item A).**
+`ShotProtoStore`'s mutex *serialises* its callers; it does not *order* them, and
+that is the whole question when a device push and a user edit race. `ShotWriteQueue`
+is the answer: a process-wide singleton on `R10App` and the only thing in the app
+that writes `shots.bin`. Three rules make it correct, and each exists because
+breaking it produced a real failure:
+
+- **Every write is a `ShotWriteOp`** — `Append`, `SetClub`, `DeleteShot` — and they
+  run in submission order. It is a queue over *all* of them, not over appends:
+  when the queue fronted `append` only and the UI called the store directly, a
+  delete could be undone by an append still sitting in the queue, and a club pick
+  on a shot not yet on disk matched nothing, was discarded, and was never retried.
+  Both are now impossible, and both have a test.
+- **Nothing reaches the UI before it is submitted.** The service calls `submit`
+  *then* `addShot`, so "the user can see it" implies "it is queued or written".
+  That is what lets an edit aimed at a visible shot find its row.
+- **The two doors differ on purpose.** `submit` is non-blocking, because a
+  blocking shot collector would backpressure `R10Device.shots`, then
+  `ProtocolEngine._events`, then the BLE inbound reader; a full append queue drops
+  the shot, counts it and says so. `apply` suspends and returns what happened,
+  because the user is already waiting and the UI must not mirror a change into the
+  live list before it knows the file changed.
+
+**A refusal says which refusal it is.** `updateClub` and `deleteShot` return a
+`WriteOutcome`, not a `Boolean`: `NOT_FOUND` (a no-op — the shot is not there) and
+`DAMAGED` (the store refused a rewrite that would drop records past a tear) were
+both `false`, so the UI had to re-read and re-validate the whole file after every
+refused edit just to decide whether to apologise. The writer is holding the store
+when it finds out, so it reports the difference. Only `DAMAGED` and `REJECTED` are
+worth an error banner.
+
+**The queue is never closed by the service.** It is app-lifetime, not
+connection-lifetime: the shot history outlives any one connection, and a queue
+closed on Stop could only promise a bounded drain that might time out — losing
+exactly the rows it was meant to protect. The service stops feeding it and
+nothing else.
+
 `append` is the cheap path: the framed bytes are appended and fsynced, so a shot is
 durable in one write. `updateClub` and `deleteShot` are rewrites — read all records,
 apply the change, write a temp file and rename it over the original, so a process

@@ -42,6 +42,10 @@ import java.io.RandomAccessFile
  * every power cycle, so `shot_id` alone is not identity).
  *
  * Thread-safe: one [Mutex] guards the file.
+ *
+ * Satisfies [ShotWriter], which is how [ShotWriteQueue] drives it. That queue is the
+ * only caller in the app, so the mutex serialises without ordering — the ordering
+ * comes from the queue being the single door (DESIGN §8).
  */
 class ShotProtoStore(
     private val file: File,
@@ -50,7 +54,7 @@ class ShotProtoStore(
      * is testable without writing thousands of records.
      */
     private val recentKeyWindow: Int = RECENT_KEY_WINDOW,
-) {
+) : ShotWriter {
 
     init {
         require(recentKeyWindow >= 1) { "recentKeyWindow must be at least 1" }
@@ -98,7 +102,7 @@ class ShotProtoStore(
      * Append one shot. Returns true when written, false when that exact payload is
      * already stored.
      */
-    suspend fun append(shot: Shot): Boolean = mutex.withLock {
+    override suspend fun append(shot: Shot): Boolean = mutex.withLock {
         ensureIndexedUnlocked()
         repairTailUnlocked()
         val key = dedupKey(shot)
@@ -144,15 +148,15 @@ class ShotProtoStore(
      * the file can hold yesterday's shot 1 and today's shot 1 at once. They are
      * told apart by arrival time, which is the pair the UI already selects on.
      *
-     * Returns **false without writing** when the file is damaged (see
-     * [readRecordsUnlocked]). A rewrite writes back only the records that were
+     * Returns [WriteOutcome.DAMAGED] **without writing** when the file is damaged
+     * (see [readRecordsUnlocked]). A rewrite writes back only the records that were
      * readable, so running one over a torn tail would silently delete everything
      * after the tear — turning one damaged record into a lost session. [validate]
      * names the damage and the export surfaces it.
      */
-    suspend fun updateClub(shotId: Int, receivedAtMs: Long, club: GolfClub?): Boolean = mutex.withLock {
+    override suspend fun updateClub(shotId: Int, receivedAtMs: Long, club: GolfClub?): WriteOutcome = mutex.withLock {
         val scan = readRecordsUnlocked()
-        if (scan.damaged) return@withLock false
+        if (scan.damaged) return@withLock WriteOutcome.DAMAGED
         val records = scan.records
         var changed = false
         val out = ArrayList<ByteArray>(records.size)
@@ -169,7 +173,7 @@ class ShotProtoStore(
             }
         }
         if (changed) writeAllUnlocked(out)
-        changed
+        if (changed) WriteOutcome.WRITTEN else WriteOutcome.NOT_FOUND
     }
 
     /**
@@ -181,19 +185,19 @@ class ShotProtoStore(
      * surviving records, so a device that re-pushes a deleted shot writes it again
      * instead of being suppressed by a stale key.
      *
-     * Returns **false without writing** when the file is damaged, for the same
-     * reason as [updateClub]: a rewrite must never be the thing that drops records
-     * past a tear.
+     * Returns [WriteOutcome.DAMAGED] **without writing** when the file is damaged,
+     * for the same reason as [updateClub]: a rewrite must never be the thing that
+     * drops records past a tear.
      */
-    suspend fun deleteShot(shotId: Int, receivedAtMs: Long): Boolean = mutex.withLock {
+    override suspend fun deleteShot(shotId: Int, receivedAtMs: Long): WriteOutcome = mutex.withLock {
         val scan = readRecordsUnlocked()
-        if (scan.damaged) return@withLock false
+        if (scan.damaged) return@withLock WriteOutcome.DAMAGED
         val records = scan.records
         val out = records.filter { r -> r.toShot()?.matches(shotId, receivedAtMs) != true }
-        if (out.size == records.size) return@withLock false
+        if (out.size == records.size) return@withLock WriteOutcome.NOT_FOUND
         writeAllUnlocked(out)
         dedup.seedFrom(out.mapNotNull { it.toShot() }, ::dedupKey)
-        true
+        WriteOutcome.WRITTEN
     }
 
     /**
