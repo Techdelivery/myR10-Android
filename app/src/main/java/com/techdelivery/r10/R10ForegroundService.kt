@@ -15,8 +15,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.techdelivery.r10.ble.BleTransportImpl
-import com.techdelivery.r10.data.ShotPersistSink
 import com.techdelivery.r10.data.ShotProtoStore
+import com.techdelivery.r10.data.ShotWriteQueue
 import com.techdelivery.r10.protocol.DeviceSetupConfig
 import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
@@ -51,12 +51,6 @@ class R10ForegroundService : Service() {
         const val ACTION_START = "com.techdelivery.r10.action.START"
         const val ACTION_STOP = "com.techdelivery.r10.action.STOP"
         private const val TAG = "R10DIAG"
-
-        /** Depth of the in-memory queue feeding the disk writer. */
-        private const val PERSIST_QUEUE_CAPACITY = 512
-
-        /** How long [onDestroy] waits for that queue to drain before giving up. */
-        private const val PERSIST_DRAIN_MS = 2_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -65,17 +59,12 @@ class R10ForegroundService : Service() {
     private var startedForeground = false
 
     /**
-     * Owns the shot -> disk handoff (queue, IO writer, failure signal). Kept off
-     * [deviceJob] so a reconnect cannot strand queued rows. See [ShotPersistSink].
+     * The single writer for the shot file, owned by [R10App] and shared with the UI
+     * (DESIGN §8). This service only feeds it; it never closes it, because the shot
+     * history outlives any one connection. Its capacity and drain window live with
+     * the queue for the same reason. See [ShotWriteQueue].
      */
-    private var persistSink: ShotPersistSink? = null
-
-    private fun ensurePersistSink(store: ShotProtoStore): ShotPersistSink =
-        persistSink?.takeIf { it.isRunning } ?: ShotPersistSink(store::append, scope, PERSIST_QUEUE_CAPACITY)
-            .also {
-                persistSink = it
-                it.start()
-            }
+    private val writeQueue: ShotWriteQueue get() = (application as R10App).shotWriteQueue
 
     override fun onCreate() {
         super.onCreate()
@@ -85,6 +74,12 @@ class R10ForegroundService : Service() {
             DeviceStateHolder.hexFlow.collect { e ->
                 Log.d("R10HEX", "${e.direction.name} ${e.bytes.joinToString(" ") { "%02X".format(it) }}")
             }
+        }
+        // Once, here, and not per connection: the write queue is a process-wide
+        // singleton now, so a collector inside startDevice() would pile up a second
+        // and third subscriber on every reconnect.
+        scope.launch {
+            writeQueue.error.collect { DeviceStateHolder.historyError.value = it }
         }
     }
 
@@ -176,8 +171,7 @@ class R10ForegroundService : Service() {
                 launch {
                     device.alerts.collect { AlertMirror.apply(it) }
                 }
-                val sink = ensurePersistSink((application as R10App).shotStore)
-                launch { sink.error.collect { DeviceStateHolder.historyError.value = it } }
+                val queue = writeQueue
                 launch {
                     // Fast consumer only. Nothing in this collector may block: a slow
                     // subscriber backpressures R10Device.shots, then
@@ -193,8 +187,13 @@ class R10ForegroundService : Service() {
                         } else {
                             shot
                         }
+                        // Submit BEFORE it becomes visible. A shot the user can see
+                        // is a shot already in the queue, so an edit aimed at it
+                        // cannot overtake its own append (DESIGN §8). The other way
+                        // round leaves a window where the UI offers to tag a shot
+                        // that is not on disk yet, and the tag is discarded.
+                        queue.submit(tagged)
                         DeviceStateHolder.addShot(tagged)
-                        sink.submit(tagged)
                     }
                 }
 
@@ -308,11 +307,10 @@ class R10ForegroundService : Service() {
 
     override fun onDestroy() {
         deviceJob?.cancel()
-        // Give queued shots a bounded window to reach disk before the scope dies.
-        val drained = runBlocking {
-            runCatching { persistSink?.close(PERSIST_DRAIN_MS) ?: true }.getOrDefault(false)
-        }
-        if (!drained) Log.e(TAG, "persist writer did not drain in ${PERSIST_DRAIN_MS}ms; queued shots lost")
+        // The write queue is process-wide and outlives this service, so there is
+        // nothing to close here: rows queued during teardown still reach disk, which
+        // the old per-service sink could only promise via a drain that could time
+        // out and lose them.
         // Close the GATT link before tearing down the scope. Without this the
         // BluetoothGatt is never closed, so every Stop->Start cycle leaked another
         // live connection — observed on hardware as every notification being

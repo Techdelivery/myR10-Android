@@ -4,9 +4,10 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-27 — R5, R6 and R7 implemented, test-covered and review-clean
-(PR #13); all three still need a hardware pass, and the "Parked" list below holds
-what the review deliberately left open. R1–R4 merged (PRs #5–#7).
+Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
+(PR #13, still open); all three still need a hardware pass. Parked item A (who owns
+ordering between the UI and the persist queue) is now built and recorded in DESIGN §8;
+B–F remain parked below. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -297,21 +298,32 @@ Carried over from `TODO.md` Phase K.
 
 ## Parked — resume points from the R5/R6/R7 review loop
 
-Left over from a two-round review of the R5/R6/R7 branch (PR #13, merged after
-`55c037b`). Each is parked with its evidence and the decision it is waiting on, so
-nothing has to be re-derived. Ordered by how much it can hurt.
+Left over from a two-round review of the R5/R6/R7 branch (PR #13). Each is parked
+with its evidence and the decision it is waiting on, so nothing has to be
+re-derived. Ordered by how much it can hurt.
 
-- [ ] **A. Decide who owns ordering between the UI and the persist queue.**
-  `ShotPersistSink` drains its queue on its own writer coroutine; `MainActivity`'s
-  `deleteShot` / `setShotClub` run on `uiScope` and only share the store's mutex,
-  which serialises but does not order. Two concrete failures: a delete can be undone
-  by an append still queued, and a club pick on a shot that is not on disk yet matches
-  nothing, is discarded, and is never retried. Not a store bug — the dedup reseed
-  makes the worst case recoverable — and not fixable without choosing: the queue owns
-  ordering (edits become queue entries), or the UI awaits a flush before editing. Write
-  the choice into DESIGN §8 before building it.
-  - Verify: hit a shot and immediately delete it, or tag it, faster than the writer
-    drains → the final state on disk matches what the user last saw.
+- [x] **A. Decide who owns ordering between the UI and the persist queue.** DONE
+  2026-09-28 — the decision is in DESIGN §8 under "One writer: the queue owns
+  ordering", and it is built, not just written.
+  `ShotPersistSink` became `ShotWriteQueue`: a process-wide singleton on `R10App`,
+  the only thing in the app that writes `shots.bin`. It carries every kind of write
+  (`ShotWriteOp.Append` / `SetClub` / `DeleteShot`) in submission order, so the two
+  named failures are impossible rather than merely unlikely — a delete can no longer
+  be undone by a queued append, and a club pick can no longer land on a shot that
+  was not on disk yet. The second needed one more line: the service now calls
+  `submit` *before* `addShot`, so a shot is never visible before it is queued.
+  - The choice made: the queue owns ordering (edits are queue entries), not a flush
+    barrier, because one owner is easier to reason about than two writers with a
+    handshake between them.
+  - Two consequences taken deliberately: the queue is never closed by the service
+    (app-lifetime, so a queued row is not lost to a timed-out drain on Stop), and
+    the store's rewrites return a `WriteOutcome` instead of a `Boolean`, because
+    `false` meant both "not found" and "damaged" and the UI was re-validating the
+    whole file after every refused edit to tell them apart.
+  - Verify: `ShotWriteQueueTest` — a delete and a club pick submitted behind a
+    stalled queued append, edits in submission order, each refusal reported as
+    itself, an edit not rejected by a full append queue, and `apply` on an
+    unstarted queue rejected rather than hanging. `./gradlew check` green.
 
 - [ ] **B. A well-framed non-record makes the store permanently un-mutable.**
   `readRecordsUnlocked` sets `damaged` when a record is neither a header nor a shot, and
