@@ -7,8 +7,9 @@ This file is **what to do next** and why.
 Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
 (PR #13, still open); all three still need a hardware pass. Parked items A (who owns
 ordering between the UI and the persist queue), B (a well-framed non-record locking
-the store), C (the read ceiling) and E (the dedup index) are now built and recorded
-in DESIGN §8; D and F remain parked below. R1–R4 merged (PRs #5–#7).
+the store), C (the read ceiling), E (the dedup index) and F (a real losslessness bug
+in the club tag) are now built and recorded in DESIGN §8; only D remains. R1–R4 merged
+(PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -428,12 +429,40 @@ re-derived. Ordered by how much it can hurt.
     outside it is written again after a rewrite, a deleted shot is re-pushable at
     once, and `clear()` resets the index. Full `check` green: 308 app tests.
 
-- [ ] **F. Two loose assertions worth tightening when convenient.**
-  `theExportCarriesEveryValueTheOldCsvDid` matches a 3-digit ball-speed substring
-  anywhere in the file, which a `shot_id` or timestamp would also satisfy — decode the
-  row and assert column by column. And "the device's bytes are byte-identical" is only
-  proven for a message this build fully understands; append a `StoredShot` carrying an
-  unknown field number and assert it survives a rewrite.
+- [x] **F. Two loose assertions worth tightening when convenient.** DONE 2026-09-28.
+  One was loose. The other was a **real bug**, and the clearest one this review has
+  turned up.
+  - *The export assertion* searched the whole file for the ball speed's digits, so a
+    `shot_id` of 155 or a timestamp containing "155" satisfied it without the value
+    being exported at all. It now decodes the row and compares **column by column**
+    (ball speed, launch angle, club speed, face, attack, total spin, club label,
+    arrival time), which is the claim it was making.
+  - *"The device's bytes are byte-identical"* was only ever proven for a message this
+    build fully understands, and it was false for the one path that rewrites a
+    record. A club tag decoded the record and re-encoded it; protobuf-lite discards
+    unknown fields on parse, so **tagging a club silently deleted every field a
+    future version had added** — to the wrapper or to the device's own `Metrics` —
+    at the moment the user picked a club. DESIGN §8's claim that a field added later
+    "appears without a schema change" was true for appends and deletes and false for
+    tags.
+  - The asymmetry is what gave it away: `deleteShot` copies the records it keeps
+    verbatim and always passed, so only the tag was affected. `anUnknownFieldSurvivesADelete`
+    is kept as the control.
+  - Fixed by **splicing** the one field (`ShotRecordCodec.withClubLabel`) instead of
+    re-serializing: every other top-level field is copied as raw bytes, and the
+    nested `metrics` run is never looked inside. `updateClub` still reads through
+    `toShot` to find its record — reading was always lossless; only writing was not.
+    A body the splicer cannot walk is refused rather than half-rewritten.
+  - That refusal is why `ShotWriteQueue` now completes every edit's reply even when
+    the store throws: a refusal that killed the writer would hang the caller and
+    stall every later edit, which is worse than the bug it replaced.
+  - Verify: `ShotRecordSpliceTest` (new, 7 tests) — an unknown field on the wrapper
+    survives a tag, a *clear* and a re-tag; one inside the nested `Metrics` survives;
+    re-tagging replaces rather than stacks the label; a delete preserves; a record
+    the splicer cannot walk is refused. Two of them fail against the old re-encoding
+    line. `ShotWriteQueueTest` gains a test that a throwing edit is rejected and the
+    writer carries on. Full `check` green: 322 app tests, 109 protocol, no new
+    baseline entry.
 
 ## Later milestones
 

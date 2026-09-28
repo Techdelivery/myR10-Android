@@ -530,6 +530,8 @@ Three consequences, all of them the point:
   displayed value is recomputed on load by `MetricConverter` — the same conversion
   that ran when the shot arrived. No float ever passes through text, so there is no
   formatting rule that can lose precision, and no torn row that can drop a field.
+  **A rewrite has to earn that claim too** — see "What a rewrite may change" below;
+  it used not to, and did not.
 - **No schema machinery.** Protobuf's `optional` already means "unset", so a field
   added later reads as absent. The **store** carries no version column: what R7
   removed is the CSV's store-side `migrate()`, which protobuf does not need.
@@ -736,6 +738,30 @@ forever, and the only way out was `clear()`. Preserving such a record also happe
 to be the right call for a *forward-compatible* format — a shot record written by a
 newer `store_format_version` lands in exactly this case. It is still not *accepted*:
 `validate()` names it, and it is invisible to the shots the UI loads.
+
+**What a rewrite may change, and what it must not (2026-09-28, ROADMAP parked F).**
+A rewrite is `read → change one thing → write the file back`, and "one thing" has to
+mean one *field*, not one *record*. The club tag used to decode the record into
+parts and re-encode it, and protobuf-lite discards unknown fields on parse — so
+tagging a club silently deleted every field a future version had added, to the
+wrapper or to the device's own `Metrics`, and it did so at exactly the moment a user
+picked a club. `deleteShot` was never affected: it copies the records it keeps
+verbatim, which is why the two paths behaved differently and why it took a test to
+notice. The DESIGN claim that "a field added to `Metrics` later appears without a
+schema change" was true for appends and deletes and false for club tags.
+
+So `ShotRecordCodec.withClubLabel` **splices** the field: it walks the record body's
+top-level fields, copies every one verbatim except `club_label`, and appends the new
+one (or nothing, when clearing). The nested `metrics` message is one
+length-delimited run and is never looked inside, so nothing anywhere in the record
+has to be interpreted to be preserved. `updateClub` still *reads* through
+`toShot` to decide which record matches — reading is lossless; only writing was not.
+
+A body the splicer cannot walk — a protobuf group, or a field whose length runs past
+the end — is **refused**, and the refusal reaches the user. That is why
+`ShotWriteQueue` completes every edit's reply even when the store throws: a
+refusal that killed the writer would hang the caller and stall every later edit,
+which is worse than the bug it replaced.
 
 **Club ownership is app settings, not shot data (ROADMAP R5, built).** The set
 of clubs the user owns lives in `AppSettings` (DataStore) and is deliberately not

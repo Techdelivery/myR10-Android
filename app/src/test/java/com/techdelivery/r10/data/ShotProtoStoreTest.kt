@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -123,14 +124,6 @@ class ShotProtoStoreTest {
         assertEquals(original.receivedAtMs, back.receivedAtMs)
         assertEquals(original.ball, back.ball)
         assertEquals(original.club, back.club)
-    }
-
-    /** The whole point: the device's bytes come back byte-identical. */
-    @Test
-    fun theDevicePayloadIsPreservedExactly() = runTest {
-        val store = ShotProtoStore(file())
-        store.append(shot(1))
-        assertTrue(metrics(1).contentEquals(store.loadAll().shots.single().rawMetrics))
     }
 
     @Test
@@ -835,12 +828,26 @@ class ShotProtoStoreTest {
         val store = ShotProtoStore(file())
         store.append(shot(1).copy(clubLabel = GolfClub.PUTTER.id))
         val out = store.exportCsv(tmp.root, "t")
-        val text = out.readText()
-        // Ball speed exists only as a float in the proto, in m/s; the export must
-        // show the converted mph, which is the whole "derived view" claim.
-        val expectedMph = MetricConverter.shot(R10Protos.Metrics.parseFrom(metrics(1)), 0).ball!!.ballSpeedMph
-        assertTrue("ball speed $expectedMph missing from export:\n$text", expectedMph.toInt().toString() in text)
-        assertTrue("club label missing from export:\n$text", GolfClub.PUTTER.id in text)
+
+        // Decoded, not grepped. The previous version of this test searched the whole
+        // file for the ball speed's digits, which any other column could satisfy — a
+        // `shot_id` of 155, or a timestamp containing "155", passes a substring match
+        // without the value being exported at all. The claim is that a specific
+        // column holds a specific value, so that is what is compared.
+        val rows = out.readText().lines().filter { it.isNotBlank() }
+        assertEquals("header plus exactly one row", 2, rows.size)
+        val row = ShotCsvFormat.decode(rows[1])
+        assertNotNull("the exported row must decode: ${rows[1]}", row)
+
+        val expected = MetricConverter.shot(R10Protos.Metrics.parseFrom(metrics(1)), 0)
+        assertEquals("ball speed", expected.ball!!.ballSpeedMph, row!!.ball!!.ballSpeedMph, 0.0001)
+        assertEquals("launch angle", expected.ball!!.launchAngleDeg, row.ball!!.launchAngleDeg, 0.0001)
+        assertEquals("club speed", expected.club!!.clubSpeedMph, row.club!!.clubSpeedMph, 0.0001)
+        assertEquals("face angle", expected.club!!.faceAngleDeg, row.club!!.faceAngleDeg, 0.0001)
+        assertEquals("attack angle", expected.club!!.attackAngleDeg, row.club!!.attackAngleDeg, 0.0001)
+        assertEquals("total spin", expected.ball!!.totalSpinRpm, row.ball!!.totalSpinRpm, 0.01)
+        assertEquals("club label", GolfClub.PUTTER.id, row.clubLabel)
+        assertEquals("arrival time", shot(1).receivedAtMs, row.receivedAtMs)
     }
 
     @Test

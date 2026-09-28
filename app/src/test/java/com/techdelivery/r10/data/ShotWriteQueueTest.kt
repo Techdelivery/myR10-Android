@@ -299,6 +299,42 @@ class ShotWriteQueueTest {
         assertTrue("the appends that did not fit were dropped", queue.droppedCount.value > 0)
     }
 
+    /**
+     * A store call that throws must not take the writer down with it. This became
+     * reachable when `ShotRecordCodec.withClubLabel` started refusing a body it
+     * cannot walk instead of writing a mangled one: a refusal that hung the caller
+     * and stopped every later edit would be worse than the bug it replaced.
+     */
+    @Test
+    fun aThrowingEditIsRejectedAndTheWriterCarriesOn() = runTest {
+        val writer = object : ShotWriter {
+            var failNext = true
+            override suspend fun append(shot: Shot) = true
+            override suspend fun updateClub(shotId: Int, receivedAtMs: Long, club: GolfClub?): WriteOutcome {
+                if (failNext) {
+                    failNext = false
+                    error("record body is malformed at byte 4 of 12")
+                }
+                return WriteOutcome.WRITTEN
+            }
+            override suspend fun deleteShot(shotId: Int, receivedAtMs: Long) = WriteOutcome.WRITTEN
+        }
+        val queue = ShotWriteQueue(writer, backgroundScope, ioDispatcher = UnconfinedTestDispatcher(testScheduler))
+        queue.start()
+
+        assertEquals(
+            WriteOutcome.REJECTED,
+            queue.apply(ShotWriteOp.SetClub(1, 1_001L, GolfClub.DRIVER)),
+        )
+        assertNotNull("the failure must be surfaced", queue.error.value)
+        // The next edit must still run: a dead writer would leave this hanging.
+        assertEquals(
+            WriteOutcome.WRITTEN,
+            queue.apply(ShotWriteOp.SetClub(1, 1_001L, GolfClub.PUTTER)),
+        )
+        queue.close(1_000)
+    }
+
     @Test
     fun applyOnAQueueWithNoWriterIsRejectedRatherThanHangingForever() = runTest {
         val queue = ShotWriteQueue(FakeWriter(), backgroundScope)
