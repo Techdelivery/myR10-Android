@@ -222,6 +222,139 @@ code with **no hardware verification recorded yet**.
 
 ---
 
+## 7B. Full acceptance run — R5 (club), R6 (delete), R7 (protobuf store)
+
+Everything here is unverified on hardware as of 2026-09-28. R7 replaced the shot
+store outright, so this run is the first time `files/shots.bin` has ever been
+written by a real device. Run it in order: the later steps assume the earlier ones
+passed, and a failure early on invalidates the rest.
+
+### Before you start
+
+- [ ] `adb devices` shows one device, and the R10 is charged and paired.
+- [ ] **Decide what to do about the old `shots.csv`.** The build has no CSV→proto
+      migration, so the Shots tab opens empty even though the CSV exists. Either
+      accept that (clear app data now, so the state is known) or pull it off the
+      device first:
+      `adb shell run-as com.techdelivery.r10 cat files/shots.csv > old-shots.csv`
+- [ ] Capture the starting state, so a later "empty history" is provable rather
+      than suspected:
+      `adb shell run-as com.techdelivery.r10 ls -la files/`
+
+### 1. First shots land in the new store
+
+- [ ] Start the monitor, hit **three** balls (mix a couple of practice swings with
+      a real shot), and watch the Shots tab.
+- [ ] Expect: three rows, newest first, each with ball speed and spin populated.
+- [ ] Expect: `files/shots.bin` now exists. It should **not** grow `shots.csv`:
+      `adb shell run-as com.techdelivery.r10 ls -la files/`
+- [ ] Expect: no error banner on the Shots tab, and logcat clean:
+      `adb logcat -s R10UI R10DIAG AndroidRuntime`
+- [ ] If `shots.bin` is missing or the tab is empty, stop here. Everything below
+      assumes the store is being written.
+
+### 2. The club picker, end to end
+
+- [ ] Settings tab: untick **Putter** and **5 Wood**. Leave the rest ticked.
+- [ ] Expect: the grid updates immediately; the change survives leaving and
+      re-entering the Settings tab.
+- [ ] Shots tab: select a shot, open **Pick a club**.
+- [ ] Expect: the list offers the clubs you own, and **neither** Putter nor
+      5 Wood appears. Order is bag order (D, woods, hybrids, irons, wedges, P).
+- [ ] Pick **7I** on that shot.
+- [ ] Expect: the detail card shows `7I`; the list row reads `#n · 7I · 14:32:07 · 155 mph`;
+      a **Clear** button appears next to the picker.
+- [ ] Hit one more ball without touching the picker.
+- [ ] Expect: the new shot is tagged `7I` too — the current-club stamp.
+- [ ] Now pick a different club (say **GW**), then go back and **Clear** the first
+      shot's tag.
+- [ ] Expect: that shot shows no club, the row loses `7I`, and the shot itself is
+      still there. Clearing a tag is not deleting a shot.
+
+### 3. The bag survives a restart
+
+- [ ] Force-stop and relaunch: `adb shell am force-stop com.techdelivery.r10`
+      then open it.
+- [ ] Expect: the Settings grid still shows Putter and 5 Wood unticked, and the
+      shots still carry their `7I` / `GW` tags.
+- [ ] This is the check that the tags are in the store and not just in memory.
+
+### 4. Delete (the irreversible one)
+
+- [ ] Select the **middle** of your three shots, then **Delete this shot**.
+- [ ] Expect: a dialog naming the shot — `#id`, time, ball speed, club. Read it
+      before tapping. Nothing is deleted until you confirm.
+- [ ] Tap **Cancel** first and confirm the row is still there.
+- [ ] Delete for real.
+- [ ] Expect: that row is gone; the other two are unchanged and in order; the
+      detail card falls back to the newest shot; no empty card.
+- [ ] Delete the **newest** shot next.
+- [ ] Expect: the next newest becomes the detail card.
+- [ ] Expected cost: there is no undo. This is the point of the confirmation.
+
+### 5. Delete does not collide across sessions (the identity rule)
+
+This is the bug the review caught, and it only shows up across two sessions.
+
+- [ ] Power-cycle the R10 (off, wait, on). Its `shot_id` sequence restarts at 1.
+- [ ] Reconnect and hit **two** shots. They will carry shot ids that already exist
+      in your history.
+- [ ] Expect: both new shots appear as new rows, not suppressed as duplicates.
+- [ ] Now select one of the **old** shots that shares a `shot_id` with a new one,
+      and delete it.
+- [ ] Expect: **only that one** disappears. The other shot with the same `shot_id`
+      must survive. If both vanish, the identity fix regressed — that is a P0.
+
+### 6. Export is still a readable CSV
+
+- [ ] Settings → **Export shots to CSV**.
+- [ ] Expect a message of the form `Wrote r10-shots-<stamp>.csv (N bytes) · N rows OK`
+      and an absolute path.
+- [ ] Pull it and open it: `adb pull <path from the message> .`
+- [ ] Expect: a header row containing `schema_version` and `club_label`; one row
+      per shot; the mph/rpm/degree values you saw in the app; the `club_label`
+      cell holding `7I` / `GW` where tagged.
+- [ ] Re-export after a delete and confirm the deleted row is absent — an export
+      is a copy taken at that moment.
+
+### 7. The store is really protobuf
+
+- [ ] Pull the store: `adb shell run-as com.techdelivery.r10 cat files/shots.bin > shots.bin`
+- [ ] Confirm it is not CSV: `file shots.bin` / `head -c 64 shots.bin | od -c`
+      — you should see binary, not `shot_id,shot_type,...`.
+- [ ] Decode the first record to prove the framing is plain protobuf:
+      write the varint-length prefix off the front, then `protoc --decode_raw <
+      record.bin`. Field 1 should be the store's version, and a shot record should
+      show a nested `metrics` message with the device's own numbers.
+- [ ] Expect: no field that means "mp" or "rpm" — the store holds what the R10
+      sent, and the app converts on read. That is why the CSV is an export and not
+      the store.
+
+### 8. Damage is survivable (optional, only if you want to prove it)
+
+- [ ] Take a copy of `shots.bin` first: this deliberately corrupts the file.
+- [ ] Chop the last 12 bytes: `dd if=shots.bin of=truncated.bin bs=1 count=$(( $(stat -f%z shots.bin) - 12 ))`
+- [ ] Push it back: `adb push truncated.bin /data/local/tmp/ && adb shell run-as com.techdelivery.r10 cp /data/local/tmp/truncated.bin files/shots.bin`
+- [ ] Relaunch the app.
+- [ ] Expect: the **earlier** shots still load, and `validate()` / the export
+      message names the truncated record. A torn tail must cost the tail, not the
+      session.
+- [ ] Now tag a club on a surviving shot.
+- [ ] Expect: either the tag saves, or a banner says the history is damaged and
+      to export first. It must **never** silently drop the remaining records.
+- [ ] Restore the good copy afterwards and relaunch.
+
+### 9. What to send back
+
+- [ ] Which step first went wrong, and the exact screen state.
+- [ ] `adb logcat -d -s R10UI R10DIAG AndroidRuntime -t 200`
+- [ ] The export message text, verbatim.
+- [ ] `adb shell run-as com.techdelivery.r10 ls -la files/`
+- [ ] For step 5 or 8, the outcome matters more than the reason: "both shots with
+      the same id disappeared" is the report I need.
+
+---
+
 ## 8. Save the golden file
 
 Stop the capture (Ctrl-C), then:
