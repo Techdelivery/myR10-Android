@@ -29,6 +29,14 @@ data class AppSettings(
      * at the range does not need a tap per ball. Null means nothing picked yet.
      */
     val currentClub: String? = null,
+    /**
+     * Speak an arriving shot's ball speed aloud (ROADMAP R10).
+     *
+     * Default **off**. A feature that starts talking uninvited is worse than one the
+     * user has to find, and the toggle that changes it lives on the Shots tab, not
+     * here.
+     */
+    val speakShots: Boolean = false,
 ) {
     companion object {
         /** The whole bag: the default owned set, so a new install can tag shots. */

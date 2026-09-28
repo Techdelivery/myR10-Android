@@ -125,6 +125,23 @@ class SettingsRepositoryTest {
         return SettingsRepository(dataStore)
     }
 
+    // --- ROADMAP R10: the spoken shot speed ---
+
+    /** Off by default: a feature that starts talking uninvited is worse than one you find. */
+    @Test
+    fun speakShotsDefaultsToOff() = runBlocking {
+        assertFalse(newRepo().settings.first().speakShots)
+    }
+
+    @Test
+    fun speakShotsRoundTrips() = runBlocking {
+        val repo = newRepo()
+        repo.setSpeakShots(true)
+        assertTrue(repo.settings.first().speakShots)
+        repo.setSpeakShots(false)
+        assertFalse(repo.settings.first().speakShots)
+    }
+
     @Test
     fun currentClubRoundTripsAndClears() = runBlocking {
         val repo = newRepo()

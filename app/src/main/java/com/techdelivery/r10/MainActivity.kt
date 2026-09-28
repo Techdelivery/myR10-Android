@@ -144,6 +144,8 @@ class MainActivity : ComponentActivity() {
                                 ownedClubs = settings.ownedClubs,
                                 onSetClub = { shotId, at, club -> setShotClub(repo, queue, shotId, at, club) },
                                 onDeleteShot = { shotId, at -> deleteShot(queue, shotId, at) },
+                                speakShots = settings.speakShots,
+                                onSetSpeakShots = { on -> setSpeakShots(repo, on) },
                                 modifier = Modifier.fillMaxSize(),
                             )
 
@@ -181,6 +183,11 @@ class MainActivity : ComponentActivity() {
             DeviceStateHolder.adoptHistory(load.shots)
             load.problems.firstOrNull()?.let { DeviceStateHolder.historyError.value = it }
         }
+    }
+
+    /** R10: persist the voice toggle. The service observes the change and mutes now. */
+    private fun setSpeakShots(repo: SettingsRepository, on: Boolean) {
+        uiScope.launch { runCatching { repo.setSpeakShots(on) } }
     }
 
     /**

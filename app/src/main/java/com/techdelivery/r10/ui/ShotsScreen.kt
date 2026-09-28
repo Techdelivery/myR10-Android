@@ -29,6 +29,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.techdelivery.r10.club.GolfClub
@@ -63,6 +65,12 @@ fun ShotsScreen(
     onSetClub: (Int, Long, GolfClub?) -> Unit,
     /** Delete the shot permanently. The caller confirms with the user first. */
     onDeleteShot: (Int, Long) -> Unit,
+    /**
+     * Whether an arriving shot's speed is spoken (ROADMAP R10). The mute lives here
+     * rather than in Settings because this is where you are when you want silence.
+     */
+    speakShots: Boolean,
+    onSetSpeakShots: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shots by DeviceStateHolder.shots.collectAsState()
@@ -86,15 +94,12 @@ fun ShotsScreen(
     val shown = selected ?: newest
 
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ShotFilter.entries.forEach { f ->
-                FilterChip(
-                    selected = filter == f,
-                    onClick = { filter = f },
-                    label = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                )
-            }
-        }
+        ShotTabBar(
+            filter = filter,
+            onFilter = { filter = it },
+            speakShots = speakShots,
+            onSetSpeakShots = onSetSpeakShots,
+        )
 
         TiltBanner(activeError, tiltReading)
         historyError?.let { HistoryErrorBanner(it) }
@@ -158,6 +163,53 @@ fun ShotsScreen(
 /** The clubs the picker offers: the owned set, or the whole bag when it is empty. */
 private fun pickerClubs(owned: Set<String>): List<GolfClub> =
     GolfClub.ALL.filter { it.id in owned }.ifEmpty { GolfClub.ALL }
+
+/**
+ * The tab-level controls: the practice/normal filter and the voice toggle.
+ *
+ * Its own composable because this tab is genuinely out of room (ROADMAP R11) and a
+ * top bar that owns tab state is one of the three directions that revamp is arguing
+ * about. Building it now means the revamp has a seam to work with instead of a
+ * refactor to invent.
+ */
+@Composable
+private fun ShotTabBar(
+    filter: ShotFilter,
+    onFilter: (ShotFilter) -> Unit,
+    speakShots: Boolean,
+    onSetSpeakShots: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ShotFilter.entries.forEach { f ->
+                FilterChip(
+                    selected = filter == f,
+                    onClick = { onFilter(f) },
+                    label = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                )
+            }
+        }
+        // A chip, not an icon plus a switch: this tab has no room for a two-part
+        // control, and the filter chips already teach that selected means on. No icon
+        // dependency for two glyphs.
+        FilterChip(
+            selected = speakShots,
+            onClick = { onSetSpeakShots(!speakShots) },
+            label = { Text("Voice") },
+            modifier = Modifier.semantics {
+                contentDescription = if (speakShots) {
+                    "Voice on: tap to mute the spoken shot speed"
+                } else {
+                    "Voice off: tap to speak the shot speed"
+                }
+            },
+        )
+    }
+}
 
 /**
  * The Shots-tab interactions, bundled so the layout composable takes one callback

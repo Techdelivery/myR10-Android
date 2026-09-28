@@ -22,6 +22,7 @@ import com.techdelivery.r10.protocol.ProtocolEngine
 import com.techdelivery.r10.protocol.R10Device
 import com.techdelivery.r10.protocol.transport.TransportState
 import com.techdelivery.r10.settings.SettingsDataStore
+import com.techdelivery.r10.speech.ShotSpeaker
 import com.techdelivery.r10.state.AlertMirror
 import com.techdelivery.r10.state.ConnState
 import com.techdelivery.r10.state.DeviceStateHolder
@@ -66,8 +67,21 @@ class R10ForegroundService : Service() {
      */
     private val writeQueue: ShotWriteQueue get() = (application as R10App).shotWriteQueue
 
+    /**
+     * The spoken-speed engine (ROADMAP R10). Created with the service and released
+     * with it: the engine holds a native voice, and a service that outlives its TTS
+     * would keep the audio stack awake for a screen nobody is looking at.
+     *
+     * Null until [onCreate] has run, which is also what keeps a shot arriving during
+     * teardown from reaching a half-released engine.
+     */
+    private var speaker: ShotSpeaker? = null
+
     override fun onCreate() {
         super.onCreate()
+        // Eagerly, so the engine is warm by the time the first shot lands rather
+        // than silently skipped because it was still loading.
+        speaker = runCatching { ShotSpeaker(this) }.getOrNull()
         // Mirror every TX/RX to logcat in golden format:
         //   adb logcat -s R10HEX -v raw > session-r10.hex
         scope.launch {
@@ -109,7 +123,15 @@ class R10ForegroundService : Service() {
                 // `currentClub` the user changes mid-session, and a one-shot `first()`
                 // would freeze the value from connect time.
                 val liveSettings = MutableStateFlow(settings)
-                launch { (application as R10App).settingsRepository.settings.collect { liveSettings.value = it } }
+                launch {
+                    (application as R10App).settingsRepository.settings.collect { next ->
+                        // Muting must take effect now, not at the next shot: a toggle
+                        // that stops *future* speech while the phone is still talking
+                        // is the kind of control people learn not to trust.
+                        if (!next.speakShots && liveSettings.value.speakShots) speaker?.stop()
+                        liveSettings.value = next
+                    }
+                }
                 Log.i(
                     TAG,
                     "settings loaded: name='${settings.deviceName}' tee=${settings.teeDistanceFt}ft calib=${settings.calibrateTiltOnConnect}",
@@ -194,6 +216,11 @@ class R10ForegroundService : Service() {
                         // that is not on disk yet, and the tag is discarded.
                         queue.submit(tagged)
                         DeviceStateHolder.addShot(tagged)
+                        // ROADMAP R10: speak the speed of the shot that just arrived.
+                        // After the club stamp, so an out-of-order speech cannot name
+                        // a different club, and off this path entirely for history —
+                        // a reload must stay silent.
+                        if (liveSettings.value.speakShots) speaker?.speak(tagged)
                     }
                 }
 
@@ -315,6 +342,8 @@ class R10ForegroundService : Service() {
         // BluetoothGatt is never closed, so every Stop->Start cycle leaked another
         // live connection — observed on hardware as every notification being
         // delivered twice from two different threads.
+        speaker?.shutdown()
+        speaker = null
         runBlocking { runCatching { transport?.stop() } }
         transport = null
         scope.cancel()

@@ -41,6 +41,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             // value an earlier build (or a hand edit) left behind would tag the
             // whole session with a club that is not in the list.
             currentClub = p[KEY_CURRENT_CLUB]?.let { GolfClub.fromId(it)?.id },
+            // Default off: see AppSettings.speakShots. Read with a fallback rather
+            // than normalised, because there is no vocabulary to normalise.
+            speakShots = p[KEY_SPEAK_SHOTS] ?: false,
         )
     }
 
@@ -111,10 +114,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** Mute or unmute the spoken shot speed (ROADMAP R10). */
+    suspend fun setSpeakShots(v: Boolean) {
+        dataStore.edit { it[KEY_SPEAK_SHOTS] = v }
+    }
+
     /**
      * Remember the last club the user picked, for the arrival stamp.
      *
-     * Validated against the canonical list: this value ends up in the CSV, and a
+     * Validated against the canonical list: this value ends up in the store, and a
      * typo here would be written onto every subsequent shot.
      */
     suspend fun setCurrentClub(id: String?) {
@@ -137,5 +145,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val KEY_DEVICE_NAME = stringPreferencesKey("deviceName")
         private val KEY_OWNED_CLUBS = stringSetPreferencesKey("ownedClubs")
         private val KEY_CURRENT_CLUB = stringPreferencesKey("currentClub")
+        private val KEY_SPEAK_SHOTS = booleanPreferencesKey("speakShots")
     }
 }
