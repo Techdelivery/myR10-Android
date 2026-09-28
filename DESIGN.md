@@ -687,6 +687,21 @@ rebuilds the in-memory dedup index from the surviving records, because the index
 a cache of what the file contains — deleting a record must not leave a key that
 suppresses a re-pushed shot later. `clear()` keeps its own faster path.
 
+**What a rewrite is allowed to lose (decided 2026-09-28, ROADMAP parked item B).**
+A rewrite is refused only when the file holds bytes the reader never saw: a torn
+tail, or a file past the record cap. A record that frames correctly but is neither
+a header nor a shot is **carried through the rewrite verbatim** instead, because its
+bytes are in hand and both rewrites already write such a record back untouched.
+`RecordScan.rewriteSafe` says so in positive terms for exactly this reason — the
+store used to answer "is this file damaged?", which conflated *cannot read these
+bytes* with *does not understand these bytes*, and those two have opposite
+consequences. Getting it wrong was not subtle: one uninterpretable record made the
+file permanently un-mutable, so the user could neither tag nor delete any shot,
+forever, and the only way out was `clear()`. Preserving such a record also happens
+to be the right call for a *forward-compatible* format — a shot record written by a
+newer `store_format_version` lands in exactly this case. It is still not *accepted*:
+`validate()` names it, and it is invisible to the shots the UI loads.
+
 **Club ownership is app settings, not shot data (ROADMAP R5, built).** The set
 of clubs the user owns lives in `AppSettings` (DataStore) and is deliberately not
 exported: the export carries the device's measurements plus the one annotation

@@ -14,6 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.FileOutputStream
 
 /**
  * ROADMAP R7 — the shot store, now protobuf — and the R5/R6 behaviour it carries.
@@ -84,6 +85,31 @@ class ShotProtoStoreTest {
         f.writeBytes(bytes.copyOf(bytes.size - 12))
         return f
     }
+
+    /**
+     * A `StoredShot` carrying a club label but no metrics: it frames cleanly and
+     * parses, is not a header (field 2 is unknown to [R10Protos.ShotLogHeader]) and
+     * is not a shot (no metrics). That is the record the store must carry without
+     * obeying — and, before ROADMAP parked item B, refused every rewrite over.
+     *
+     * A record with only `received_at_ms` would not do: that is field 1, the same
+     * number and wire type as `store_format_version`, so it reads as a header and
+     * the store has no way to know it is not one.
+     */
+    private fun uninterpretableRecord(): ByteArray = DelimitedRecords.encode(
+        R10Protos.StoredShot.newBuilder().setClubLabel(GolfClub.IRON_SEVEN.id).build(),
+    )
+
+    private suspend fun fileWithUninterpretableRecord(): File {
+        val f = file()
+        ShotProtoStore(f).appendAll(listOf(shot(1), shot(2)))
+        FileOutputStream(f, true).use { it.write(uninterpretableRecord()) }
+        return f
+    }
+
+    /** True when [needle] appears in [haystack] byte for byte. */
+    private fun ByteArray.containsBytes(needle: ByteArray): Boolean =
+        indices.any { i -> needle.indices.all { j -> this[i + j] == needle[j] } }
 
     // --- basics ---
 
@@ -313,6 +339,77 @@ class ShotProtoStoreTest {
         assertEquals(WriteOutcome.NOT_FOUND, store.deleteShot(1, 1_750_000_000_000L))
         assertEquals(WriteOutcome.NOT_FOUND, store.updateClub(1, 1_750_000_000_000L, GolfClub.PUTTER))
         assertEquals(2, store.loadAll().size)
+    }
+
+    // --- a record we cannot interpret is carried, not obeyed (ROADMAP parked B) ---
+
+    /**
+     * The distinction parked item B turned on: bytes the store never read (a torn
+     * tail, a capped file) make a rewrite lossy, while a record it read and does not
+     * understand does not. Both used to be one `damaged` flag, so one uninterpretable
+     * record made the file permanently un-mutable — the user could tag nothing and
+     * delete nothing, forever, over a byte this build simply does not know.
+     */
+    @Test
+    fun aShotLoadsNormallyBesideAnUninterpretableRecord() = runTest {
+        val store = ShotProtoStore(fileWithUninterpretableRecord())
+        assertEquals(listOf(1, 2), store.loadAll().map { it.shotId })
+    }
+
+    @Test
+    fun aClubTagStillWorksBesideAnUninterpretableRecord() = runTest {
+        val store = ShotProtoStore(fileWithUninterpretableRecord())
+        assertEquals(WriteOutcome.WRITTEN, store.updateClub(1, shot(1).receivedAtMs, GolfClub.DRIVER))
+        assertEquals(listOf(GolfClub.DRIVER.id, null), store.loadAll().map { it.clubLabel })
+    }
+
+    @Test
+    fun aDeleteStillWorksBesideAnUninterpretableRecord() = runTest {
+        val store = ShotProtoStore(fileWithUninterpretableRecord())
+        assertEquals(WriteOutcome.WRITTEN, store.deleteShot(1, shot(1).receivedAtMs))
+        assertEquals(listOf(2), store.loadAll().map { it.shotId })
+    }
+
+    /**
+     * The rewrite is allowed *because* the bytes survive it. If this ever fails, the
+     * unblocking is not worth what it costs: an uninterpretable record carried
+     * through a rewrite is a promise that the store never has to understand a byte
+     * to keep it.
+     */
+    @Test
+    fun anUninterpretableRecordSurvivesARewriteByteForByte() = runTest {
+        val f = fileWithUninterpretableRecord()
+        val store = ShotProtoStore(f)
+
+        assertEquals(WriteOutcome.WRITTEN, store.updateClub(1, shot(1).receivedAtMs, GolfClub.DRIVER))
+        assertEquals(WriteOutcome.WRITTEN, store.deleteShot(2, shot(2).receivedAtMs))
+
+        assertTrue("the record must be carried through verbatim", f.readBytes().containsBytes(uninterpretableRecord()))
+    }
+
+    /** Preserved is not the same as accepted: the user is still told it is there. */
+    @Test
+    fun validateStillNamesTheUninterpretableRecord() = runTest {
+        val store = ShotProtoStore(fileWithUninterpretableRecord())
+        val v = store.validate()
+        assertFalse(v.isClean)
+        assertTrue(
+            "the problem must name the record: ${v.problems}",
+            v.problems.any { it.contains("not a header or a shot") },
+        )
+        assertEquals("the real shots still count", 2, v.records)
+    }
+
+    /** The negative, so the relaxation above cannot be mistaken for a blanket one. */
+    @Test
+    fun aTornTailStillRefusesBothRewrites() = runTest {
+        val f = tornFile()
+        val before = f.readBytes()
+        val store = ShotProtoStore(f)
+
+        assertEquals(WriteOutcome.DAMAGED, store.updateClub(1, shot(1).receivedAtMs, GolfClub.DRIVER))
+        assertEquals(WriteOutcome.DAMAGED, store.deleteShot(1, shot(1).receivedAtMs))
+        assertArrayEquals("bytes the walk never read must not be dropped", before, f.readBytes())
     }
 
     // --- damage is per record, not per file ---
