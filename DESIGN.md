@@ -689,6 +689,31 @@ rebuilds the in-memory dedup index from the surviving records, because the index
 a cache of what the file contains — deleting a record must not leave a key that
 suppresses a re-pushed shot later. `clear()` keeps its own faster path.
 
+**A rewrite that does not land (2026-09-28, ROADMAP parked item D).** A rewrite is
+a temp file, an fsync and a `rename` over the original, so a process kill mid-write
+leaves the previous file rather than a truncated history. The one branch left
+verified by reading alone was the rename *failing*, and it is the branch that
+matters: it is the only thing stopping the store from reporting a write that never
+happened. On every platform this app ships on `rename(2)` is atomic, so a failure
+leaves the previous file untouched and the temp file still on disk for the next
+attempt — the store refuses, and the refusal reaches the user as a sentence rather
+than a path.
+
+Making that failure happen in a test needed a seam: `rename` is a constructor
+parameter defaulting to `File.renameTo`, in the same spirit as `recentKeyWindow`. A
+read-only directory would have been the obvious trick and is wrong — root ignores
+directory permissions, so it would pass on one machine and quietly stop testing
+anything on another, and making the destination a directory fails in the *read*
+instead. The test injects a rename that decides *whether* to fail and otherwise
+really performs it; a seam that short-circuited the effect would leave the store
+believing it had replaced a file that never moved, which is precisely the failure
+this branch exists to prevent.
+
+The part that was not written down anywhere: a refused rewrite must leave the store
+able to make progress. A throw that bricked the store would turn one transient
+failure into permanent data loss — the opposite of what the branch is for — so a
+later append and a later rewrite are both asserted to work after one is refused.
+
 **What one read may cost (decided 2026-09-28, ROADMAP parked item C).** A read
 looks at at most `ShotProtoStore.MAX_FILE_BYTES` (32 MiB), checked against the
 file's length *before* anything is allocated, and a file over the ceiling is read

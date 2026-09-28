@@ -90,7 +90,7 @@ class ShotWriteQueue(
                     // asked for the edit waits on it forever, and the next edit in the
                     // queue never runs.
                     val outcome = runCatching { runOp(op) }.getOrElse { failure ->
-                        fail("write failed: ${failure.message}")
+                        fail("could not save that change — ${failure.message}")
                         WriteOutcome.REJECTED
                     }
                     reply.complete(outcome)

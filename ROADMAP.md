@@ -5,11 +5,11 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 This file is **what to do next** and why.
 
 Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
-(PR #13, still open); all three still need a hardware pass. Parked items A (who owns
-ordering between the UI and the persist queue), B (a well-framed non-record locking
-the store), C (the read ceiling), E (the dedup index) and F (a real losslessness bug
-in the club tag) are now built and recorded in DESIGN §8; only D remains. R1–R4 merged
-(PRs #5–#7).
+(PR #13, still open); all three still need a hardware pass. **The whole parked list
+from the R5/R6/R7 review is now closed** — A (write ordering), B (an uninterpretable
+record locking the store), C (the read ceiling), D (the rename-failure branch), E
+(the dedup index) and F (a real losslessness bug in the club tag) are all built and
+recorded in DESIGN §8. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -395,11 +395,36 @@ re-derived. Ordered by how much it can hurt.
     repaired on the append path, and a normal file reports no problems at all. Full
     `check` green: 280 app tests, 109 protocol.
 
-- [ ] **D. The `writeAllUnlocked` rename-failure branch has no test.**
-  The throw is the *only* thing protecting the original file after a failed rewrite, and
-  it is the one branch verified by reading only. Simulating a failed `renameTo`
-  portably means injecting the file — decide whether that hook is worth having.
-  - Verify: a failed rename leaves the previous file AND the temp on disk, and throws.
+- [x] **D. The `writeAllUnlocked` rename-failure branch has no test.** DONE 2026-09-28.
+  The throw is the only thing protecting the original file after a failed rewrite,
+  and it was the last branch in the store verified by reading alone.
+  - **The seam was the decision, and the answer is a constructor parameter** —
+    `rename: (File, File) -> Boolean = { source, target -> source.renameTo(target) }`,
+    the same shape as the existing `recentKeyWindow` test hook. Rejected on the way:
+    a read-only parent directory is ignored when the tests run as root, so it would
+    pass on one machine and quietly test nothing on another; and making the
+    destination a non-empty directory fails in the *read*, not the rename, so it
+    would be a test of the wrong branch. Production behaviour is unchanged.
+  - The message the user sees is now a sentence, not a path: the raw
+    `could not replace /data/.../shots.bin` reached the Shots tab through the write
+    queue's error banner. The queue's prefix became "could not save that change —"
+    so the two read as one line.
+  - **The part that was not written down anywhere:** a refused rewrite must leave
+    the store able to make progress. A throw that bricked the store would turn one
+    transient failure into permanent data loss, so a later append and a later
+    rewrite are both asserted to work after one is refused.
+  - **A trap worth recording.** The first version of the test injected a bare
+    `{ _, _ -> !failRename }`, which short-circuits the *effect* as well as the
+    failure: the store believed it had replaced the file while nothing had moved,
+    and a later assertion passed for the wrong reason. The seam controls the failure,
+    never the effect, and the test says so. Found by the test failing in a way that
+    made no sense, which is the only reliable way to find this kind of thing.
+  - Verify: `ShotStoreDurabilityTest` (new, 2 tests) — a failed rename reports the
+    failure, leaves the original byte-identical, leaves the temp file for the next
+    attempt, and still lets the history read; and the store writes normally
+    afterwards, with the tag landing on the shot it was aimed at and no temp file
+    left behind. Inverting the guard fails them. Full `check` green: 324 app tests,
+    109 protocol, no new baseline entry.
 
 - [x] **E. `ShotDedupIndex` has no test.** DONE 2026-09-28.
   LRU eviction, the `contains` touch, and the `recentKeyWindow` constructor hook all
