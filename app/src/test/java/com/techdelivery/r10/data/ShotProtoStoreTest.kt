@@ -160,6 +160,74 @@ class ShotProtoStoreTest {
         assertEquals(2, store.loadAll().shots.size)
     }
 
+    // --- the dedup index is a bounded window, and that has an edge (parked E) ---
+
+    /**
+     * `ShotDedupIndex` is a bounded LRU: 2000 keys in production, injectable so a
+     * test can watch it evict. This pins the guarantee at the boundary, which is
+     * where the store's cross-session dedup actually stops being a guarantee.
+     *
+     * Within the window, an identical re-push is suppressed.
+     */
+    @Test
+    fun aRepushWithinTheKeyWindowIsStillSuppressed() = runTest {
+        val store = ShotProtoStore(file(), recentKeyWindow = 2)
+        store.appendAll(listOf(shot(1), shot(2), shot(3)))
+        assertFalse("shot 2 is inside the window", store.append(shot(2)))
+        assertEquals(listOf(1, 2, 3), store.loadAll().shots.map { it.shotId })
+    }
+
+    /**
+     * The honest edge, which nothing documented before: a rewrite re-seeds the index
+     * from the surviving records, and the seed is bounded by the same window — so
+     * after any club tag or delete, the oldest shots fall out of it, and a re-push of
+     * one of those is written again as a duplicate row.
+     *
+     * That is a property of a bounded cache, not a bug: the alternative is an index
+     * that grows with the history, which is the memory bound the window exists to
+     * provide. But it is the difference between "this shot is known to be stored" and
+     * "this shot is known to be stored *if it is one of the last N*", and only the
+     * second was true. The device's in-session duplicate suppression (`R10Device`'s
+     * per-connection deduper) is unaffected — it does not consult this index — so the
+     * window only widens a gap that already existed.
+     */
+    @Test
+    fun aRepushOutsideTheKeyWindowIsWrittenAgainAfterARewrite() = runTest {
+        val store = ShotProtoStore(file(), recentKeyWindow = 2)
+        store.appendAll(listOf(shot(1), shot(2), shot(3)))
+
+        // A club tag is a rewrite, and a rewrite re-seeds the index from the file.
+        assertEquals(WriteOutcome.WRITTEN, store.updateClub(3, shot(3).receivedAtMs, GolfClub.DRIVER))
+
+        assertTrue(
+            "shot 1 is outside a 2-key window, so it is no longer remembered",
+            store.append(shot(1)),
+        )
+        assertEquals(listOf(1, 2, 3, 1), store.loadAll().shots.map { it.shotId })
+    }
+
+    /** A delete must not leave a key behind — the reseed's whole reason for existing. */
+    @Test
+    fun aDeletedShotIsRePushableImmediatelyEvenThoughItWasTheNewest() = runTest {
+        val store = ShotProtoStore(file(), recentKeyWindow = 8)
+        store.appendAll(listOf(shot(1), shot(2)))
+        assertEquals(WriteOutcome.WRITTEN, store.deleteShot(2, shot(2).receivedAtMs))
+
+        assertTrue(
+            "a stale key here would suppress the device re-pushing for the rest of the session",
+            store.append(shot(2)),
+        )
+        assertEquals(listOf(1, 2), store.loadAll().shots.map { it.shotId })
+    }
+
+    @Test
+    fun clearResetsTheDedupIndex() = runTest {
+        val store = ShotProtoStore(file())
+        store.append(shot(1))
+        store.clear()
+        assertTrue("the index must not outlive the file it describes", store.append(shot(1)))
+    }
+
     @Test
     fun aMissingFileLoadsEmpty() = runTest {
         val store = ShotProtoStore(File(tmp.newFolder(), "absent.bin"))
