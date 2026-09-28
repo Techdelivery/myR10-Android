@@ -687,12 +687,47 @@ rebuilds the in-memory dedup index from the surviving records, because the index
 a cache of what the file contains — deleting a record must not leave a key that
 suppresses a re-pushed shot later. `clear()` keeps its own faster path.
 
+**What one read may cost (decided 2026-09-28, ROADMAP parked item C).** A read
+looks at at most `ShotProtoStore.MAX_FILE_BYTES` (32 MiB), checked against the
+file's length *before* anything is allocated, and a file over the ceiling is read
+only as far as it. This replaces a `MAX_RECORDS` cap that bounded nothing: it was
+applied to records that had already been materialised, out of a buffer that was
+already the whole file, and its KDoc credited itself with stopping "a corrupt
+length" from allocating forever — which is not what it did, and not what stopped
+that either. That is `DelimitedRecords.read`'s bounds check, which compares every
+length against the bytes actually remaining, and a test now pins the two apart.
+
+The ceiling is in **bytes** because bytes are what a read costs. A record is ~90
+bytes — the store keeps the device's own `Metrics` rather than derived text, so a
+shot costs almost nothing — which puts 32 MiB at roughly 385 000 shots, about 25
+years of a hundred-shot session three times a week. It is a ceiling, not a target;
+nothing real comes close, and neither did the old cap.
+
+A rewrite **cannot** be bounded this way: it writes back every record, so past the
+ceiling `updateClub` and `deleteShot` refuse (`DAMAGED`) rather than truncate, and
+the file is left byte-identical. Silently dropping the oldest shots is not an
+acceptable version of "bounded". The one place this could have gone badly wrong is
+`repairTailUnlocked`, which fixes a torn tail by writing back the bytes the walk
+accounted for: past the ceiling those are only the bytes that were read, so a
+repair would have deleted everything past it — and a repair is on the *append*
+path, so the loss would have arrived with the user's next shot. A file over the
+ceiling is therefore never repaired, and there is a test for exactly that.
+
+Truncation is **loud**. `loadAll()` returns the shots together with what reading
+them could not cover, and the Shots tab puts the problems on the existing error
+banner, so an over-large file says so instead of looking like a history that
+quietly stops mid-session. Shots appended past the ceiling are kept rather than
+dropped — refusing the append would lose a real shot silently — but they land
+outside the readable window, which is the honest cost of a file this far past the
+ceiling and something only `clear()` fixes.
+
 **What a rewrite is allowed to lose (decided 2026-09-28, ROADMAP parked item B).**
 A rewrite is refused only when the file holds bytes the reader never saw: a torn
-tail, or a file past the record cap. A record that frames correctly but is neither
-a header nor a shot is **carried through the rewrite verbatim** instead, because its
-bytes are in hand and both rewrites already write such a record back untouched.
-`RecordScan.rewriteSafe` says so in positive terms for exactly this reason — the
+tail, or a file past the read ceiling above. A record that frames correctly but is
+neither a header nor a shot is **carried through the rewrite verbatim** instead,
+because its bytes are in hand and both rewrites already write such a record back
+untouched. `RecordScan.rewriteSafe` says so in positive terms for exactly this
+reason — the
 store used to answer "is this file damaged?", which conflated *cannot read these
 bytes* with *does not understand these bytes*, and those two have opposite
 consequences. Getting it wrong was not subtle: one uninterpretable record made the

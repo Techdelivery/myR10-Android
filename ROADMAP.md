@@ -6,9 +6,9 @@ This file is **what to do next** and why.
 
 Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
 (PR #13, still open); all three still need a hardware pass. Parked items A (who owns
-ordering between the UI and the persist queue) and B (a well-framed non-record
-locking the store) are now built and recorded in DESIGN §8; C–F remain parked below.
-R1–R4 merged (PRs #5–#7).
+ordering between the UI and the persist queue), B (a well-framed non-record locking
+the store) and C (the read ceiling) are now built and recorded in DESIGN §8; D–F
+remain parked below. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -358,14 +358,41 @@ re-derived. Ordered by how much it can hurt.
     the file's header (`validate` only checks the first) — but it is a real
     ambiguity in the record layout.
 
-- [ ] **C. `MAX_RECORDS` bounds neither allocation nor rewrite.**
-  `DelimitedRecords.read` has already materialised every record, and the store has
-  already read the whole file, before the cap is applied — so it limits records, not
-  bytes, and a >200 000-shot log is silently truncated on `loadAll` / `exportCsv` while
-  `validate()` does report it. The constant's own KDoc claims it is a corruption guard,
-  which is wrong. Either bound the read or fix the claim.
-  - Verify: a log past the cap → either it loads or it is reported, and the KDoc says
-    which.
+- [x] **C. `MAX_RECORDS` bounds neither allocation nor rewrite.** DONE 2026-09-28.
+  The cap was applied to records that had already been materialised, out of a buffer
+  that was already the whole file, so it bounded neither — and its KDoc credited
+  itself with stopping "a corrupt length" from allocating forever, which is not what
+  it did and not what stopped that either. `DelimitedRecords.read`'s bounds check is,
+  by comparing every length against the bytes actually remaining; a test now pins
+  the two apart so they cannot be confused again.
+  - Replaced by `MAX_FILE_BYTES` (32 MiB), checked against `file.length()` **before**
+    anything is allocated. Bytes, because bytes are what a read costs. Measured: a
+    fully-populated record is 87 bytes (all three metric groups, every optional field,
+    club label included) — the store keeps the device's own `Metrics` rather than
+    derived text, so a shot costs almost nothing. 32 MiB is therefore ~385 000 shots,
+    about 25 years of a 100-shot session three times a week. It is a ceiling, not a
+    target; neither number is reachable on a real device, which is consistent with the
+    old cap being decorative.
+  - **A rewrite still cannot be bounded** — it writes back every record — so past the
+    ceiling both rewrites refuse and the file is left byte-identical. Truncating the
+    oldest shots is not an acceptable version of "bounded".
+  - **The trap this walked into, and it was real.** `repairTailUnlocked` fixes a torn
+    tail by writing back the bytes the walk accounted for; past the ceiling those are
+    only the bytes that were *read*, so a repair would have deleted everything past it
+    — and a repair is on the **append** path, so the loss would have arrived with the
+    user's next shot. A file over the ceiling is now never repaired. Verified by
+    deleting the guard: the test fails with the file rewritten down to the readable
+    prefix.
+  - Truncation is loud, which is the part that actually hurt: `loadAll()` now returns
+    the shots *and* what reading them could not cover, and the Shots tab puts the
+    problems on the existing error banner. A file this far over the ceiling is only
+    fixed by `clear()`; appended shots past it are kept but land outside the readable
+    window, which is the accepted cost (refusing the append would drop a real shot
+    silently).
+  - Verify: `ShotProtoStoreTest` — an oversized file loads what it could read, names
+    the ceiling *in bytes*, refuses both rewrites with the file untouched, is never
+    repaired on the append path, and a normal file reports no problems at all. Full
+    `check` green: 280 app tests, 109 protocol.
 
 - [ ] **D. The `writeAllUnlocked` rename-failure branch has no test.**
   The throw is the *only* thing protecting the original file after a failed rewrite, and

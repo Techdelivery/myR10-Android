@@ -94,8 +94,28 @@ class ShotProtoStore(
         /** Bounded LRU of stored-payload keys; see [ShotDedupIndex]. */
         const val RECENT_KEY_WINDOW = 2_000
 
-        /** Records read from one file. Bounded so a corrupt length cannot allocate forever. */
-        private const val MAX_RECORDS = 200_000
+        /**
+         * How much of the file one read will look at, checked against the file's
+         * length **before** anything is allocated.
+         *
+         * A record is ~90 bytes — the store keeps the device's own `Metrics` bytes
+         * rather than derived text, which is why a shot costs so little — so this
+         * holds roughly 385 000 shots, about 25 years of a hundred-shot session
+         * three times a week. It is a ceiling on what one read may cost, not a
+         * target: nothing real comes close.
+         *
+         * Read the whole file and the allocation is unbounded, which is what the old
+         * `MAX_RECORDS` claimed to prevent while doing nothing about it: it was
+         * applied to records that had already been materialised, out of a buffer
+         * that was already the whole file. The protection that *does* work against a
+         * corrupt length is [DelimitedRecords.read]'s bounds check, which compares
+         * each length against the bytes actually remaining.
+         *
+         * A rewrite cannot be bounded this way at all: it writes back every record,
+         * so past this ceiling the store refuses rather than truncates. Silently
+         * dropping the oldest shots is not an acceptable version of "bounded".
+         */
+        const val MAX_FILE_BYTES = 32L * 1024 * 1024
     }
 
     /**
@@ -133,8 +153,24 @@ class ShotProtoStore(
         appendDurable(parts.reduce { a, b -> a + b })
     }
 
-    /** Oldest first, as stored. Damaged records are skipped, never fatal. */
-    suspend fun loadAll(): List<Shot> = mutex.withLock { readShotsUnlocked() }
+    /**
+     * Every shot, oldest first, plus what reading them did not manage to cover.
+     * Damaged records are skipped, never fatal.
+     *
+     * The shots come with the problems on purpose. A silent truncation is the worst
+     * kind of lie for a history: the user sees a session that simply stops, with no
+     * sign that the shots they just hit are missing. The Shots tab loads through
+     * here and puts the problems on the existing error banner, so an over-large
+     * file says so instead of looking like a short history.
+     */
+    suspend fun loadAll(): ShotLoad = mutex.withLock {
+        val problems = mutableListOf<String>()
+        val scan = readRecordsUnlocked(collectProblems = problems)
+        ShotLoad(
+            shots = scan.records.mapNotNull { it.toShot() },
+            problems = problems,
+        )
+    }
 
     /**
      * Set or clear the club annotation on one stored shot.
@@ -296,6 +332,11 @@ class ShotProtoStore(
         if (!file.exists()) return
         val length = file.length()
         if (length == 0L) return
+        // A file past the read ceiling is never repaired, whatever the scan says.
+        // `intactPrefix` is then only the prefix that was read, so writing it back
+        // would delete every record past the ceiling to fix a tail the ceiling
+        // caused. A repair must never be the thing that loses shots.
+        if (length > MAX_FILE_BYTES) return
         if (intactLength == length) return
         val scan = readRecordsUnlocked()
         if (scan.rewriteSafe) {
@@ -325,8 +366,8 @@ class ShotProtoStore(
      * **[rewriteSafe] answers "may this file be rewritten?", and the question is
      * about bytes, not about understanding.** [updateClub] and [deleteShot] write
      * back what the walk read, so a rewrite is safe exactly when nothing unreadable
-     * was skipped: not when the walk stopped early, and not when the record cap cut
-     * the file short. In both of those there are records the store never saw, and
+     * was skipped: not when the walk stopped early, and not when the file is past
+     * [MAX_FILE_BYTES]. In each of those there are bytes the store never saw, and
      * writing the seen ones back would drop them — turning one damaged record into a
      * lost session.
      *
@@ -339,31 +380,44 @@ class ShotProtoStore(
      * a forward-compatible format should be able to carry. So it is preserved rather
      * than obeyed, [validate] still names it, and the user's real shots stay
      * editable.
+     * [truncated] is the other half of that: a file past [MAX_FILE_BYTES] is read
+     * only as far as the ceiling, so the records past it were never seen. Rewrites
+     * refuse. The shots before the ceiling still load, and the load says so rather
+     * than quietly handing back a history that stops mid-session.
      */
     private fun readRecordsUnlocked(collectProblems: MutableList<String> = mutableListOf()): RecordScan {
-        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), emptyList(), ByteArray(0), true)
-        val bytes = file.readBytes()
+        if (!file.exists() || file.length() == 0L) {
+            return RecordScan(emptyList(), emptyList(), ByteArray(0), true, false)
+        }
+        // Read no further than the ceiling, and decide that *before* allocating: the
+        // point of the cap is to bound this read, which a cap applied to
+        // already-materialised records never did.
+        val length = file.length()
+        val truncated = length > MAX_FILE_BYTES
+        val toRead = minOf(length, MAX_FILE_BYTES).toInt()
+        if (truncated) {
+            collectProblems += "file is $length bytes, over the ${MAX_FILE_BYTES}-byte read ceiling; " +
+                "only the first ${MAX_FILE_BYTES} bytes were read"
+        }
+        val bytes = ByteArray(toRead)
+        RandomAccessFile(file, "r").use { it.readFully(bytes) }
         val framed = DelimitedRecords.read(bytes) { index, message ->
             collectProblems += "record ${index + 1}: $message"
         }
         // Bytes the walk could not account for are the tail it stopped before.
         val covered = framed.sumOf { it.size }
         val stoppedEarly = covered < bytes.size
-        val capped = framed.size > MAX_RECORDS
-        if (capped) {
-            collectProblems += "file holds more than $MAX_RECORDS records; the rest were not read"
-        }
-        val within = framed.take(MAX_RECORDS)
-        val records = within.filterIndexed { index, record ->
+        val records = framed.filterIndexed { index, record ->
             val ok = isRecord(record)
             if (!ok) collectProblems += "record ${index + 1}: not a header or a shot"
             ok
         }
         return RecordScan(
-            framed = within,
+            framed = framed,
             records = records,
             intactPrefix = bytes.copyOf(covered),
-            rewriteSafe = !stoppedEarly && !capped,
+            rewriteSafe = !stoppedEarly && !truncated,
+            truncated = truncated,
         )
     }
 
@@ -476,10 +530,17 @@ private class RecordScan(
     val intactPrefix: ByteArray,
     /**
      * True when a whole-file rewrite cannot lose anything: the walk read every byte
-     * and no record went unread. False for a torn tail or a capped file, where
-     * records exist that this read never saw.
+     * and no record went unread. False for a torn tail or a file over the read
+     * ceiling, where records exist that this read never saw.
      */
     val rewriteSafe: Boolean,
+    /**
+     * True when the file is past [ShotProtoStore.MAX_FILE_BYTES] and only its first
+     * [ShotProtoStore.MAX_FILE_BYTES] bytes were read. [framed] and [records] are
+     * then a *prefix* of the file, not the whole of it — which is why a rewrite
+     * cannot be allowed here, and why a repair must not run either.
+     */
+    val truncated: Boolean,
 )
 
 /**
@@ -493,3 +554,11 @@ private class RecordScan(
 data class ShotStoreValidation(val headerOk: Boolean, val records: Int, val problems: List<String>) {
     val isClean: Boolean get() = headerOk && problems.isEmpty()
 }
+
+/**
+ * A load of the shot history, and anything reading it could not cover.
+ *
+ * Empty [problems] is the normal case and means the whole file was read. See
+ * [ShotProtoStore.loadAllWithReport] for why the shots come with this.
+ */
+data class ShotLoad(val shots: List<Shot>, val problems: List<String>)
