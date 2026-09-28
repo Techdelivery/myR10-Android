@@ -199,14 +199,15 @@ class ShotProtoStore(
         var changed = false
         val out = ArrayList<ByteArray>(records.size)
         for (r in records) {
-            val shot = r.toShot() ?: run {
-                out.add(r)
-                continue
-            }
-            if (!shot.matches(shotId, receivedAtMs)) {
+            // Matching reads the record; writing must not. `toShot` is lossless
+            // because it only ever reads, but re-encoding what it returns would
+            // rebuild the record from known parts and drop anything else — so the
+            // new record is a splice, not a re-serialization.
+            val shot = r.toShot()
+            if (shot == null || !shot.matches(shotId, receivedAtMs)) {
                 out.add(r)
             } else {
-                out.add(ShotRecordCodec.encode(shot.copy(clubLabel = club?.id)))
+                out.add(ShotRecordCodec.withClubLabel(r, club?.id))
                 changed = true
             }
         }

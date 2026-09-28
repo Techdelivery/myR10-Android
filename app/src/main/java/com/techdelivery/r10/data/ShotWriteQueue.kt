@@ -84,7 +84,17 @@ class ShotWriteQueue(
             // that is waiting on the store. Ordering *within* each kind is FIFO,
             // and the store's own mutex orders the two against each other.
             launch {
-                for ((op, reply) in edits) reply.complete(runOp(op))
+                for ((op, reply) in edits) {
+                    // A store call that throws must not take the writer with it. The
+                    // reply has to be completed either way: left incomplete, whoever
+                    // asked for the edit waits on it forever, and the next edit in the
+                    // queue never runs.
+                    val outcome = runCatching { runOp(op) }.getOrElse { failure ->
+                        fail("write failed: ${failure.message}")
+                        WriteOutcome.REJECTED
+                    }
+                    reply.complete(outcome)
+                }
             }
             for (shot in queue) {
                 val written = runCatching { store.append(shot) }

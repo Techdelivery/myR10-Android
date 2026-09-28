@@ -113,7 +113,37 @@ internal object DelimitedRecords {
         }
     }
 
-    private fun readVarint(bytes: ByteArray, offset: Int): Varint? {
+    /**
+     * Frame raw message [body] bytes for storage, with no message type involved.
+     *
+     * The counterpart of [read] for the case where the payload must not be
+     * re-serialized — see [ShotRecordCodec.withClubLabel], which rewrites one field
+     * and copies the rest exactly as they were.
+     */
+    fun encodeBody(body: ByteArray): ByteArray {
+        val prefix = ByteArray(varintSize(body.size))
+        writeVarint(prefix, body.size.toLong())
+        return prefix + body
+    }
+
+    /** A varint, encoded. */
+    internal fun varint(value: Long): ByteArray {
+        val out = ByteArray(varintSize(value.toInt()))
+        writeVarint(out, value)
+        return out
+    }
+
+    /**
+     * Read the varint starting at [offset], or null when there is not a complete one
+     * there.
+     *
+     * Internal rather than private because a caller walking a message's fields needs
+     * the same decoding this does — see [ShotRecordCodec.withClubLabel], which must
+     * skip a field without understanding it.
+     */
+    internal fun readVarint(bytes: ByteArray, offset: Int): Varint? = readVarintAt(bytes, offset)
+
+    private fun readVarintAt(bytes: ByteArray, offset: Int): Varint? {
         var result = 0L
         var shift = 0
         var i = offset
@@ -129,5 +159,5 @@ internal object DelimitedRecords {
         return null
     }
 
-    private data class Varint(val value: Long, val size: Int)
+    internal data class Varint(val value: Long, val size: Int)
 }
