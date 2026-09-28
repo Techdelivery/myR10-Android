@@ -89,10 +89,10 @@ class SettingsRepositoryTest {
     @Test
     fun aLegacyOwnedSetAndStampAreNormalizedOnRead() = runBlocking {
         val s = legacyRepo(stamp = "7 Iron", owned = arrayOf("7 Iron", "Pitching Wedge")).settings.first()
-        assertTrue(GolfClub.IRON_SEVEN.id in s.ownedClubs)
+        assertTrue(GolfClub.SEVEN_IRON.id in s.ownedClubs)
         assertTrue(GolfClub.PITCHING_WEDGE.id in s.ownedClubs)
         assertFalse("the long name must not linger in the bag", "7 Iron" in s.ownedClubs)
-        assertEquals(GolfClub.IRON_SEVEN.id, s.currentClub)
+        assertEquals(GolfClub.SEVEN_IRON.id, s.currentClub)
     }
 
     /**
@@ -105,7 +105,7 @@ class SettingsRepositoryTest {
     fun anUnresolvableStampReadsAsNull() = runBlocking {
         val s = legacyRepo(stamp = "Sand Wedge Deluxe", owned = arrayOf("7 Iron")).settings.first()
         assertEquals(null, s.currentClub)
-        assertTrue(GolfClub.IRON_SEVEN.id in s.ownedClubs)
+        assertTrue(GolfClub.SEVEN_IRON.id in s.ownedClubs)
     }
 
     /**
@@ -128,8 +128,8 @@ class SettingsRepositoryTest {
     @Test
     fun currentClubRoundTripsAndClears() = runBlocking {
         val repo = newRepo()
-        repo.setCurrentClub(GolfClub.IRON_SEVEN.id)
-        assertEquals(GolfClub.IRON_SEVEN.id, repo.settings.first().currentClub)
+        repo.setCurrentClub(GolfClub.SEVEN_IRON.id)
+        assertEquals(GolfClub.SEVEN_IRON.id, repo.settings.first().currentClub)
         repo.setCurrentClub(null)
         assertEquals(null, repo.settings.first().currentClub)
     }

@@ -55,7 +55,7 @@ class ShotCsvFormatTest {
         receivedAtMs = 5L,
     )
 
-    private val labelled = full.copy(clubLabel = GolfClub.IRON_SEVEN.id)
+    private val labelled = full.copy(clubLabel = GolfClub.SEVEN_IRON.id)
 
     // --- encode / decode ---
 
@@ -112,7 +112,7 @@ class ShotCsvFormatTest {
     @Test
     fun anExportFromTheStoreValidatesClean() = runTest {
         val store = ShotProtoStore(tmp.newFile())
-        store.appendAll(listOf(storedShot(1), storedShot(2), storedShot(3, GolfClub.IRON_SEVEN)))
+        store.appendAll(listOf(storedShot(1), storedShot(2), storedShot(3, GolfClub.SEVEN_IRON)))
 
         val out = store.exportCsv(tmp.root, "test")
         val v = ShotCsvFormat.validateFile(out)
