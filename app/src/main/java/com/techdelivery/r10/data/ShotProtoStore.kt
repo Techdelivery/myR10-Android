@@ -54,6 +54,15 @@ class ShotProtoStore(
      * is testable without writing thousands of records.
      */
     private val recentKeyWindow: Int = RECENT_KEY_WINDOW,
+    /**
+     * How a rewrite replaces the file. A parameter only so a test can make the
+     * rename fail: on every platform this app ships on the call succeeds or fails
+     * atomically, and there is no portable way to provoke the failure from the
+     * outside — a read-only directory is ignored when the tests happen to run as
+     * root, and making the destination a directory fails in the *read* instead.
+     * Production behaviour is exactly `File.renameTo`.
+     */
+    private val rename: (File, File) -> Boolean = { source, target -> source.renameTo(target) },
 ) : ShotWriter {
 
     init {
@@ -469,8 +478,15 @@ class ShotProtoStore(
             stream.flush()
             stream.fd.sync()
         }
-        if (!tmp.renameTo(file)) {
-            throw IOException("could not replace ${file.absolutePath}")
+        if (!rename(tmp, file)) {
+            // Wording matters: this reaches the user through the write queue's
+            // error banner, so it says what happened and what it means rather than
+            // showing them a path. The previous file is untouched — a failed
+            // rename(2) does not touch its target — and the temp file is still here.
+            throw IOException(
+                "the shot history file could not be replaced on disk. " +
+                    "Your existing shots are untouched, so try again",
+            )
         }
         // The rewrite ends on a boundary by construction, so the next append does
         // not have to read the file back to find that out.
