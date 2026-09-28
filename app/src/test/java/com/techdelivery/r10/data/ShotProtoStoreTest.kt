@@ -98,7 +98,7 @@ class ShotProtoStoreTest {
      * the store has no way to know it is not one.
      */
     private fun uninterpretableRecord(): ByteArray = DelimitedRecords.encode(
-        R10Protos.StoredShot.newBuilder().setClubLabel(GolfClub.IRON_SEVEN.id).build(),
+        R10Protos.StoredShot.newBuilder().setClubLabel(GolfClub.SEVEN_IRON.id).build(),
     )
 
     private suspend fun fileWithUninterpretableRecord(): File {
@@ -241,8 +241,8 @@ class ShotProtoStoreTest {
     @Test
     fun aClubLabelRoundTrips() = runTest {
         val store = ShotProtoStore(file())
-        store.append(shot(1).copy(clubLabel = GolfClub.IRON_SEVEN.id))
-        assertEquals(GolfClub.IRON_SEVEN.id, store.loadAll().shots.single().clubLabel)
+        store.append(shot(1).copy(clubLabel = GolfClub.SEVEN_IRON.id))
+        assertEquals(GolfClub.SEVEN_IRON.id, store.loadAll().shots.single().clubLabel)
     }
 
     @Test
@@ -811,7 +811,7 @@ class ShotProtoStoreTest {
     @Test
     fun exportWritesAValidReadableCsv() = runTest {
         val store = ShotProtoStore(file())
-        store.appendAll(listOf(shot(1), shot(2).copy(clubLabel = GolfClub.IRON_SEVEN.id)))
+        store.appendAll(listOf(shot(1), shot(2).copy(clubLabel = GolfClub.SEVEN_IRON.id)))
 
         val out = store.exportCsv(tmp.root, "test")
 
@@ -820,7 +820,7 @@ class ShotProtoStoreTest {
         assertTrue("exported CSV must validate: ${v.problems}", v.isClean)
         assertEquals(2, v.parsed)
         assertTrue(ShotCsvFormat.HEADER in out.readText())
-        assertTrue(GolfClub.IRON_SEVEN.id in out.readText())
+        assertTrue(GolfClub.SEVEN_IRON.id in out.readText())
     }
 
     @Test

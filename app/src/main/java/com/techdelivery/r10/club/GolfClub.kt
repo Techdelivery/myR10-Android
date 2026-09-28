@@ -18,6 +18,14 @@ package com.techdelivery.r10.club
  * and the list row show. It is not only about width: a bag is read in this
  * notation, and "9.5I" is how the club is labelled on it.
  *
+ * **The `id` is the only thing that is persisted, never the constant name.** A
+ * constant may be renamed freely — the irons and hybrids were once `IRON_SEVEN` and
+ * `HYBRID_THREE`, which read against every other category — and no stored label
+ * changes with it. Anything written to disk, to a setting or to the CSV goes through
+ * `id`, so this is a source-level rename with no migration and no data loss. The
+ * reverse is not true: changing an `id` *is* a format change, and would need the
+ * alias table below.
+ *
  * The letters were chosen not to collide across categories — irons take `I`,
  * hybrids `H`, woods `W`, wedges spelled out — because a hybrid between a 3-iron
  * and a 4-iron is `3H`, and reusing `3I` for it would make two different clubs
@@ -38,22 +46,22 @@ enum class GolfClub(val id: String) {
     SIX_WOOD("6W"),
     SEVEN_WOOD("7W"),
     NINE_WOOD("9W"),
-    HYBRID_TWO("2H"),
-    HYBRID_THREE("3H"),
-    HYBRID_FOUR("4H"),
-    HYBRID_FIVE("5H"),
-    IRON_TWO("2I"),
-    IRON_THREE("3I"),
-    IRON_FOUR("4I"),
-    IRON_FIVE("5I"),
-    IRON_SIX("6I"),
-    IRON_SEVEN("7I"),
-    IRON_EIGHT("8I"),
-    IRON_NINE("9I"),
-    IRON_NINE_HALF("9.5I"),
-    IRON_EIGHT_HALF("8.5I"),
-    IRON_SEVEN_HALF("7.5I"),
-    IRON_SIX_HALF("6.5I"),
+    TWO_HYBRID("2H"),
+    THREE_HYBRID("3H"),
+    FOUR_HYBRID("4H"),
+    FIVE_HYBRID("5H"),
+    TWO_IRON("2I"),
+    THREE_IRON("3I"),
+    FOUR_IRON("4I"),
+    FIVE_IRON("5I"),
+    SIX_IRON("6I"),
+    SEVEN_IRON("7I"),
+    EIGHT_IRON("8I"),
+    NINE_IRON("9I"),
+    NINE_HALF_IRON("9.5I"),
+    EIGHT_HALF_IRON("8.5I"),
+    SEVEN_HALF_IRON("7.5I"),
+    SIX_HALF_IRON("6.5I"),
     PITCHING_WEDGE("PW"),
     GAP_WEDGE("GW"),
     SAND_WEDGE("SW"),

@@ -51,7 +51,7 @@ class GolfClubTest {
 
     @Test
     fun anAbbreviationResolvesToItsClub() {
-        assertEquals(GolfClub.IRON_SEVEN, GolfClub.fromId("7I"))
+        assertEquals(GolfClub.SEVEN_IRON, GolfClub.fromId("7I"))
         assertEquals(GolfClub.SAND_WEDGE, GolfClub.fromId("SW"))
         assertEquals(GolfClub.PUTTER, GolfClub.fromId("P"))
     }
@@ -74,7 +74,7 @@ class GolfClubTest {
 
     @Test
     fun legacyLongNamesStillResolve() {
-        assertEquals(GolfClub.IRON_SEVEN, GolfClub.fromId("7 Iron"))
+        assertEquals(GolfClub.SEVEN_IRON, GolfClub.fromId("7 Iron"))
         assertEquals(GolfClub.SAND_WEDGE, GolfClub.fromId("Sand Wedge"))
         assertEquals(GolfClub.PITCHING_WEDGE, GolfClub.fromId("Pitching Wedge"))
         assertEquals(GolfClub.PUTTER, GolfClub.fromId("Putter"))
@@ -97,12 +97,12 @@ class GolfClubTest {
     private fun legacyFor(club: GolfClub): String = when (club) {
         GolfClub.DRIVER -> "Driver"
         GolfClub.PUTTER -> "Putter"
-        GolfClub.IRON_SEVEN -> "7 Iron"
+        GolfClub.SEVEN_IRON -> "7 Iron"
         GolfClub.GAP_WEDGE -> "Gap Wedge"
         GolfClub.SAND_WEDGE -> "Sand Wedge"
         GolfClub.LOB_WEDGE -> "Lob Wedge"
         GolfClub.PITCHING_WEDGE -> "Pitching Wedge"
-        GolfClub.IRON_NINE_HALF -> "9.5 Iron"
+        GolfClub.NINE_HALF_IRON -> "9.5 Iron"
         else -> club.id
     }
 }
