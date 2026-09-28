@@ -7,8 +7,8 @@ This file is **what to do next** and why.
 Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
 (PR #13, still open); all three still need a hardware pass. Parked items A (who owns
 ordering between the UI and the persist queue), B (a well-framed non-record locking
-the store) and C (the read ceiling) are now built and recorded in DESIGN §8; D–F
-remain parked below. R1–R4 merged (PRs #5–#7).
+the store), C (the read ceiling) and E (the dedup index) are now built and recorded
+in DESIGN §8; D and F remain parked below. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -400,13 +400,33 @@ re-derived. Ordered by how much it can hurt.
   portably means injecting the file — decide whether that hook is worth having.
   - Verify: a failed rename leaves the previous file AND the temp on disk, and throws.
 
-- [ ] **E. `ShotDedupIndex` has no test.**
-  LRU eviction, the `contains` LRU touch, and the `recentKeyWindow` constructor hook all
-  lost their coverage when `ShotCsvStoreTest` went with the CSV store. TODO.md L8 records
-  the same gap. The window is what bounds the index, so an eviction bug shows up as
-  either duplicate shots or unbounded memory.
-  - Verify: `ShotProtoStore(f, recentKeyWindow = 2)` — the least-recently-seen key is
-    evicted, the most-recently-touched is not.
+- [x] **E. `ShotDedupIndex` has no test.** DONE 2026-09-28.
+  LRU eviction, the `contains` touch, and the `recentKeyWindow` constructor hook all
+  lost their coverage when `ShotCsvStoreTest` went with the CSV store; TODO.md L8
+  records the same gap. The unit was untested because the store's own tests only
+  ever drove it with the production window of 2000 and a handful of shots, so every
+  path through the eviction logic was unreachable from a test. The window is a
+  constructor parameter precisely so it need not be.
+  - The class needed **no fix**. Verified by mutation rather than by reading:
+    removing the `contains` touch fails `observingAKeyMakesItRecentSoItIsNotTheNextToGo`
+    alone, and shifting the eviction bound by one fails five. The LRU logic was
+    right; what was missing was anyone proving it.
+  - What *was* wrong was the documentation, and it is a real edge: the index is
+    bounded, a rewrite re-seeds it from the file, and that seed is bounded too — so
+    after any club tag or delete the oldest shots fall out of it and a re-push of
+    one of those is written again as a duplicate row. The window is what stops the
+    index growing with the history, so this is a deliberate trade; but the honest
+    guarantee is "a re-push is suppressed if its key is one of the last N stored",
+    not "a re-push is suppressed". DESIGN §8 now says that. The device's in-session
+    deduper is a separate mechanism and does not consult this index, so the window
+    only widens a gap that already existed.
+  - Verify: `ShotDedupIndexTest` (new, 11 tests) — fresh index knows nothing, add
+    and re-add, least-recently-seen evicted, the `contains` touch, the window never
+    exceeded over 500 keys, clear, and `seedFrom` rebuilding / skipping a
+    keyless shot / keeping the newest. `ShotProtoStoreTest` gains four at the store
+    level with `recentKeyWindow = 2`: a re-push inside the window is suppressed, one
+    outside it is written again after a rewrite, a deleted shot is re-pushable at
+    once, and `clear()` resets the index. Full `check` green: 308 app tests.
 
 - [ ] **F. Two loose assertions worth tightening when convenient.**
   `theExportCarriesEveryValueTheOldCsvDid` matches a 3-digit ball-speed substring

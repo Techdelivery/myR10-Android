@@ -751,6 +751,18 @@ deduplicates on `shot_id || hex(raw_metrics)` over the most recent 2000 records.
 A Room migration should use the same composite key, not `deviceShotId` alone.
 Shots with no `raw_metrics` carry no key and are always written.
 
+**What the dedup window actually guarantees (2026-09-28, ROADMAP parked item E).**
+`ShotDedupIndex` is a bounded LRU, so the guarantee is narrower than "this shot is
+in the file" and should be written down as what it is: **a re-push is suppressed if
+its key is one of the last 2000 stored.** A rewrite re-seeds the index from the
+surviving records, and that seed is bounded by the same window, so after any club
+tag or delete the oldest shots fall out of it and a re-push of one of those is
+written again as a duplicate row. The window is what keeps the index from growing
+with the history, so this is a deliberate trade rather than a defect; what was
+missing was anyone writing it down. The device's *in-session* duplicate
+suppression is a separate mechanism (`R10Device`'s per-connection deduper) and does
+not consult this index, so the window only widens a gap that already existed there.
+
 ---
 
 ## 9. UI Design
