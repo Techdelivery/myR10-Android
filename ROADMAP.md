@@ -4,13 +4,10 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
-(PR #13, still open); all three still need a hardware pass. **The whole parked list
-from the R5/R6/R7 review is now closed** — A (write ordering), B (an uninterpretable
-record locking the store), C (the read ceiling), D (the rename-failure branch), E
-(the dedup index) and F (a real losslessness bug in the club tag) are all built and
-recorded in DESIGN §8. R1–R4 merged (PRs #5–#7). R8 (shot notes) and R9 (series
-notes) are parked in the backlog below, undesigned.
+Last updated: 2026-09-28 — R5, R6 and R7 built, review-clean and hardware-verified
+(the HARDWARE_GUIDE §7B acceptance run); the whole parked list from that review is
+closed and recorded in DESIGN §8. R1–R4 merged (PRs #5–#7). Queued: R8 (shot
+notes), R9 (series notes), R10 (speak the shot speed). PR #13 is still open.
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -96,7 +93,7 @@ how much they get in the way of using the app at the range.
   - Verify: `ShotCsvFormatTest` — clean file passes, injected torn row reported
     with its line number, wrong column count reported, bad hex reported.
 
-- [~] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).** *(implemented 2026-09-27, unverified on hardware)*
+- [x] **R5. Assign a club to a shot (Settings bag → Shots tab → CSV → detail).** *(built 2026-09-27; hardware-verified 2026-09-28 with HARDWARE_GUIDE §7B)*
   The R10 reports club *metrics* (`ClubDisplay`: club speed, face/path/attack
   angle) but never *which club* you swung. Let the user tag a shot with the club
   they used, persist it, and show it with the shot. **Built 2026-09-27** —
@@ -182,7 +179,7 @@ how much they get in the way of using the app at the range.
     `club_label` present and R4 validation still clean; **an old 21-column CSV
     still loads and still validates.**
 
-- [~] **R6. Delete a shot.** *(implemented 2026-09-27, unverified on hardware)*
+- [x] **R6. Delete a shot.** *(built 2026-09-27; hardware-verified 2026-09-28 with HARDWARE_GUIDE §7B)*
   A mis-hit practice swing, a bad session, or a row the user does not want in
   their history all need the same thing: remove it. This falls out of the R5
   decision that the store is mutable — once `updateClub` exists, deletion is the
@@ -212,8 +209,8 @@ how much they get in the way of using the app at the range.
     delete a shot, then have the device re-push it → it is written again (the
     dedup index was rebuilt, not left stale).
 
-- [~] **R7. Store shots as protobuf instead of CSV.** *(built 2026-09-27, unverified
-  on hardware)* The CSV was a derived, human-readable shadow of data the app already
+- [x] **R7. Store shots as protobuf instead of CSV.** *(built 2026-09-27;
+  hardware-verified 2026-09-28 with HARDWARE_GUIDE §7B)* The CSV was a derived, human-readable shadow of data the app already
   held losslessly: every `Shot` carries the R10's own `Metrics` bytes. So the store is
   now those bytes.
   - **Framing:** length-delimited records in one file (`shots.bin`) — protobuf's own
@@ -290,6 +287,40 @@ and neither has been designed. Nothing here is committed to a shape.
     detail.
   - Verify: create a series over several shots, restart the app → it is still there;
     delete a member shot → the series and its note are unaffected.
+
+- [ ] **R10. Speak the shot speed out loud (TTS).**
+  At the range you are looking at your feet, not the phone. Saying the number is
+  faster than finding it on screen — and it is the one number that matters between
+  shots. Nothing new to store: this is output, not data, so it stays out of the
+  protobuf store and out of the CSV export entirely.
+  - **Android `TextToSpeech`, no permission, no new dependency.** The framework
+    already does this; nothing here justifies a library.
+  - **Speak on arrival only.** The hook is the service's shot collector, next to the
+    R5 club stamp — so history loaded on relaunch stays silent, and replayed shots
+    are not re-announced.
+  - **Latest wins, never a queue — this is the real design problem.** A burst of
+    practice swings would otherwise queue utterances and leave the phone talking
+    about a shot from ten seconds ago. `speak()` in `QUEUE_FLUSH` mode, or cancel
+    whatever is pending before the new one.
+  - **Audio focus, or it will talk over music and calls.** Request transient
+    focus; duck or pause on loss and stop speaking. Talking over a phone call is
+    worse than not speaking at all.
+  - **Phrasing is a pure function, and that is what gets tested.** Extract
+    `spokenShot(shot): String` and unit-test it: ball speed in whole numbers, no
+    decimals, the club first when there is one ("7 iron, 155"). Do not test the TTS
+    engine itself. Note that plain "mph" is read out letter by letter — decide
+    whether the phrase says "miles per hour" or whether the abbreviation is worth
+    the syllables.
+  - **Setting: off by default or on?** Defaulting on is a nicer demo and a rude
+    surprise; defaulting off means the feature is invisible until found. Add a
+    `speakShots` key to §8 either way, and a mute control on the Shots tab for the
+    range where you do not want it.
+  - Verify: hit a shot → it speaks once, at the right number; hit three in quick
+    succession → only the last is spoken, and the phone does not queue up; start a
+    phone call mid-session → it stops and resumes nothing; relaunch → no speech for
+    history; `spokenShot` covered by unit tests for a tagged shot, an untagged one,
+    and a shot with no ball metrics (which must say nothing at all rather than
+    "null miles per hour").
 
 ---
 
