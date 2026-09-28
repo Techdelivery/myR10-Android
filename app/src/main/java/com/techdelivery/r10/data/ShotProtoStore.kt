@@ -140,24 +140,26 @@ class ShotProtoStore(
      * Set or clear the club annotation on one stored shot.
      *
      * Rewrites the file: the store holds the device's bytes, so changing a label
-     * means re-emitting that one record. Returns true when the shot existed. A
-     * missing id is a no-op, not an error.
+     * means re-emitting that one record. Returns [WriteOutcome.WRITTEN] when the
+     * shot existed. A missing id is a no-op, not an error.
      *
      * **[shotId] alone is not identity.** The R10 restarts its `shot_id` sequence on
      * every power cycle — the same reason the dedup key is `shot_id || payload` — so
      * the file can hold yesterday's shot 1 and today's shot 1 at once. They are
      * told apart by arrival time, which is the pair the UI already selects on.
      *
-     * Returns [WriteOutcome.DAMAGED] **without writing** when the file is damaged
-     * (see [readRecordsUnlocked]). A rewrite writes back only the records that were
-     * readable, so running one over a torn tail would silently delete everything
-     * after the tear — turning one damaged record into a lost session. [validate]
-     * names the damage and the export surfaces it.
+     * Returns [WriteOutcome.DAMAGED] **without writing** when the file holds bytes a
+     * rewrite would lose (see [readRecordsUnlocked]). A rewrite writes back only the
+     * records the walk could read, so running one over a torn tail would silently
+     * delete everything after the tear — turning one damaged record into a lost
+     * session. [validate] names the damage and the export surfaces it.
      */
     override suspend fun updateClub(shotId: Int, receivedAtMs: Long, club: GolfClub?): WriteOutcome = mutex.withLock {
         val scan = readRecordsUnlocked()
-        if (scan.damaged) return@withLock WriteOutcome.DAMAGED
-        val records = scan.records
+        if (!scan.rewriteSafe) return@withLock WriteOutcome.DAMAGED
+        // `framed`, not `records`: a record this build cannot interpret is written
+        // back byte for byte rather than dropped. See [readRecordsUnlocked].
+        val records = scan.framed
         var changed = false
         val out = ArrayList<ByteArray>(records.size)
         for (r in records) {
@@ -185,14 +187,15 @@ class ShotProtoStore(
      * surviving records, so a device that re-pushes a deleted shot writes it again
      * instead of being suppressed by a stale key.
      *
-     * Returns [WriteOutcome.DAMAGED] **without writing** when the file is damaged,
-     * for the same reason as [updateClub]: a rewrite must never be the thing that
-     * drops records past a tear.
+     * Returns [WriteOutcome.DAMAGED] **without writing** when the file holds bytes a
+     * rewrite would lose, for the same reason as [updateClub]: a rewrite must never
+     * be the thing that drops records past a tear. A record that is framed but not
+     * understood is not that, and is carried through.
      */
     override suspend fun deleteShot(shotId: Int, receivedAtMs: Long): WriteOutcome = mutex.withLock {
         val scan = readRecordsUnlocked()
-        if (scan.damaged) return@withLock WriteOutcome.DAMAGED
-        val records = scan.records
+        if (!scan.rewriteSafe) return@withLock WriteOutcome.DAMAGED
+        val records = scan.framed
         val out = records.filter { r -> r.toShot()?.matches(shotId, receivedAtMs) != true }
         if (out.size == records.size) return@withLock WriteOutcome.NOT_FOUND
         writeAllUnlocked(out)
@@ -295,7 +298,7 @@ class ShotProtoStore(
         if (length == 0L) return
         if (intactLength == length) return
         val scan = readRecordsUnlocked()
-        if (!scan.damaged) {
+        if (scan.rewriteSafe) {
             intactLength = length
             return
         }
@@ -311,7 +314,7 @@ class ShotProtoStore(
 
     /**
      * Every record — the header included — as framed bytes, and whether the file
-     * holds damage a rewrite must not paper over.
+     * may be rewritten at all.
      *
      * A record that cannot be framed or read is reported (when asked) and the walk
      * stops there: past an unreadable length prefix the offsets are no longer
@@ -319,16 +322,26 @@ class ShotProtoStore(
      * records before that point are kept, because a torn tail must not cost the
      * session that came before it.
      *
-     * `damaged` answers "may this file be rewritten?". It is set when the walk
-     * stopped early, when the record cap cut the file short, or when a record was
-     * neither a header nor a shot. [updateClub] and [deleteShot] rewrite by writing
-     * the readable records back verbatim, so in any of those states the rewrite
-     * would drop exactly the records the store exists to keep — and they refuse
-     * rather than do it. Carrying a damaged tail along instead would mean inventing
-     * record boundaries, which is how one torn tail becomes a whole lost session.
+     * **[rewriteSafe] answers "may this file be rewritten?", and the question is
+     * about bytes, not about understanding.** [updateClub] and [deleteShot] write
+     * back what the walk read, so a rewrite is safe exactly when nothing unreadable
+     * was skipped: not when the walk stopped early, and not when the record cap cut
+     * the file short. In both of those there are records the store never saw, and
+     * writing the seen ones back would drop them — turning one damaged record into a
+     * lost session.
+     *
+     * A record that framed correctly but is neither a header nor a shot is a
+     * different animal, and used to be lumped in with those two. Its bytes are in
+     * hand, and both rewrites already carry such a record through untouched
+     * (`framed`, not `records`). Refusing a rewrite for it made the file permanently
+     * un-mutable over a record this build simply does not understand — including a
+     * shot record written by a newer `store_format_version`, which is precisely what
+     * a forward-compatible format should be able to carry. So it is preserved rather
+     * than obeyed, [validate] still names it, and the user's real shots stay
+     * editable.
      */
     private fun readRecordsUnlocked(collectProblems: MutableList<String> = mutableListOf()): RecordScan {
-        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), ByteArray(0), false)
+        if (!file.exists() || file.length() == 0L) return RecordScan(emptyList(), emptyList(), ByteArray(0), true)
         val bytes = file.readBytes()
         val framed = DelimitedRecords.read(bytes) { index, message ->
             collectProblems += "record ${index + 1}: $message"
@@ -347,9 +360,10 @@ class ShotProtoStore(
             ok
         }
         return RecordScan(
+            framed = within,
             records = records,
             intactPrefix = bytes.copyOf(covered),
-            damaged = stoppedEarly || capped || records.size != within.size,
+            rewriteSafe = !stoppedEarly && !capped,
         )
     }
 
@@ -440,17 +454,32 @@ private fun Shot.matches(shotId: Int, receivedAtMs: Long): Boolean =
  * the file holds damage that makes a whole-file rewrite unsafe.
  */
 private class RecordScan(
-    /** Framed bytes, header included, oldest first; unreadable records dropped. */
+    /**
+     * Every framed record within the cap, oldest first, in file order, including any
+     * this build cannot interpret. **A rewrite writes these back**, which is why an
+     * uninterpretable record survives one: the store never has to understand a byte
+     * to keep it.
+     */
+    val framed: List<ByteArray>,
+    /**
+     * Only the records that parse — header and shots. This is what the UI loads and
+     * what [ShotProtoStore.validate] counts and names, so an uninterpretable record
+     * is invisible to the user here and reported there rather than silently shown.
+     */
     val records: List<ByteArray>,
     /**
      * Exactly the bytes the read could account for — the intact prefix, byte for
-     * byte, including a record that framed correctly but parsed as neither a header
+     * byte, including a record that framed correctly but parses as neither a header
      * nor a shot. Repairing writes *these*, so a repair cannot lose a byte the
      * reader could still place, which filtering to [records] would.
      */
     val intactPrefix: ByteArray,
-    /** True when rewriting these records would drop records the read could not see. */
-    val damaged: Boolean,
+    /**
+     * True when a whole-file rewrite cannot lose anything: the walk read every byte
+     * and no record went unread. False for a torn tail or a capped file, where
+     * records exist that this read never saw.
+     */
+    val rewriteSafe: Boolean,
 )
 
 /**

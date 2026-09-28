@@ -5,9 +5,10 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 This file is **what to do next** and why.
 
 Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-clean
-(PR #13, still open); all three still need a hardware pass. Parked item A (who owns
-ordering between the UI and the persist queue) is now built and recorded in DESIGN §8;
-B–F remain parked below. R1–R4 merged (PRs #5–#7).
+(PR #13, still open); all three still need a hardware pass. Parked items A (who owns
+ordering between the UI and the persist queue) and B (a well-framed non-record
+locking the store) are now built and recorded in DESIGN §8; C–F remain parked below.
+R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -325,15 +326,37 @@ re-derived. Ordered by how much it can hurt.
     itself, an edit not rejected by a full append queue, and `apply` on an
     unstarted queue rejected rather than hanging. `./gradlew check` green.
 
-- [ ] **B. A well-framed non-record makes the store permanently un-mutable.**
-  `readRecordsUnlocked` sets `damaged` when a record is neither a header nor a shot, and
-  keeps that record in `intactPrefix`, so the file stays readable and appendable while
-  every `updateClub` / `deleteShot` refuses. Repair-on-append only heals a *truncated
-  tail*, never this state, so there is no path back short of `clear()`. This is the
-  direct cost of "a rewrite must never destroy a record I cannot parse" — keep that
-  rule, and give the store a way to quarantine a non-record instead of deadlocking.
-  - Verify: inject a well-framed junk record → the file still loads the real shots,
-    a club tag on a real shot still works, and `validate()` names the junk record.
+- [x] **B. A well-framed non-record makes the store permanently un-mutable.** DONE
+  2026-09-28. The fix turned out to be one boolean, not a quarantine mechanism.
+  `readRecordsUnlocked` set `damaged` for three different things, and only two of
+  them make a rewrite lossy: a torn tail and a capped file both mean records the
+  walk never read, so writing back what it did read would drop them. The third — a
+  record that framed fine but is neither a header nor a shot — has its bytes in
+  hand, and `updateClub` and `deleteShot` **already** carried such records through
+  verbatim. The guard was the only thing stopping them.
+  - So `damaged` is now `rewriteSafe` (positive polarity: the bug was one flag
+    meaning "cannot read" *and* "cannot understand", which have opposite
+    consequences), and `RecordScan` carries `framed` — every framed record,
+    uninterpretable ones included — for the rewrites to write back, alongside
+    `records` for what the UI loads and `validate` names.
+  - The branch's own rule is kept *more* literally, not less: a rewrite still never
+    destroys a record it cannot parse. Carrying a record forward is also what a
+    forward-compatible format should do — a shot record from a newer
+    `store_format_version` lands in exactly this case.
+  - Preserve, don't accept: `validate()` still names it and the UI still never sees
+    it. The two existing "a torn store must refuse the rewrite" tests still pass and
+    still mean *torn tail*.
+  - Verify: `ShotProtoStoreTest` — the real shots load beside such a record, a club
+    tag works, a delete works, the record survives both byte for byte, `validate()`
+    names it while still counting the real shots, and a torn tail still refuses both
+    rewrites with the file untouched. The three behavioural tests fail against the
+    old `damaged` clause and pass against the new one.
+  - **Found while writing the test:** `StoredShot.received_at_ms` and
+    `ShotLogHeader.store_format_version` are both field 1 varint, so a record
+    carrying only a timestamp parses perfectly as a header and the store has no way
+    to know it is not one. Not fixed here — a stray header mid-file is not read as
+    the file's header (`validate` only checks the first) — but it is a real
+    ambiguity in the record layout.
 
 - [ ] **C. `MAX_RECORDS` bounds neither allocation nor rewrite.**
   `DelimitedRecords.read` has already materialised every record, and the store has
