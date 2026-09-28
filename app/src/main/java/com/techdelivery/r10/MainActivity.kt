@@ -159,12 +159,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** M3: show persisted shot history even before this session connects. */
+    /**
+     * M3: show persisted shot history even before this session connects.
+     *
+     * Loaded through [ShotProtoStore.loadAllWithReport] so a file too large to read
+     * whole says so on the Shots tab, instead of handing back a history that quietly
+     * stops partway and leaving the user to think those shots never happened.
+     */
     private fun loadHistory(store: ShotProtoStore) {
         uiScope.launch {
-            val history = runCatching { store.loadAll() }.getOrDefault(emptyList())
+            val load = runCatching { store.loadAll() }.getOrNull()
+            if (load == null) {
+                DeviceStateHolder.adoptHistory(emptyList())
+                // A missing or empty file is not a throw, so anything reaching here
+                // is a real fault. Showing an empty history and saying nothing is
+                // the failure mode this is meant to avoid.
+                DeviceStateHolder.historyError.value = "could not read the shot history"
+                return@launch
+            }
             // Merge, never assign: a shot can land while the file is being read.
-            DeviceStateHolder.adoptHistory(history)
+            DeviceStateHolder.adoptHistory(load.shots)
+            load.problems.firstOrNull()?.let { DeviceStateHolder.historyError.value = it }
         }
     }
 
