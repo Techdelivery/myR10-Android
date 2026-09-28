@@ -7,7 +7,8 @@ This file is **what to do next** and why.
 Last updated: 2026-09-28 — R5, R6 and R7 built, review-clean and hardware-verified
 (the HARDWARE_GUIDE §7B acceptance run); the whole parked list from that review is
 closed and recorded in DESIGN §8. R1–R4 merged (PRs #5–#7). Queued: R8 (shot
-notes), R9 (series notes), R10 (speak the shot speed). PR #13 is still open.
+notes), R9 (series notes), R10 (speak the shot speed), R11 (revamp the Shots
+tab). PR #13 is still open.
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -305,22 +306,58 @@ and neither has been designed. Nothing here is committed to a shape.
   - **Audio focus, or it will talk over music and calls.** Request transient
     focus; duck or pause on loss and stop speaking. Talking over a phone call is
     worse than not speaking at all.
+  - **Speak the number, nothing else — decided 2026-09-28.** Just "155". Not the
+    club, not the unit, not "155 miles per hour": at the range the unit is never in
+    doubt and the syllables are what make the gap between shots feel long. This also
+    sidesteps TTS reading "mph" out as letters, which was an open question and is
+    now moot.
   - **Phrasing is a pure function, and that is what gets tested.** Extract
-    `spokenShot(shot): String` and unit-test it: ball speed in whole numbers, no
-    decimals, the club first when there is one ("7 iron, 155"). Do not test the TTS
-    engine itself. Note that plain "mph" is read out letter by letter — decide
-    whether the phrase says "miles per hour" or whether the abbreviation is worth
-    the syllables.
-  - **Setting: off by default or on?** Defaulting on is a nicer demo and a rude
-    surprise; defaulting off means the feature is invisible until found. Add a
-    `speakShots` key to §8 either way, and a mute control on the Shots tab for the
-    range where you do not want it.
-  - Verify: hit a shot → it speaks once, at the right number; hit three in quick
-    succession → only the last is spoken, and the phone does not queue up; start a
-    phone call mid-session → it stops and resumes nothing; relaunch → no speech for
-    history; `spokenShot` covered by unit tests for a tagged shot, an untagged one,
-    and a shot with no ball metrics (which must say nothing at all rather than
-    "null miles per hour").
+    `spokenSpeed(shot): String` and unit-test it: the ball speed rounded to a whole
+    number, and **empty string** for a shot with no ball metrics — the caller must
+    stay silent rather than speak a zero or a "null". Do not test the TTS engine.
+  - **The mute lives on the Shots tab, not in Settings — decided 2026-09-28.** It
+    belongs where you are at the moment you want it, next to the list, not three
+    taps away in another tab. It still writes a `speakShots` key so the choice
+    survives a restart, and the same key gives Settings nothing to show. Default
+    **off**: a feature that surprises you by talking is worse than one you have to
+    find.
+  - Note for R11: the toggle competes for space on a tab that is already cramped
+    (see R11). Put it in the same top row as the filter chips, not in the detail
+    card.
+  - Verify: hit a shot → it says the number once; hit three in quick succession →
+    only the last is spoken and the phone does not queue up; start a phone call
+    mid-session → it stops and resumes nothing; relaunch → no speech for history;
+    toggle off on the Shots tab → silent from the next shot, and still silent after
+    a restart; `spokenSpeed` unit-tested for a normal shot, one with no ball
+    metrics (empty), and one whose speed rounds to 3 digits.
+
+- [ ] **R11. Revamp the Shots tab — it is out of room.**
+  Raised while adding R10 (2026-09-28): the tab cannot take another control without
+  getting worse. Today one screen carries, top to bottom — the filter chips, the
+  level banner, the history-error banner, the detail card (big stats, the club
+  editor, the delete button), a "show latest shot" link, a count line, and a list
+  row that is itself five columns wide. R5, R6 and R10 each added to it, and the
+  additions were all reasonable one at a time.
+  - **This is a design task, not a change.** Pick the shape before writing code; the
+    three directions below are the ones worth arguing about, and they are not
+    mutually exclusive.
+  - **Direction 1 — the detail card becomes a sheet.** The card is tall and only
+    useful for one shot. Make it a bottom sheet or a full-screen destination
+    (tap a row → open it), which leaves the list the primary surface and gives the
+    club editor, delete and the new mute toggle room to breathe.
+  - **Direction 2 — the list row gets narrower.** Shot id, time, club and ball speed
+    are the four things worth seeing at a glance; launch angle, spin and club speed
+    belong in the detail. That is what buys the mute toggle a home in the top row.
+  - **Direction 3 — one top bar that owns tab-level state.** Filter, mute and any
+    future view switch live together, and the banners move out of the scroll path so
+    a tilt warning does not push the list down.
+  - **What must not regress:** R1 keep-screen-on is keyed on the Shots tab, R2's
+    banner must stay visible without scrolling, R3's selection (with its non-colour
+    marker) must stay legible, and R6's delete confirmation must keep naming the
+    row. Any revamp is only done when all four still hold on a phone in sunlight.
+  - Verify: every control still reachable one-handed on a Pixel 7 with the tab
+    scrolled and not scrolled; R1-R3 and R6 re-checked on hardware; nothing
+    important only reachable after a scroll.
 
 ---
 
