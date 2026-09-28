@@ -12,6 +12,48 @@ is what you do **on the laptop with the R10 in hand**.
 
 ## 0. Read this first — phone vs emulator
 
+### ⚠️ Do NOT disable the Garmin apps
+
+**Never run `pm disable-user` on the Garmin apps on this phone.** The owner has
+activities tracked in Garmin Connect and Garmin Golf, and disabling those apps
+risks losing them. Do not do it as part of an install, a validation session, or a
+troubleshooting step.
+
+**You do not need to.** Coexistence is measured, not assumed: the app completed the
+full §7.1 setup to `READY` — handshake, all five requests, device info — *while
+Garmin held the same R10*. BLE multiplexes GATT clients onto one link, so our
+connection and theirs coexist. The one thing that needs the device silent is
+**fresh discovery** (unpairing and finding the R10 again), because the R10 stops
+advertising while any client holds the link — and that is a single, explicitly
+destructive step at the end of the runbook (§7, K3), not a precondition for
+anything else. For an already-paired R10 the **bonded-direct** path is used, which
+does not scan and does not care who else is connected.
+
+**If discovery mysteriously finds nothing**, that is the one symptom to check:
+
+```bash
+adb shell dumpsys bluetooth_manager | grep -A 3 "ACL holders"
+```
+
+It will show whether another app is holding the R10's link. Report it — do not
+"fix" it by disabling someone's apps.
+
+**Check the current state before you start**, in case an earlier session left them
+disabled (see the phone-state item in §7):
+
+```bash
+adb shell pm list packages -d | grep garmin   # must print nothing
+```
+
+Anything listed there is a Garmin app someone turned off, and needs re-enabling:
+
+```bash
+adb shell pm enable com.garmin.android.apps.connectmobile
+adb shell pm enable com.garmin.android.apps.golf
+```
+
+### A physical phone vs the emulator
+
 - **A physical Android phone is required to connect to a real R10.** Android
   emulators run a *virtual* Bluetooth stack and **cannot connect to real external
   BLE peripherals**. Use a real phone.
@@ -169,12 +211,14 @@ code with **no hardware verification recorded yet**.
       confirm the `0xFE1F` advertisement form returns and the production
       `ScanFilter` matches it. Unpairing drops the working connect path, so
       re-pair afterwards.
-- [ ] **Phone state restored before handing back.** The Garmin Connect and
-      Garmin Golf apps are left `disabled-user` on this phone during an R10
-      session. Re-enable both:
+- [ ] **Phone state: Garmin apps still enabled.** This is a *check*, not a
+      cleanup step — see the warning in §0. The Garmin apps must **not** be disabled
+      at any point; the owner tracks activities in them. Run
+      `adb shell pm list packages -d | grep garmin` and expect no output. If
+      anything is listed (e.g. an earlier session left them off), re-enable with
       `adb shell pm enable com.garmin.android.apps.connectmobile` and
-      `adb shell pm enable com.garmin.android.apps.golf`. Also undo
-      `svc power stayon true` if you set it.
+      `adb shell pm enable com.garmin.android.apps.golf`.
+      Also undo `svc power stayon true` if you set it.
 
 ---
 

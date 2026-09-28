@@ -197,8 +197,16 @@ address before suspecting our code.
 **Why BT settings shows "connected" but only offers "Connect":** the settings
 toggle manages *profile* (BR/EDR) connections. A raw LE ACL link held by another
 app's GATT client is not a profile, so there is nothing for that toggle to
-disconnect. Use `dumpsys bluetooth_manager` to identify the holder, and
-`pm disable-user` (not `am force-stop`) to actually take it away.
+disconnect. Use `dumpsys bluetooth_manager` to identify the holder.
+
+**Do not disable the Garmin apps to take the link away.** It works — `am force-stop`
+does not, `pm disable-user --user 0 <pkg>` does — but the owner of the test phone
+tracks activities in Garmin Connect and Garmin Golf, and disabling them risks losing
+that. It is a standing constraint, not a session trade-off. If the R10 has to
+advertise (fresh discovery), **quit Garmin Connect and power-cycle the R10** instead;
+the app re-grabs the link on launch, so a full re-enable restores the state
+afterwards. Check with `adb shell pm list packages -d | grep garmin`, which must
+print nothing.
 
 ### Device interface service (the data channel)
 | UUID | Role |
