@@ -4,8 +4,9 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-27 — R5, R6 and R7 implemented and test-covered; all three
-still need a hardware pass. R1–R4 merged (PRs #5–#7).
+Last updated: 2026-09-27 — R5, R6 and R7 implemented, test-covered and review-clean
+(PR #13); all three still need a hardware pass, and the "Parked" list below holds
+what the review deliberately left open. R1–R4 merged (PRs #5–#7).
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -293,6 +294,64 @@ Carried over from `TODO.md` Phase K.
   memory limit as a project constraint.
 
 ---
+
+## Parked — resume points from the R5/R6/R7 review loop
+
+Left over from a two-round review of the R5/R6/R7 branch (PR #13, merged after
+`55c037b`). Each is parked with its evidence and the decision it is waiting on, so
+nothing has to be re-derived. Ordered by how much it can hurt.
+
+- [ ] **A. Decide who owns ordering between the UI and the persist queue.**
+  `ShotPersistSink` drains its queue on its own writer coroutine; `MainActivity`'s
+  `deleteShot` / `setShotClub` run on `uiScope` and only share the store's mutex,
+  which serialises but does not order. Two concrete failures: a delete can be undone
+  by an append still queued, and a club pick on a shot that is not on disk yet matches
+  nothing, is discarded, and is never retried. Not a store bug — the dedup reseed
+  makes the worst case recoverable — and not fixable without choosing: the queue owns
+  ordering (edits become queue entries), or the UI awaits a flush before editing. Write
+  the choice into DESIGN §8 before building it.
+  - Verify: hit a shot and immediately delete it, or tag it, faster than the writer
+    drains → the final state on disk matches what the user last saw.
+
+- [ ] **B. A well-framed non-record makes the store permanently un-mutable.**
+  `readRecordsUnlocked` sets `damaged` when a record is neither a header nor a shot, and
+  keeps that record in `intactPrefix`, so the file stays readable and appendable while
+  every `updateClub` / `deleteShot` refuses. Repair-on-append only heals a *truncated
+  tail*, never this state, so there is no path back short of `clear()`. This is the
+  direct cost of "a rewrite must never destroy a record I cannot parse" — keep that
+  rule, and give the store a way to quarantine a non-record instead of deadlocking.
+  - Verify: inject a well-framed junk record → the file still loads the real shots,
+    a club tag on a real shot still works, and `validate()` names the junk record.
+
+- [ ] **C. `MAX_RECORDS` bounds neither allocation nor rewrite.**
+  `DelimitedRecords.read` has already materialised every record, and the store has
+  already read the whole file, before the cap is applied — so it limits records, not
+  bytes, and a >200 000-shot log is silently truncated on `loadAll` / `exportCsv` while
+  `validate()` does report it. The constant's own KDoc claims it is a corruption guard,
+  which is wrong. Either bound the read or fix the claim.
+  - Verify: a log past the cap → either it loads or it is reported, and the KDoc says
+    which.
+
+- [ ] **D. The `writeAllUnlocked` rename-failure branch has no test.**
+  The throw is the *only* thing protecting the original file after a failed rewrite, and
+  it is the one branch verified by reading only. Simulating a failed `renameTo`
+  portably means injecting the file — decide whether that hook is worth having.
+  - Verify: a failed rename leaves the previous file AND the temp on disk, and throws.
+
+- [ ] **E. `ShotDedupIndex` has no test.**
+  LRU eviction, the `contains` LRU touch, and the `recentKeyWindow` constructor hook all
+  lost their coverage when `ShotCsvStoreTest` went with the CSV store. TODO.md L8 records
+  the same gap. The window is what bounds the index, so an eviction bug shows up as
+  either duplicate shots or unbounded memory.
+  - Verify: `ShotProtoStore(f, recentKeyWindow = 2)` — the least-recently-seen key is
+    evicted, the most-recently-touched is not.
+
+- [ ] **F. Two loose assertions worth tightening when convenient.**
+  `theExportCarriesEveryValueTheOldCsvDid` matches a 3-digit ball-speed substring
+  anywhere in the file, which a `shot_id` or timestamp would also satisfy — decode the
+  row and assert column by column. And "the device's bytes are byte-identical" is only
+  proven for a message this build fully understands; append a `StoredShot` carrying an
+  unknown field number and assert it survives a rewrite.
 
 ## Later milestones
 
