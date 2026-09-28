@@ -9,7 +9,8 @@ Last updated: 2026-09-28 — R5, R6 and R7 implemented, test-covered and review-
 from the R5/R6/R7 review is now closed** — A (write ordering), B (an uninterpretable
 record locking the store), C (the read ceiling), D (the rename-failure branch), E
 (the dedup index) and F (a real losslessness bug in the club tag) are all built and
-recorded in DESIGN §8. R1–R4 merged (PRs #5–#7).
+recorded in DESIGN §8. R1–R4 merged (PRs #5–#7). R8 (shot notes) and R9 (series
+notes) are parked in the backlog below, undesigned.
 
 Legend: `[x]` done **and** verified · `[~]` code merged, not yet verified on
 hardware · `[ ]` pending.
@@ -241,6 +242,54 @@ how much they get in the way of using the app at the range.
     and not app-private framing — the command parses one message, so it is handed a
     record *body*; it cannot read the varint length prefixes, so it cannot check
     the framing of the file as a whole).
+
+---
+
+## Backlog — after R7
+
+Parked rather than planned. Both need a design PR before code, the way R5 got one
+in #12: each is a user-facing feature with decisions that change the data model,
+and neither has been designed. Nothing here is committed to a shape.
+
+- [ ] **R8. A free-text note on a single shot.**
+  - **Cheaper than it looks, and only because of parked item F.** The club tag
+    already splices one field into the record and copies every other byte verbatim
+    (`ShotRecordCodec.withClubLabel`), so a `notes` field is a second annotated field
+    and the natural generalization is `withAnnotation(field, value)`. That machinery
+    exists *because* the rewrite used to re-encode records and silently destroy
+    fields the build did not know about.
+  - **The trap:** a note must be spliced too. `shot.copy(notes = …)` is the obvious
+    reflex and re-introduces the exact bug F removed, on the one field where it would
+    hurt most.
+  - **What is not free:** a club id is one or two characters and a note is not. The
+    persisted-length bound (`GolfClub.ID_MAX_LEN` is the precedent), the CSV column,
+    and the splice's varint length handling all get exercised for the first time with
+    real sizes. A note also needs a decision on line breaks, and on whether it is
+    plain text or something richer.
+  - **Open questions:** does the note live in the shot record or beside it? Is there
+    a length cap, and what happens past it? Does a note survive a delete (R6) or
+    disappear with the shot? Does it need to appear in the CSV export, and if so does
+    a multi-line note fit a CSV row?
+  - Verify: tag a shot with a note, kill and relaunch → the note is still there; the
+    export carries it; a shot with a long note round-trips; and the record still
+    decodes under `protoc --decode_raw`.
+
+- [ ] **R9. A note on a series of shots.**
+  - **A different data model, not an extension of R8.** Needs a new record type in the
+    store (a grouping, not a field on a shot), a way to create one, and selection UI.
+    Doing it after R8 is worth it anyway: shot notes are the primitive a series note
+    would eventually be built from.
+  - **Open questions, in the order they block the design:** what *is* a series — a
+    session, a time window, or the shots the user explicitly selects? That single
+    answer decides whether a series survives an app restart, and whether it is still
+    meaningful after R6 deletes one of its members. Then: what happens to a series
+    when its last shot is deleted, and can a series overlap another?
+  - **Delete cascade is the sharp one.** R6 deletes a shot outright with no undo. A
+    note attached to that shot vanishes silently, and a series note would have to
+    survive members disappearing — which is a policy question, not an implementation
+    detail.
+  - Verify: create a series over several shots, restart the app → it is still there;
+    delete a member shot → the series and its note are unaffected.
 
 ---
 
