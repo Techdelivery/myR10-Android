@@ -4,7 +4,8 @@ Forward-looking tracker. `TODO.md` is the historical M0–M3 execution record
 (what was built, what each step was verified against, and every hardware finding).
 This file is **what to do next** and why.
 
-Last updated: 2026-09-28 — R5, R6 and R7 built, review-clean and hardware-verified
+Last updated: 2026-09-28 — R10 built (spoken shot speed), unverified on hardware.
+R5, R6 and R7 built, review-clean and hardware-verified
 (the HARDWARE_GUIDE §7B acceptance run); the whole parked list from that review is
 closed and recorded in DESIGN §8. R1–R4 merged (PRs #5–#7). Queued: R8 (shot
 notes), R9 (series notes), R10 (speak the shot speed), R11 (revamp the Shots
@@ -289,7 +290,7 @@ and neither has been designed. Nothing here is committed to a shape.
   - Verify: create a series over several shots, restart the app → it is still there;
     delete a member shot → the series and its note are unaffected.
 
-- [ ] **R10. Speak the shot speed out loud (TTS).**
+- [~] **R10. Speak the shot speed out loud (TTS).** *(built 2026-09-28, unverified on hardware)*
   At the range you are looking at your feet, not the phone. Saying the number is
   faster than finding it on screen — and it is the one number that matters between
   shots. Nothing new to store: this is output, not data, so it stays out of the
@@ -321,9 +322,14 @@ and neither has been designed. Nothing here is committed to a shape.
     survives a restart, and the same key gives Settings nothing to show. Default
     **off**: a feature that surprises you by talking is worse than one you have to
     find.
-  - Note for R11: the toggle competes for space on a tab that is already cramped
-    (see R11). Put it in the same top row as the filter chips, not in the detail
-    card.
+  - The toggle is a chip in the tab-level bar next to the filter chips, extracted as
+    `ShotTabBar` so R11's revamp has a seam to work with rather than a refactor to
+    invent. A chip rather than an icon plus a switch: the tab has no room for a
+    two-part control, and the filter chips already teach that selected means on.
+  - **Built 2026-09-28:** `speech/SpokenShot` (the phrasing, pure and tested) and
+    `speech/ShotSpeaker` (the engine, audio focus, latest-wins); `speakShots` in
+    `AppSettings`; the arrival hook in the service's shot collector; a `Voice`
+    chip in the tab-level bar, which is also the seam R11 needs.
   - Verify: hit a shot → it says the number once; hit three in quick succession →
     only the last is spoken and the phone does not queue up; start a phone call
     mid-session → it stops and resumes nothing; relaunch → no speech for history;
