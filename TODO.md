@@ -152,15 +152,21 @@ canonical backlog of later milestones.
       holds the link, so a fresh scan-based pair can fail with Garmin running.
       First diagnostic when discovery finds nothing:
       `adb shell dumpsys bluetooth_manager | grep <addr>` and read `ACL holders`.
-    - `am force-stop` does NOT release it; `pm disable-user --user 0 <pkg>` does.
+    - `am force-stop` does NOT release it; `pm disable-user --user 0 <pkg>` does —
+      but do NOT use it on this phone (the owner tracks activities in those apps).
+      Quit Garmin Connect instead.
   - **Residual, deliberately not verified:** the `0xFE1F` branch has never been
     exercised *through* `ScanFilter` — Garmin re-grabs the link too fast to get a
     disconnected advertiser. Accepted because the **name branch is already proven**
     (it delivered the verified fresh pair, and the R10 never advertised the old
-    `6A4E2800`), so the filter is a strict superset of known-good. To close it:
-    disable both Garmin apps, power-cycle the R10, then
+    `6A4E2800`), so the filter is a strict superset of known-good. To close it,
+    power-cycle the R10 when Garmin is not holding the link, then
     `adb shell am start -n com.techdelivery.r10/.ScanDumpActivity` — it runs a
     production-filter phase and prints an explicit VERDICT line.
+    **Do not disable the Garmin apps to get there** (see the phone-state warning at
+    the end of this file): the owner tracks activities in them. Quiescing Garmin
+    Connect is the right way to let go of the link, and re-opening it afterwards
+    restores it.
 
 ---
 
@@ -317,16 +323,26 @@ Device: Approach R10 serial `<SERIAL>`, fw 4.50, battery 99% · Pixel 7, Android
   4. `TooGenericExceptionCaught` — `BleTransportImpl` / `R10ForegroundService`: leave as-is unless the BLE exception surface gets pinned down. These are deliberate boundary catches (see **Errors** in the standard); the baseline entry is the documentation.
   - Verify: `./gradlew detekt` stays green as each entry is removed from the baseline file.
 
-### ⚠️ Phone state left modified — restore before handing back
+### ⚠️ Phone state: do NOT disable the Garmin apps
 
-`com.garmin.android.apps.connectmobile` and `com.garmin.android.apps.golf` are
-**`disabled-user`** (required to free the R10's ACL link; `am force-stop` does not
-release it). Restore with:
+**`com.garmin.android.apps.connectmobile` and `com.garmin.android.apps.golf` must
+stay enabled.** The owner tracks activities in Garmin Connect and Garmin Golf, and
+disabling those apps risks losing them. This is a standing constraint, not a
+session-scoped one — it applies to installs, validation runs and troubleshooting
+alike.
+
+An earlier session did leave them `disabled-user` (it was the only thing that
+released the R10's ACL link, since `am force-stop` does not). **If you are not sure
+of the current state, check and restore:**
 
 ```
+adb shell pm list packages -d | grep garmin      # must print nothing
 adb shell pm enable com.garmin.android.apps.connectmobile
 adb shell pm enable com.garmin.android.apps.golf
 ```
+
+If you ever do need the R10 to advertise (fresh discovery, the K3 residual), quit
+Garmin Connect and power-cycle the R10 rather than disabling the apps.
 
 Also `svc power stayon true` is set (plugged in) and the R10 is paired to this phone.
 
